@@ -1,6 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'features/auth/data/auth_repository.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/password_reset_bloc.dart';
 import 'app.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  const backendUrl = 'http://127.0.0.1:8000';
+
+  runApp(
+    RepositoryProvider(
+      create: (_) => AuthRepository(baseUrl: backendUrl),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (ctx) => AuthBloc(ctx.read<AuthRepository>())),
+          BlocProvider(
+            create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
+          ),
+        ],
+        child: const MyApp(),
+      ),
+    ),
+  );
 }

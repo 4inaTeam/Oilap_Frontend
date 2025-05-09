@@ -3,21 +3,16 @@ import '../../core/constants/app_colors.dart';
 import 'sidebar.dart';
 import 'footer_widget.dart';
 
-/// A responsive layout that shows a sidebar on desktop
-/// and a top app bar with drawer on mobile, plus a common footer.
 class AppLayout extends StatelessWidget {
   final Widget child;
-
   const AppLayout({Key? key, required this.child}) : super(key: key);
 
-  static const _desktopBreakpoint = 800.0;
+  static const desktopBreakpoint = 800.0;
 
   @override
   Widget build(BuildContext context) {
-    // Use MediaQuery to get a true screen width
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    if (screenWidth >= _desktopBreakpoint) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= desktopBreakpoint) {
       return _DesktopScaffold(child: child);
     } else {
       return _MobileScaffold(child: child);
@@ -25,7 +20,6 @@ class AppLayout extends StatelessWidget {
   }
 }
 
-/// Desktop scaffold with persistent sidebar and footer
 class _DesktopScaffold extends StatelessWidget {
   final Widget child;
   const _DesktopScaffold({required this.child});
@@ -33,19 +27,24 @@ class _DesktopScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: Row(children: [const Sidebar(), Expanded(child: child)]),
-          ),
-          const FooterWidget(),
-        ],
+      body: SafeArea(
+        child: Row(
+          children: [
+            // Fixed-width sidebar
+            const SizedBox(width: 250, child: Sidebar()),
+            // Main content
+            Expanded(
+              child: Column(
+                children: [Expanded(child: child), const FooterWidget()],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Mobile scaffold with drawer and footer
 class _MobileScaffold extends StatelessWidget {
   final Widget child;
   const _MobileScaffold({required this.child});
@@ -76,7 +75,7 @@ class _MobileScaffold extends StatelessWidget {
         ],
       ),
       drawer: const Drawer(child: Sidebar()),
-      body: child,
+      body: SafeArea(child: child),
       bottomNavigationBar: const FooterWidget(),
     );
   }

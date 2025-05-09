@@ -13,83 +13,88 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth >= 800;
-            final cardWidth =
-                isDesktop ? 200.0 : (constraints.maxWidth - 48) / 2;
-            Widget leftColumn = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _LineChartCard(),
-                const SizedBox(height: 16),
-                _DataTableCard(),
-              ],
-            );
+            final width = constraints.maxWidth;
+            final isDesktop = width >= 800;
+            final isTablet = width >= 600 && width < 800;
+            final summaryColumns =
+                isDesktop
+                    ? 4
+                    : isTablet
+                    ? 2
+                    : 1;
+            final summaryCardWidth =
+                (width - (summaryColumns - 1) * 16) / summaryColumns;
 
-            Widget rightColumn = Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _PieChartCard(),
-                const SizedBox(height: 16),
-                _EmployeeTableCard(),
-              ],
-            );
+            // Responsive grid for summary cards
+            final summaryCards = [
+              _SummaryCard(
+                title: 'Clients',
+                value: '781',
+                change: '+11.01%',
+                color: AppColors.backgroundLight,
+                width: summaryCardWidth,
+              ),
+              _SummaryCard(
+                title: 'Quantité',
+                value: '1219 T',
+                change: '-0.03%',
+                color: AppColors.accentYellow,
+                width: summaryCardWidth,
+              ),
+              _SummaryCard(
+                title: 'Revenu',
+                value: '695 DT',
+                change: '+15.03%',
+                color: AppColors.backgroundLight,
+                width: summaryCardWidth,
+              ),
+              _SummaryCard(
+                title: 'Dépenses',
+                value: '305 DT',
+                change: '+6.08%',
+                color: AppColors.accentGreen,
+                width: summaryCardWidth,
+              ),
+              _QuantityDetailsCard(width: summaryCardWidth),
+            ];
+
+            final chartCards = [_LineChartCard(), _PieChartCard()];
+
+            final tableCards = [_DataTableCard(), _EmployeeTableCard()];
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Summary grid
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: [
-                    _SummaryCard(
-                      title: 'Clients',
-                      value: '781',
-                      change: '+11.01%',
-                      color: AppColors.backgroundLight,
-                      width: cardWidth,
-                    ),
-                    _SummaryCard(
-                      title: 'Quantité',
-                      value: '1219 T',
-                      change: '-0.03%',
-                      color: AppColors.accentYellow,
-                      width: cardWidth,
-                    ),
-                    _SummaryCard(
-                      title: 'Revenu',
-                      value: '695 DT',
-                      change: '+15.03%',
-                      color: AppColors.backgroundLight,
-                      width: cardWidth,
-                    ),
-                    _SummaryCard(
-                      title: 'Dépenses',
-                      value: '305 DT',
-                      change: '+6.08%',
-                      color: AppColors.accentGreen,
-                      width: cardWidth,
-                    ),
-                    _QuantityDetailsCard(width: cardWidth),
-                  ],
+                  children: summaryCards.map((card) => card).toList(),
                 ),
-
                 const SizedBox(height: 24),
 
-                // Charts & tables
-                if (isDesktop)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: leftColumn),
-                      const SizedBox(width: 16),
-                      Expanded(child: rightColumn),
-                    ],
-                  )
-                else ...[
-                  leftColumn,
-                  const SizedBox(height: 16),
-                  rightColumn,
-                ],
+                // Charts grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: isDesktop ? 2 : 1,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: isDesktop ? 1.5 : 1,
+                  children: chartCards,
+                ),
+                const SizedBox(height: 24),
+
+                // Tables grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: isDesktop ? 2 : 1,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: isDesktop ? 1.2 : 1,
+                  children: tableCards,
+                ),
               ],
             );
           },
@@ -154,7 +159,7 @@ class _QuantityDetailsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'Détails des quantités',
@@ -200,8 +205,8 @@ class _LineChartCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Activités', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(
-              height: 200,
+            const SizedBox(height: 16),
+            Expanded(
               child: LineChart(
                 LineChartData(
                   // TODO: set data
@@ -228,8 +233,8 @@ class _PieChartCard extends StatelessWidget {
               'Principales régions fournissant des olives',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(
-              height: 200,
+            const SizedBox(height: 16),
+            Expanded(
               child: PieChart(
                 PieChartData(
                   // TODO: set data
@@ -257,25 +262,27 @@ class _DataTableCard extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 32,
-                headingRowHeight: 40,
-                dataRowHeight: 36,
-                columns: const [
-                  DataColumn(label: Text('Nom de client')),
-                  DataColumn(label: Text('Quantité')),
-                  DataColumn(label: Text('Temps restant')),
-                ],
-                rows: List.generate(
-                  5,
-                  (_) => const DataRow(
-                    cells: [
-                      DataCell(Text('Moez')),
-                      DataCell(Text('700 Kg')),
-                      DataCell(Text('01:30:20')),
-                    ],
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 32,
+                  headingRowHeight: 40,
+                  dataRowHeight: 36,
+                  columns: const [
+                    DataColumn(label: Text('Nom de client')),
+                    DataColumn(label: Text('Quantité')),
+                    DataColumn(label: Text('Temps restant')),
+                  ],
+                  rows: List.generate(
+                    5,
+                    (_) => const DataRow(
+                      cells: [
+                        DataCell(Text('Moez')),
+                        DataCell(Text('700 Kg')),
+                        DataCell(Text('01:30:20')),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -298,25 +305,27 @@ class _EmployeeTableCard extends StatelessWidget {
           children: [
             Text('Employés', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 24,
-                headingRowHeight: 40,
-                dataRowHeight: 36,
-                columns: const [
-                  DataColumn(label: Text("Nom de l'employé")),
-                  DataColumn(label: Text('Numéro de téléphone')),
-                  DataColumn(label: Text('État')),
-                ],
-                rows: List.generate(
-                  5,
-                  (_) => const DataRow(
-                    cells: [
-                      DataCell(Text('Moez')),
-                      DataCell(Text('23954782')),
-                      DataCell(Text('Occupé')),
-                    ],
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 24,
+                  headingRowHeight: 40,
+                  dataRowHeight: 36,
+                  columns: const [
+                    DataColumn(label: Text("Nom de l'employé")),
+                    DataColumn(label: Text('Numéro de téléphone')),
+                    DataColumn(label: Text('État')),
+                  ],
+                  rows: List.generate(
+                    5,
+                    (_) => const DataRow(
+                      cells: [
+                        DataCell(Text('Moez')),
+                        DataCell(Text('23954782')),
+                        DataCell(Text('Occupé')),
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -6,10 +6,13 @@ class FooterWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Container(
+      width: double.infinity, // span full width
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Text(
         '© 4InA Technologies',
         style: TextStyle(color: AppColors.backgroundLight),
+        textAlign: TextAlign.right, // align text right
       ),
     );
   }

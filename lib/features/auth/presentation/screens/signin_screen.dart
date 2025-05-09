@@ -1,60 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/footer_widget.dart';
 
-class SignInScreen extends StatefulWidget {
+import '../screens/passwordForget.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
+
+class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
+
   @override
-  _SignInScreenState createState() => _SignInScreenState();
+  Widget build(BuildContext context) {
+    return const _SignInView();
+  }
 }
 
-class _SignInScreenState extends State<SignInScreen> {
-  final _formKey = GlobalKey<FormState>();
-  bool _obscure = true;
-  final _nameCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+class _SignInView extends StatefulWidget {
+  const _SignInView();
+  @override
+  State<_SignInView> createState() => _SignInViewState();
+}
 
-  void _signIn() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    }
+class _SignInViewState extends State<_SignInView> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  final _cinCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscure = true;
+
+  void _onSubmit() {
+    if (!_formKey.currentState!.validate()) return;
+    context.read<AuthBloc>().add(
+      AuthLoginRequested(
+        _emailCtrl.text.trim(),
+        _cinCtrl.text.trim(),
+        _passwordCtrl.text.trim(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+    final panelWidth = screenWidth * 0.8;
+    const logoHeight = 100.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Outer yellow border
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.accentYellow, width: 4),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                padding: const EdgeInsets.all(8),
-                child:
-                // Inner green border + white body
+      body: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthLoadSuccess) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            );
+          } else if (state is AuthLoadFailure) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
+          }
+        },
+        child: Center(
+          child: SingleChildScrollView(
+            child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
+              children: [
+                // Background using a single group image
                 Container(
+                  width: panelWidth,
+                  margin: EdgeInsets.only(top: isMobile ? logoHeight / 2 : 0),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: AppColors.accentGreen, width: 3),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
+                    image: DecorationImage(
+                      image: AssetImage('assets/images/Group.png'),
+                      fit: BoxFit.fill,
+                    ),
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
@@ -63,18 +86,13 @@ class _SignInScreenState extends State<SignInScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo and titles...
-                      Image.asset('assets/images/splash_logo.png', height: 50),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Oilapp',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textColor,
+                      if (!isMobile) ...[
+                        Image.asset(
+                          'assets/images/WhatsApp.png',
+                          height: logoHeight,
                         ),
-                      ),
-                      const SizedBox(height: 36),
+                        const SizedBox(height: 24),
+                      ],
                       const Text(
                         'Se connecter',
                         style: TextStyle(
@@ -84,150 +102,126 @@ class _SignInScreenState extends State<SignInScreen> {
                           color: AppColors.textColor,
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Centered form + button container
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 300),
+                      const SizedBox(height: 24),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 300),
+                        child: Form(
+                          key: _formKey,
                           child: Column(
                             children: [
-                              Form(
-                                key: _formKey,
-                                child: Column(
-                                  children: [
-                                    TextFormField(
-                                      controller: _nameCtrl,
-                                      decoration: InputDecoration(
-                                        labelText: 'Nom et Prénom',
-                                        isDense: true,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 10,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: AppColors.accentGreen,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: AppColors.accentGreen,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                      validator:
-                                          (v) =>
-                                              (v == null || v.isEmpty)
-                                                  ? 'Ce champ est obligatoire'
-                                                  : null,
+                              // Email field
+                              TextFormField(
+                                controller: _emailCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'Email',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if ((v?.isEmpty ?? true) &&
+                                      (_cinCtrl.text.isEmpty)) {
+                                    return 'Remplir email ou CIN';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              // CIN field
+                              TextFormField(
+                                controller: _cinCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'CIN',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                validator: (v) {
+                                  if ((v?.isEmpty ?? true) &&
+                                      (_emailCtrl.text.isEmpty)) {
+                                    return 'Remplir email ou CIN';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              // Password field
+                              TextFormField(
+                                controller: _passwordCtrl,
+                                obscureText: _obscure,
+                                decoration: InputDecoration(
+                                  labelText: 'Mot de passe',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscure
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                      color: AppColors.accentGreen,
                                     ),
-                                    const SizedBox(height: 12),
-                                    TextFormField(
-                                      controller: _passwordCtrl,
-                                      obscureText: _obscure,
-                                      decoration: InputDecoration(
-                                        labelText: 'Mot de passe',
-                                        isDense: true,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 10,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                    onPressed:
+                                        () => setState(
+                                          () => _obscure = !_obscure,
                                         ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: AppColors.accentGreen,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: AppColors.accentGreen,
-                                            width: 2,
-                                          ),
-                                        ),
-                                        suffixIcon: IconButton(
-                                          icon: Icon(
-                                            _obscure
-                                                ? Icons.visibility
-                                                : Icons.visibility_off,
-                                            color: AppColors.accentGreen,
-                                          ),
-                                          onPressed:
-                                              () => setState(
-                                                () => _obscure = !_obscure,
-                                              ),
-                                        ),
-                                      ),
-                                      validator:
-                                          (v) =>
-                                              (v == null || v.length < 6)
-                                                  ? '6 caractères minimum'
-                                                  : null,
+                                  ),
+                                ),
+                                validator:
+                                    (v) =>
+                                        (v == null || v.length < 6)
+                                            ? '6 caractères min.'
+                                            : null,
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed:
+                                      () => showPasswordForgetDialog(context),
+                                  child: const Text(
+                                    'Mot de passe oublié ?',
+                                    style: TextStyle(
+                                      color: AppColors.accentGreen,
+                                      decoration: TextDecoration.underline,
                                     ),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: () {},
-                                        child: Text(
-                                          'Mot de passe oublié ?',
-                                          style: TextStyle(
-                                            color: AppColors.accentGreen,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
-
-                              // Spacer
-                              const SizedBox(height: 16),
-
-                              // Centered button
+                              const SizedBox(height: 24),
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _signIn,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.accentGreen,
-                                    shape: const StadiumBorder(),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Se connecter',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                child: BlocBuilder<AuthBloc, AuthState>(
+                                  builder: (_, state) {
+                                    final inProgress =
+                                        state is AuthLoadInProgress;
+                                    return ElevatedButton(
+                                      onPressed: inProgress ? null : _onSubmit,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.accentGreen,
+                                        shape: const StadiumBorder(),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                      ),
+                                      child:
+                                          inProgress
+                                              ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      color: Colors.white,
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                              : const Text(
+                                                'Se connecter',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                    );
+                                  },
                                 ),
                               ),
                             ],
@@ -237,23 +231,33 @@ class _SignInScreenState extends State<SignInScreen> {
                     ],
                   ),
                 ),
-              ),
-
-              // Olive decoration
-              Positioned(
-                bottom: -40,
-                right: -40,
-                child: Image.asset('assets/images/olive.png', width: 320),
-              ),
-
-              // Footer
-              Positioned(
-                bottom: -90,
-                left: 0,
-                right: 100,
-                child: const FooterWidget(),
-              ),
-            ],
+                // Olive overlap
+                Positioned(
+                  bottom: -40,
+                  right: -60,
+                  child: Image.asset(
+                    'assets/images/olive.png',
+                    width: screenWidth * 0.3,
+                  ),
+                ),
+                // Footer
+                Positioned(
+                  bottom: -90,
+                  left: 0,
+                  right: 0,
+                  child: const FooterWidget(),
+                ),
+                // Mobile logo
+                if (isMobile)
+                  Positioned(
+                    top: -logoHeight / 2,
+                    child: Image.asset(
+                      'assets/images/WhatsApp.png',
+                      height: logoHeight,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
