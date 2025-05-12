@@ -2,8 +2,12 @@ abstract class AuthEvent {}
 
 /// Triggered when the user taps “Se connecter”
 class AuthLoginRequested extends AuthEvent {
-  final String email;
-  final String cin;
+  final String identifier;
   final String password;
-  AuthLoginRequested(this.email, this.cin, this.password);
+
+  AuthLoginRequested(this.identifier, this.password);
 }
+
+class AuthLogoutRequested extends AuthEvent {}
+
+class AuthUserRequested extends AuthEvent {}

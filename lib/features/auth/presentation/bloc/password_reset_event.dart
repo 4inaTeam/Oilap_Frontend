@@ -1,21 +1,21 @@
 part of 'password_reset_bloc.dart';
 
-abstract class PasswordResetEvent extends Equatable {
+abstract class PasswordResetEventBase extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class ResetEmailRequested extends PasswordResetEvent {
+class EmailResetRequested extends PasswordResetEventBase {
   final String email;
-  ResetEmailRequested(this.email);
+  EmailResetRequested(this.email);
   @override
   List<Object?> get props => [email];
 }
 
-class ResetConfirmRequested extends PasswordResetEvent {
+class ConfirmResetRequested extends PasswordResetEventBase {
   final String token;
   final String newPassword;
-  ResetConfirmRequested(this.token, this.newPassword);
+  ConfirmResetRequested(this.token, this.newPassword);
   @override
   List<Object?> get props => [token, newPassword];
 }

@@ -12,6 +12,7 @@ import 'package:oilab_frontend/features/factures/presentation/screens/facture_li
 import 'package:oilab_frontend/features/factures/presentation/screens/facture_detail_screen.dart';
 import 'package:oilab_frontend/features/parametres/presentation/screens/parametre_screen.dart';
 import 'package:oilab_frontend/features/factures/presentation/screens/facture_upload_screen.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -21,6 +22,9 @@ class AppRouter {
 
       case '/signin':
         return MaterialPageRoute(builder: (_) => const SignInScreen());
+
+      case '/dashboard':
+        return MaterialPageRoute(builder: (_) => const DashboardScreen());
 
       case '/clients':
         return MaterialPageRoute(builder: (_) => const ClientListScreen());

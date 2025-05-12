@@ -26,8 +26,7 @@ class _SignInView extends StatefulWidget {
 
 class _SignInViewState extends State<_SignInView> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
-  final _cinCtrl = TextEditingController();
+  final _identifierCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
 
@@ -35,8 +34,7 @@ class _SignInViewState extends State<_SignInView> {
     if (!_formKey.currentState!.validate()) return;
     context.read<AuthBloc>().add(
       AuthLoginRequested(
-        _emailCtrl.text.trim(),
-        _cinCtrl.text.trim(),
+        _identifierCtrl.text.trim(),
         _passwordCtrl.text.trim(),
       ),
     );
@@ -54,13 +52,10 @@ class _SignInViewState extends State<_SignInView> {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthLoadSuccess) {
+            context.read<AuthBloc>().add(AuthUserRequested());
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const DashboardScreen()),
             );
-          } else if (state is AuthLoadFailure) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message)));
           }
         },
         child: Center(
@@ -69,7 +64,6 @@ class _SignInViewState extends State<_SignInView> {
               alignment: Alignment.topCenter,
               clipBehavior: Clip.none,
               children: [
-                // Background using a single group image
                 Container(
                   width: panelWidth,
                   margin: EdgeInsets.only(top: isMobile ? logoHeight / 2 : 0),
@@ -109,43 +103,24 @@ class _SignInViewState extends State<_SignInView> {
                           key: _formKey,
                           child: Column(
                             children: [
-                              // Email field
+                              // Identifier (email or CIN)
                               TextFormField(
-                                controller: _emailCtrl,
+                                controller: _identifierCtrl,
                                 decoration: InputDecoration(
-                                  labelText: 'Email',
+                                  labelText: 'Email ou CIN',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
                                 validator: (v) {
-                                  if ((v?.isEmpty ?? true) &&
-                                      (_cinCtrl.text.isEmpty)) {
-                                    return 'Remplir email ou CIN';
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Veuillez entrer votre email ou CIN';
                                   }
                                   return null;
                                 },
                               ),
                               const SizedBox(height: 16),
-                              // CIN field
-                              TextFormField(
-                                controller: _cinCtrl,
-                                decoration: InputDecoration(
-                                  labelText: 'CIN',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                validator: (v) {
-                                  if ((v?.isEmpty ?? true) &&
-                                      (_emailCtrl.text.isEmpty)) {
-                                    return 'Remplir email ou CIN';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              // Password field
+                              // Password
                               TextFormField(
                                 controller: _passwordCtrl,
                                 obscureText: _obscure,
@@ -231,7 +206,6 @@ class _SignInViewState extends State<_SignInView> {
                     ],
                   ),
                 ),
-                // Olive overlap
                 Positioned(
                   bottom: -40,
                   right: -60,
@@ -240,14 +214,12 @@ class _SignInViewState extends State<_SignInView> {
                     width: screenWidth * 0.3,
                   ),
                 ),
-                // Footer
                 Positioned(
                   bottom: -90,
                   left: 0,
                   right: 0,
                   child: const FooterWidget(),
                 ),
-                // Mobile logo
                 if (isMobile)
                   Positioned(
                     top: -logoHeight / 2,
