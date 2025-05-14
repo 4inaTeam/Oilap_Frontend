@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -8,7 +9,8 @@ import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  const backendUrl = 'http://127.0.0.1:8000';
+
+  final backendUrl = kIsWeb ? 'http://localhost:8000' : 'http://127.0.0.1:8000';
 
   runApp(
     RepositoryProvider(

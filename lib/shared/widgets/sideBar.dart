@@ -15,6 +15,11 @@ class Sidebar extends StatefulWidget {
 class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
 
+  static const IconData energy_savings_leaf = IconData(
+    0xf07a0,
+    fontFamily: 'MaterialIcons',
+  );
+
   static const _items = [
     {
       'label': 'Tableau de bord',
@@ -30,7 +35,7 @@ class _SidebarState extends State<Sidebar> {
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
     {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
-    {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
+    {'label': 'Énergie', 'icon': energy_savings_leaf, 'route': '/energie'},
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
@@ -158,6 +163,12 @@ class _SidebarItem extends StatelessWidget {
   final String route;
   final String? selectedRoute;
   final VoidCallback onTap;
+
+  static const IconData energy_savings_leaf = IconData(
+    0xf07a0,
+    fontFamily: 'MaterialIcons',
+  );
+
   const _SidebarItem({
     Key? key,
     required this.label,
@@ -196,20 +207,19 @@ class _SidebarItem extends StatelessWidget {
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
-          trailing: AnimatedSwitcher(
+          trailing: TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 300),
-            child:
-                isSelected
-                    ? const Icon(
-                      Icons.check_circle,
-                      key: ValueKey('sel'),
-                      color: AppColors.accentGreen,
-                    )
-                    : const Icon(
-                      Icons.chevron_right,
-                      key: ValueKey('unsel'),
-                      color: Colors.white70,
-                    ),
+            tween: Tween(begin: 0, end: isSelected ? 1.0 : 0.0),
+            builder: (context, value, child) {
+              return Transform.rotate(
+                angle: value * 2 * 3.14159,
+                child: Icon(
+                  isSelected ? energy_savings_leaf : Icons.chevron_right,
+                  key: ValueKey(isSelected ? 'leaf' : 'chevron'),
+                  color: isSelected ? AppColors.accentGreen : Colors.white70,
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -241,9 +251,3 @@ class _LogoutButton extends StatelessWidget {
     );
   }
 }
-
-// Custom leaf icon if needed:
-const IconData energy_savings_leaf_rounded = IconData(
-  0xf07f8,
-  fontFamily: 'MaterialIcons',
-);

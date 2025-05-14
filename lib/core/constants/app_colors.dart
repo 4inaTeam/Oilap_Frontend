@@ -23,4 +23,10 @@ class AppColors {
 
   static const Color accentYellow = Color(0xFFFEDE00);
   static const Color accentGreen = Color(0xFF3A5B22);
+
+  // Cards Volors
+  static const Color greenLight = Color(0xFFC2F1C2);
+  static const Color yellowDark = Color(0xFFF6C908);
+  static const Color greenDark = Color(0xFF09A752);
+  static const Color yellowLight = Color(0xFFEBF094);
 }

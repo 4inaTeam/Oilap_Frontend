@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,6 +19,13 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <!-- CORS Configuration -->
+  <meta http-equiv="Access-Control-Allow-Origin" content="*">
+  <meta http-equiv="Access-Control-Allow-Methods" content="GET, POST, PUT, DELETE, OPTIONS">
+  <meta http-equiv="Access-Control-Allow-Headers"
+    content="Origin, X-Requested-With, Content-Type, Accept, Authorization">
+  <meta http-equiv="Access-Control-Allow-Credentials" content="true">
+
   <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
@@ -27,12 +35,34 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>oilab_frontend</title>
   <link rel="manifest" href="manifest.json">
+
+  <script>
+    // Add CORS headers to all requests
+    window.addEventListener('load', function () {
+      var originalFetch = window.fetch;
+      window.fetch = function (url, options = {}) {
+        options.credentials = options.credentials || 'include';
+        options.mode = 'cors';
+        if (!options.headers) {
+          options.headers = {};
+        }
+        options.headers = {
+          ...options.headers,
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        };
+        return originalFetch(url, options);
+      };
+    });
+  </script>
 </head>
+
 <body>
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>
