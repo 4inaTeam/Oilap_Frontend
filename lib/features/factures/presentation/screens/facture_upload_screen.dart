@@ -7,7 +7,7 @@ class FactureUploadScreen extends StatelessWidget {
     {"title": "Facture d'un client", "icon": Icons.add_circle_outline},
     {"title": "Facture d'achats", "icon": Icons.download},
     {"title": "Facture d'eau", "icon": Icons.download},
-    {"title": "Facture d’électricité", "icon": Icons.download},
+    {"title": "Facture d'électricité", "icon": Icons.download},
   ];
 
   @override
@@ -27,8 +27,8 @@ class FactureUploadScreen extends StatelessWidget {
             final template = templates[index];
 
             return SizedBox(
-              width: 160, // constrain width
-              height: 200, // constrain height
+              width: 160,
+              height: 200,
               child: Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),

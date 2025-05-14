@@ -45,8 +45,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final userMap = await _repo.fetchCurrentUser();
       final username =
           userMap['username'] as String? ?? userMap['cin'] as String;
+      final profileImageUrl = userMap['profile_image'] as String?;
 
-      emit(AuthUserLoadSuccess(username));
+      emit(AuthUserLoadSuccess(username, profileImageUrl: profileImageUrl));
     } catch (e) {
       emit(AuthUserLoadFailure(e.toString()));
     }

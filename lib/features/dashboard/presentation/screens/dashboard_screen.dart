@@ -9,68 +9,99 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final isDesktop = width >= 800;
-            final isTablet = width >= 600 && width < 800;
-            final summaryColumns =
-                isDesktop
-                    ? 4
-                    : isTablet
-                    ? 2
-                    : 1;
-            final summaryCardWidth =
-                (width - (summaryColumns - 1) * 16) / summaryColumns;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isDesktop = width >= 800;
+          final isTablet = width >= 600 && width < 800;
+          final summaryColumns =
+              isDesktop
+                  ? 4
+                  : isTablet
+                  ? 2
+                  : 1;
+          final summaryCardWidth =
+              (width - (summaryColumns - 1) * 16) / summaryColumns;
 
-            // Responsive grid for summary cards
-            final summaryCards = [
-              _SummaryCard(
-                title: 'Clients',
-                value: '781',
-                change: '+11.01%',
-                color: AppColors.backgroundLight,
-                width: summaryCardWidth,
-              ),
-              _SummaryCard(
-                title: 'Quantité',
-                value: '1219 T',
-                change: '-0.03%',
-                color: AppColors.accentYellow,
-                width: summaryCardWidth,
-              ),
-              _SummaryCard(
-                title: 'Revenu',
-                value: '695 DT',
-                change: '+15.03%',
-                color: AppColors.backgroundLight,
-                width: summaryCardWidth,
-              ),
-              _SummaryCard(
-                title: 'Dépenses',
-                value: '305 DT',
-                change: '+6.08%',
-                color: AppColors.accentGreen,
-                width: summaryCardWidth,
-              ),
-              _QuantityDetailsCard(width: summaryCardWidth),
-            ];
+          // Summary cards and other sections
+          final summaryCards = [
+            _SummaryCard(
+              title: 'Clients',
+              value: '781',
+              change: '+11.01%',
+              color: AppColors.backgroundLight,
+              width: summaryCardWidth,
+            ),
+            _SummaryCard(
+              title: 'Quantité',
+              value: '1219 T',
+              change: '-0.03%',
+              color: AppColors.accentYellow,
+              width: summaryCardWidth,
+            ),
+            _SummaryCard(
+              title: 'Revenu',
+              value: '695 DT',
+              change: '+15.03%',
+              color: AppColors.backgroundLight,
+              width: summaryCardWidth,
+            ),
+            _SummaryCard(
+              title: 'Dépenses',
+              value: '305 DT',
+              change: '+6.08%',
+              color: AppColors.accentGreen,
+              width: summaryCardWidth,
+            ),
+            _QuantityDetailsCard(width: summaryCardWidth),
+          ];
+          final chartCards = [const _LineChartCard(), const _PieChartCard()];
+          final tableCards = [
+            const _DataTableCard(),
+            const _EmployeeTableCard(),
+          ];
 
-            final chartCards = [_LineChartCard(), _PieChartCard()];
-
-            final tableCards = [_DataTableCard(), _EmployeeTableCard()];
-
-            return Column(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Summary grid
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: summaryCards.map((card) => card).toList(),
+                // Header
+                Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Dashboard',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: 'Recherche',
+
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none),
+                      onPressed: () {},
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 24),
+
+                // Summary grid
+                Wrap(spacing: 16, runSpacing: 16, children: summaryCards),
                 const SizedBox(height: 24),
 
                 // Charts grid
@@ -96,9 +127,9 @@ class DashboardScreen extends StatelessWidget {
                   children: tableCards,
                 ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -115,7 +146,8 @@ class _SummaryCard extends StatelessWidget {
     required this.change,
     required this.color,
     required this.width,
-  });
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +179,7 @@ class _SummaryCard extends StatelessWidget {
 
 class _QuantityDetailsCard extends StatelessWidget {
   final double width;
-  const _QuantityDetailsCard({required this.width});
+  const _QuantityDetailsCard({required this.width, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -160,12 +192,12 @@ class _QuantityDetailsCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+        children: const [
           Text(
             'Détails des quantités',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _DetailRow(label: "Quantité d'olives", value: '72 Kg'),
           _DetailRow(label: 'Huile produite', value: '39 L'),
           _DetailRow(label: 'Déchets vendus', value: '25 Kg'),
@@ -178,7 +210,8 @@ class _QuantityDetailsCard extends StatelessWidget {
 
 class _DetailRow extends StatelessWidget {
   final String label, value;
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({required this.label, required this.value, Key? key})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +221,7 @@ class _DetailRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -196,6 +229,8 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _LineChartCard extends StatelessWidget {
+  const _LineChartCard({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -204,7 +239,10 @@ class _LineChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Activités', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Activités',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Expanded(
               child: LineChart(
@@ -221,6 +259,8 @@ class _LineChartCard extends StatelessWidget {
 }
 
 class _PieChartCard extends StatelessWidget {
+  const _PieChartCard({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -229,7 +269,7 @@ class _PieChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Principales régions fournissant des olives',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -249,6 +289,8 @@ class _PieChartCard extends StatelessWidget {
 }
 
 class _DataTableCard extends StatelessWidget {
+  const _DataTableCard({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -257,7 +299,7 @@ class _DataTableCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Clients récents',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -295,6 +337,8 @@ class _DataTableCard extends StatelessWidget {
 }
 
 class _EmployeeTableCard extends StatelessWidget {
+  const _EmployeeTableCard({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -303,7 +347,10 @@ class _EmployeeTableCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Employés', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Employés',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Expanded(
               child: SingleChildScrollView(

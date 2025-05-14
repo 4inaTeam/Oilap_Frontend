@@ -13,7 +13,6 @@ class EmployeeListScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ← Header row
             Row(
               children: [
                 IconButton(
