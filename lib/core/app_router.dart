@@ -1,4 +1,3 @@
-// lib/core/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
 import 'package:oilab_frontend/features/auth/presentation/screens/signin_screen.dart';
@@ -17,44 +16,47 @@ import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // Splash & Auth
       case '/':
         return MaterialPageRoute(builder: (_) => const SplashScreen());
-
       case '/signin':
         return MaterialPageRoute(builder: (_) => const SignInScreen());
 
+      // Dashboard (root)
       case '/dashboard':
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
 
+      // Clients
       case '/clients':
         return MaterialPageRoute(builder: (_) => const ClientListScreen());
-
-      case '/comptables':
-        return MaterialPageRoute(builder: (_) => const ComptableListScreen());
-
-      case '/employees':
-        return MaterialPageRoute(builder: (_) => const EmployeeListScreen());
-
       case '/clients/profile':
         return MaterialPageRoute(builder: (_) => const ClientProfileScreen());
 
+      // Comptables
+      case '/comptables':
+        return MaterialPageRoute(builder: (_) => const ComptableListScreen());
+
+      // Employees
+      case '/employees':
+        return MaterialPageRoute(builder: (_) => const EmployeeListScreen());
+
+      // Produits
       case '/produits':
         return MaterialPageRoute(builder: (_) => const ProductListScreen());
-
       case '/produits/detail':
         return MaterialPageRoute(builder: (_) => const ProductDetailScreen());
 
+      // Factures
       case '/factures':
         return MaterialPageRoute(builder: (_) => const FactureListScreen());
-
       case '/factures/detail':
         return MaterialPageRoute(builder: (_) => const FactureDetailScreen());
-
-      case '/parametres':
-        return MaterialPageRoute(builder: (_) => const ParametresScreen());
-
       case '/factures/upload':
         return MaterialPageRoute(builder: (_) => FactureUploadScreen());
+
+      // Paramètres
+      case '/parametres':
+        return MaterialPageRoute(builder: (_) => const ParametresScreen());
 
       // TODO: add more routes here
 

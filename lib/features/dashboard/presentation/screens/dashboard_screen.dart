@@ -12,50 +12,8 @@ class DashboardScreen extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          final isDesktop = width >= 800;
-          final isTablet = width >= 600 && width < 800;
-          final summaryColumns =
-              isDesktop
-                  ? 4
-                  : isTablet
-                  ? 2
-                  : 1;
-          final summaryCardWidth =
-              (width - (summaryColumns - 1) * 16) / summaryColumns;
+          final isDesktop = width >= 600;
 
-          // Summary cards and other sections
-          final summaryCards = [
-            SummaryCard(
-              title: 'Clients',
-              value: '781',
-              change: '+11.01%',
-              color: AppColors.backgroundLight,
-              width: summaryCardWidth,
-            ),
-            SummaryCard(
-              title: 'Quantité',
-              value: '1219 T',
-              change: '-0.03%',
-              color: AppColors.accentYellow,
-              width: summaryCardWidth,
-            ),
-            SummaryCard(
-              title: 'Revenu',
-              value: '695 DT',
-              change: '+15.03%',
-              color: AppColors.backgroundLight,
-              width: summaryCardWidth,
-            ),
-            SummaryCard(
-              title: 'Dépenses',
-              value: '305 DT',
-              change: '+6.08%',
-              color: AppColors.accentGreen,
-              width: summaryCardWidth,
-            ),
-            QuantityDetailsCard(width: summaryCardWidth),
-          ];
-          final chartCards = [const LineChartCard(), const PieChartCard()];
           final tableCards = [const DataTableCard(), const EmployeeTableCard()];
 
           return SingleChildScrollView(
@@ -142,105 +100,242 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // Summary section with three columns layout
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left side - Summary Cards
-                    Expanded(
-                      flex: 4,
-                      child: Column(
+                // Responsive main row: summary, quantity, line chart, regions card
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 1000;
+                    final isTablet =
+                        constraints.maxWidth >= 700 &&
+                        constraints.maxWidth < 1000;
+                    final isMobile = constraints.maxWidth < 700;
+
+                    if (isWide) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // First row of summary cards
+                          Expanded(
+                            flex: 7,
+                            child: Column(
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Summary cards (2x2 grid)
+                                    Expanded(
+                                      flex: 3,
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: SummaryCard(
+                                                  title: 'Clients',
+                                                  value: '781',
+                                                  change: '+11.01%',
+                                                  color: AppColors.greenLight,
+                                                  width:
+                                                      constraints.maxWidth *
+                                                      0.2,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: SummaryCard(
+                                                  title: 'Quantité',
+                                                  value: '1219 T',
+                                                  change: '-0.03%',
+                                                  color: AppColors.yellowDark,
+                                                  width:
+                                                      constraints.maxWidth *
+                                                      0.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: SummaryCard(
+                                                  title: 'Revenu',
+                                                  value: '695 DT',
+                                                  change: '+15.03%',
+                                                  color: AppColors.yellowLight,
+                                                  width:
+                                                      constraints.maxWidth *
+                                                      0.2,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: SummaryCard(
+                                                  title: 'Dépenses',
+                                                  value: '305 DT',
+                                                  change: '+6.08%',
+                                                  color: AppColors.greenDark,
+                                                  width:
+                                                      constraints.maxWidth *
+                                                      0.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    // Quantity details card
+                                    Expanded(
+                                      flex: 2,
+                                      child: QuantityDetailsCard(
+                                        width: constraints.maxWidth * 0.25,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // Line chart
+                                const SizedBox(
+                                  height: 300,
+                                  child: LineChartCard(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Right side: regions card (PieChartCard)
+                          Expanded(
+                            flex: 4,
+                            child: SizedBox(height: 600, child: PieChartCard()),
+                          ),
+                        ],
+                      );
+                    } else if (isTablet) {
+                      // Tablet layout: summary+quantity+regions stacked, line chart below
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Clients',
-                                  value: '781',
-                                  change: '+11.01%',
-                                  color: AppColors.greenLight,
-                                  width: width * 0.2,
+                                flex: 3,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: SummaryCard(
+                                            title: 'Clients',
+                                            value: '781',
+                                            change: '+11.01%',
+                                            color: AppColors.greenLight,
+                                            width: constraints.maxWidth * 0.3,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: SummaryCard(
+                                            title: 'Quantité',
+                                            value: '1219 T',
+                                            change: '-0.03%',
+                                            color: AppColors.yellowDark,
+                                            width: constraints.maxWidth * 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: SummaryCard(
+                                            title: 'Revenu',
+                                            value: '695 DT',
+                                            change: '+15.03%',
+                                            color: AppColors.yellowLight,
+                                            width: constraints.maxWidth * 0.3,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: SummaryCard(
+                                            title: 'Dépenses',
+                                            value: '305 DT',
+                                            change: '+6.08%',
+                                            color: AppColors.greenDark,
+                                            width: constraints.maxWidth * 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                child: SummaryCard(
-                                  title: 'Quantité',
-                                  value: '1219 T',
-                                  change: '-0.03%',
-                                  color: AppColors.yellowDark,
-                                  width: width * 0.2,
+                                flex: 2,
+                                child: QuantityDetailsCard(
+                                  width: constraints.maxWidth * 0.3,
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          // Second row of summary cards
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SummaryCard(
-                                  title: 'Revenu',
-                                  value: '695 DT',
-                                  change: '+15.03%',
-                                  color: AppColors.yellowLight,
-                                  width: width * 0.2,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: SummaryCard(
-                                  title: 'Dépenses',
-                                  value: '305 DT',
-                                  change: '+6.08%',
-                                  color: AppColors.greenDark,
-                                  width: width * 0.2,
-                                ),
-                              ),
-                            ],
-                          ),
+                          SizedBox(height: 350, child: PieChartCard()),
+                          const SizedBox(height: 16),
+                          const SizedBox(height: 250, child: LineChartCard()),
                         ],
-                      ),
-                    ),
-
-                    if (width >= 800) ...[
-                      // Middle - Quantity Details Card
-                      const SizedBox(width: 24),
-                      Expanded(
-                        flex: 2,
-                        child: QuantityDetailsCard(width: width * 0.2),
-                      ),
-
-                      // Right side - Pie Chart
-                      const SizedBox(width: 24),
-                      Expanded(
-                        flex: 3,
-                        child: SizedBox(
-                          height: 400, // Increased height for pie chart
-                          child: const PieChartCard(),
-                        ),
-                      ),
-                    ],
-                  ],
+                      );
+                    } else {
+                      // Mobile layout: everything stacked
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SummaryCard(
+                            title: 'Clients',
+                            value: '781',
+                            change: '+11.01%',
+                            color: AppColors.greenLight,
+                            width: constraints.maxWidth,
+                          ),
+                          const SizedBox(height: 12),
+                          SummaryCard(
+                            title: 'Quantité',
+                            value: '1219 T',
+                            change: '-0.03%',
+                            color: AppColors.yellowDark,
+                            width: constraints.maxWidth,
+                          ),
+                          const SizedBox(height: 12),
+                          SummaryCard(
+                            title: 'Revenu',
+                            value: '695 DT',
+                            change: '+15.03%',
+                            color: AppColors.yellowLight,
+                            width: constraints.maxWidth,
+                          ),
+                          const SizedBox(height: 12),
+                          SummaryCard(
+                            title: 'Dépenses',
+                            value: '305 DT',
+                            change: '+6.08%',
+                            color: AppColors.greenDark,
+                            width: constraints.maxWidth,
+                          ),
+                          const SizedBox(height: 12),
+                          QuantityDetailsCard(width: constraints.maxWidth),
+                          const SizedBox(height: 16),
+                          SizedBox(height: 250, child: LineChartCard()),
+                          const SizedBox(height: 16),
+                          SizedBox(height: 350, child: PieChartCard()),
+                        ],
+                      );
+                    }
+                  },
                 ),
 
                 const SizedBox(height: 24),
-
-                // Line Chart placed directly under the cards
-                const SizedBox(height: 300, child: LineChartCard()),
-
-                const SizedBox(height: 24),
-
-                if (width < 800) ...[
-                  QuantityDetailsCard(width: width),
-                  const SizedBox(height: 24),
-                  const SizedBox(
-                    height: 400, // Increased height for pie chart
-                    child: PieChartCard(),
-                  ),
-                  const SizedBox(height: 24),
-                ],
 
                 // Tables grid
                 GridView.count(

@@ -15,11 +15,6 @@ class Sidebar extends StatefulWidget {
 class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
 
-  static const IconData energy_savings_leaf = IconData(
-    0xf07a0,
-    fontFamily: 'MaterialIcons',
-  );
-
   static const _items = [
     {
       'label': 'Tableau de bord',
@@ -35,7 +30,7 @@ class _SidebarState extends State<Sidebar> {
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
     {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
-    {'label': 'Énergie', 'icon': energy_savings_leaf, 'route': '/energie'},
+    {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
@@ -118,37 +113,65 @@ class _SidebarState extends State<Sidebar> {
           width: 260,
           color: AppColors.mainColor,
           child: SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
-                avatar,
-                const SizedBox(height: 12),
-                header,
-                const SizedBox(height: 32),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      for (var item in _items)
-                        _SidebarItem(
-                          label: item['label'] as String,
-                          icon: item['icon'] as IconData,
-                          route: item['route'] as String,
-                          selectedRoute: _selectedRoute,
-                          onTap: () => _onItemTap(item['route'] as String),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    avatar,
+                    const SizedBox(height: 12),
+                    header,
+                    const SizedBox(height: 32),
+                    // Make sidebar scrollable if content overflows
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            ..._items.map(
+                              (item) => _SidebarItem(
+                                label: item['label'] as String,
+                                icon: item['icon'] as IconData,
+                                route: item['route'] as String,
+                                selectedRoute: _selectedRoute,
+                                onTap:
+                                    () => _onItemTap(item['route'] as String),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const _LogoutButton(),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.08),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Image.asset(
+                                      'assets/images/image118.png',
+                                      height: 200,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      const SizedBox(height: 16),
-                      const _LogoutButton(),
-                      const SizedBox(height: 16),
-                      Image.asset(
-                        'assets/images/image118.png',
-                        height: 120,
-                        fit: BoxFit.contain,
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -238,7 +261,10 @@ class _LogoutButton extends StatelessWidget {
           backgroundColor: AppColors.accentGreen,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        icon: const Icon(Icons.logout, color: Colors.white),
+        icon: ImageIcon(
+          AssetImage("assets/icons/logout_account_exit_door.png"),
+          color: Colors.white,
+        ),
         label: const Text(
           'Déconnexion',
           style: TextStyle(color: Colors.white, fontSize: 16),

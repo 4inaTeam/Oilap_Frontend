@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 
 class FactureListScreen extends StatelessWidget {
   const FactureListScreen({Key? key}) : super(key: key);
@@ -82,7 +83,12 @@ class FactureListScreen extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed:
+                      () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardScreen(),
+                        ),
+                      ),
                 ),
                 const SizedBox(width: 8),
                 const Text(

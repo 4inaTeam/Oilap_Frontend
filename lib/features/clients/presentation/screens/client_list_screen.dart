@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/app_layout.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 
 class ClientListScreen extends StatelessWidget {
   const ClientListScreen({Key? key}) : super(key: key);
@@ -18,7 +19,12 @@ class ClientListScreen extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed:
+                      () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardScreen(),
+                        ),
+                      ),
                 ),
                 const SizedBox(width: 8),
                 const Text(

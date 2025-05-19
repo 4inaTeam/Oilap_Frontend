@@ -33,8 +33,13 @@ class __ResetSuccessDialogState extends State<_ResetSuccessDialog> {
   @override
   Widget build(BuildContext context) {
     // sizing
-    final width = MediaQuery.of(context).size.width * 0.8;
-    final dialogWidth = width > 300 ? 300.0 : width;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dialogWidth = screenWidth > 500 ? 350.0 : screenWidth * 0.85;
+    final iconSize = screenWidth > 500 ? 56.0 : 40.0;
+    final paddingV = screenWidth > 500 ? 40.0 : 24.0;
+    final paddingH = screenWidth > 500 ? 32.0 : 16.0;
+    final titleFont = screenWidth > 500 ? 24.0 : 20.0;
+    final textFont = screenWidth > 500 ? 16.0 : 14.0;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -46,7 +51,10 @@ class __ResetSuccessDialogState extends State<_ResetSuccessDialog> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          padding: EdgeInsets.symmetric(
+            vertical: paddingV,
+            horizontal: paddingH,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -56,25 +64,29 @@ class __ResetSuccessDialogState extends State<_ResetSuccessDialog> {
                   color: AppColors.accentGreen,
                   shape: BoxShape.circle,
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(iconSize / 2.5),
                 child: Image.asset(
                   'assets/images/Verified.png',
-                  width: 40,
-                  height: 40,
+                  width: iconSize,
+                  height: iconSize,
                 ),
               ),
               const SizedBox(height: 24),
 
-              const Text(
+              Text(
                 'Félicitations !',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: titleFont,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
 
-              const Text(
+              Text(
                 'Réinitialisation du mot de passe réussie\n'
                 'Vous serez redirigé vers l’écran de connexion',
                 textAlign: TextAlign.center,
+                style: TextStyle(fontSize: textFont),
               ),
             ],
           ),

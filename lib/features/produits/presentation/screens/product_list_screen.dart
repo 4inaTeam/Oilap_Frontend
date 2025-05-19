@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 
 class ProductListScreen extends StatelessWidget {
   const ProductListScreen({Key? key}) : super(key: key);
@@ -31,7 +32,12 @@ class ProductListScreen extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed:
+                      () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardScreen(),
+                        ),
+                      ),
                 ),
                 const SizedBox(width: 8),
                 const Text(

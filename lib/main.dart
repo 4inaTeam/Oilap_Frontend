@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/password_reset_bloc.dart';
+import '../features/parametres/presentation/bloc/profile_bloc.dart';
+import 'features/parametres/data/profile_repository.dart';
 import 'app.dart';
 
 void main() {
@@ -20,6 +22,9 @@ void main() {
           BlocProvider(create: (ctx) => AuthBloc(ctx.read<AuthRepository>())),
           BlocProvider(
             create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
+          ),
+          BlocProvider(
+            create: (ctx) => ProfileBloc(ctx.read()<ProfileRepository>()),
           ),
         ],
         child: const MyApp(),
