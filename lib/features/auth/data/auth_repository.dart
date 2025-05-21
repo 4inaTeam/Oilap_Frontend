@@ -2,14 +2,37 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/utils/token_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthRepository {
   final String baseUrl;
-  final TokenStorage _ts = TokenStorage();
+  final TokenStorage _ts;
 
-  AuthRepository({required this.baseUrl});
+  AuthRepository({required this.baseUrl, SharedPreferences? sharedPreferences})
+    : _ts = TokenStorage(sharedPreferences: sharedPreferences);
 
-  /// Perform login and save received tokens
+  Future<String?> getAccessToken() => _ts.accessToken;
+  Future<String?> getRefreshToken() => _ts.refreshToken;
+
+  Future<http.Response> _withAuth(
+    Future<http.Response> Function(String token) fn,
+  ) async {
+    String? token = await _ts.accessToken;
+    if (token == null) {
+      throw Exception('No access token available');
+    }
+
+    var res = await fn(token);
+    if (res.statusCode == 401) {
+      final newToken = await refreshAccessToken();
+      if (newToken != null) {
+        token = newToken;
+        res = await fn(token);
+      }
+    }
+    return res;
+  }
+
   Future<void> login({
     required String identifier,
     required String password,
@@ -29,17 +52,13 @@ class AuthRepository {
     }
   }
 
-  /// Clear tokens on logout
-  Future<void> logout() async {
-    await _ts.clear();
-  }
+  Future<void> logout() => _ts.clear();
 
-  /// Refresh the access token using the stored refresh token
   Future<String?> refreshAccessToken() async {
     final refresh = await _ts.refreshToken;
     if (refresh == null) return null;
 
-    final uri = Uri.parse('$baseUrl/api/token/refresh/');
+    final uri = Uri.parse('$baseUrl/api/auth/refresh/'); // Corrected URL
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -57,30 +76,23 @@ class AuthRepository {
     return null;
   }
 
-  /// Fetch current authenticated user data
   Future<Map<String, dynamic>> fetchCurrentUser() async {
-    final token = await _ts.accessToken;
-    if (token == null) {
-      throw Exception('No access token available');
-    }
-
     final uri = Uri.parse('$baseUrl/api/users/me/');
-    final res = await http.get(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+    final res = await _withAuth(
+      (t) => http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $t',
+          'Content-Type': 'application/json',
+        },
+      ),
     );
-
     if (res.statusCode == 200) {
       return jsonDecode(res.body) as Map<String, dynamic>;
-    } else {
-      throw Exception('Failed to fetch user (${res.statusCode}): ${res.body}');
     }
+    throw Exception('Failed to fetch user (${res.statusCode}): ${res.body}');
   }
 
-  /// Trigger password reset email
   Future<void> requestPasswordReset(String email) async {
     final resp = await http.post(
       Uri.parse('\$baseUrl/api/auth/password/reset/'),
@@ -95,9 +107,8 @@ class AuthRepository {
     }
   }
 
-  /// Confirm a password reset using the token
   Future<void> confirmPasswordReset(String token, String newPassword) async {
-    final uri = Uri.parse('\$baseUrl/api/auth/password/reset/confirm/');
+    final uri = Uri.parse('$baseUrl/api/auth/password/reset/confirm/');
     final resp = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},

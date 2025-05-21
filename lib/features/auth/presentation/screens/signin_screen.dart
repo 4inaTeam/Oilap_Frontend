@@ -53,8 +53,9 @@ class _SignInViewState extends State<_SignInView> {
         listener: (context, state) {
           if (state is AuthLoadSuccess) {
             context.read<AuthBloc>().add(AuthUserRequested());
-            Navigator.of(context).pushReplacement(
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              (route) => false,
             );
           }
         },
@@ -190,7 +191,7 @@ class _SignInViewState extends State<_SignInView> {
                                                     ),
                                               )
                                               : const Text(
-                                                'Se connecter',
+                                                'Se connecer',
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                 ),

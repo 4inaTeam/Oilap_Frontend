@@ -4,7 +4,12 @@ class AuthInitial extends AuthState {}
 
 class AuthLoadInProgress extends AuthState {}
 
-class AuthLoadSuccess extends AuthState {}
+class AuthLoadSuccess extends AuthState {
+  final String token;
+  final String? refreshToken;
+
+  AuthLoadSuccess(this.token, {this.refreshToken});
+}
 
 class AuthLoadFailure extends AuthState {
   final String message;

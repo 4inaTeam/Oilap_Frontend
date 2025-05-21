@@ -107,7 +107,6 @@ class DashboardScreen extends StatelessWidget {
                     final isTablet =
                         constraints.maxWidth >= 700 &&
                         constraints.maxWidth < 1000;
-                    final isMobile = constraints.maxWidth < 700;
 
                     if (isWide) {
                       return Row(

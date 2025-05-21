@@ -1,4 +1,4 @@
-// lib/features/auth/bloc/auth_bloc.dart
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/auth_repository.dart';
 import 'auth_event.dart';
@@ -8,10 +8,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
 
   AuthBloc(this._repo) : super(AuthInitial()) {
+    on<AuthCheckExistingToken>(_onCheckExistingToken);
     on<AuthLoginRequested>(_onLoginRequested);
-
     on<AuthLogoutRequested>(_onLogoutRequested);
-
     on<AuthUserRequested>(_onUserRequested);
   }
 
@@ -22,7 +21,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoadInProgress());
     try {
       await _repo.login(identifier: event.identifier, password: event.password);
-      emit(AuthLoadSuccess());
+      final token = await _repo.getAccessToken();
+      debugPrint('Retrieved token after login: $token');
+
+      emit(
+        AuthLoadSuccess(token!),
+      ); 
+    } catch (e) {
+      emit(AuthLoadFailure(e.toString()));
+    }
+  }
+
+  Future<void> _onCheckExistingToken(
+    AuthCheckExistingToken event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoadInProgress());
+    try {
+      final token = await _repo.getAccessToken();
+      if (token != null) {
+        emit(AuthLoadSuccess(token));
+      } else {
+        emit(AuthInitial());
+      }
     } catch (e) {
       emit(AuthLoadFailure(e.toString()));
     }
@@ -46,7 +67,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final username =
           userMap['username'] as String? ?? userMap['cin'] as String;
       final profileImageUrl = userMap['profile_image'] as String?;
-
       emit(AuthUserLoadSuccess(username, profileImageUrl: profileImageUrl));
     } catch (e) {
       emit(AuthUserLoadFailure(e.toString()));

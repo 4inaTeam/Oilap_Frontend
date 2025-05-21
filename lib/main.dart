@@ -8,15 +8,30 @@ import 'features/auth/presentation/bloc/password_reset_bloc.dart';
 import '../features/parametres/presentation/bloc/profile_bloc.dart';
 import 'features/parametres/data/profile_repository.dart';
 import 'app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final backendUrl = kIsWeb ? 'http://localhost:8000' : 'http://127.0.0.1:8000';
 
+  SharedPreferences? sharedPreferences;
+  if (kIsWeb) {
+    try {
+      sharedPreferences = await SharedPreferences.getInstance();
+      debugPrint('SharedPreferences initialized');
+    } catch (e) {
+      debugPrint('SharedPreferences error: $e');
+    }
+  }
+
   runApp(
     RepositoryProvider(
-      create: (_) => AuthRepository(baseUrl: backendUrl),
+      create:
+          (_) => AuthRepository(
+            baseUrl: backendUrl,
+            sharedPreferences: sharedPreferences,
+          ),
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (ctx) => AuthBloc(ctx.read<AuthRepository>())),
@@ -24,7 +39,7 @@ void main() {
             create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
           ),
           BlocProvider(
-            create: (ctx) => ProfileBloc(ctx.read()<ProfileRepository>()),
+            create: (ctx) => ProfileBloc(ctx.read<ProfileRepository>()),
           ),
         ],
         child: const MyApp(),
