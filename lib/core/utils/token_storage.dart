@@ -14,19 +14,12 @@ class TokenStorage {
       _sharedPreferences = sharedPreferences;
 
   Future<void> saveTokens(String access, String refresh) async {
-    try {
-      if (kIsWeb) {
-        await _sharedPreferences?.setString(_keyAccess, access);
-        await _sharedPreferences?.setString(_keyRefresh, refresh);
-        debugPrint('Tokens saved to SharedPreferences');
-      } else {
-        await _secureStorage?.write(key: _keyAccess, value: access);
-        await _secureStorage?.write(key: _keyRefresh, value: refresh);
-        debugPrint('Tokens saved to SecureStorage');
-      }
-    } catch (e) {
-      debugPrint('Error saving tokens: $e');
-      throw Exception('Failed to save tokens');
+    if (kIsWeb) {
+      await _sharedPreferences?.setString(_keyAccess, access);
+      await _sharedPreferences?.setString(_keyRefresh, refresh);
+    } else {
+      await _secureStorage?.write(key: _keyAccess, value: access);
+      await _secureStorage?.write(key: _keyRefresh, value: refresh);
     }
   }
 

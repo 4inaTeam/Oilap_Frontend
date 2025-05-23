@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
@@ -16,17 +17,9 @@ class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
 
   static const _items = [
-    {
-      'label': 'Tableau de bord',
-      'icon': Icons.dashboard,
-      'route': '/dashboard',
-    },
+    {'label': 'Tableau de bord', 'icon': Icons.dashboard, 'route': '/dashboard'},
     {'label': 'Employés', 'icon': Icons.group, 'route': '/employees'},
-    {
-      'label': 'Comptables',
-      'icon': Icons.account_balance,
-      'route': '/comptables',
-    },
+    {'label': 'Comptables', 'icon': Icons.account_balance, 'route': '/comptables'},
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
     {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
@@ -38,10 +31,15 @@ class _SidebarState extends State<Sidebar> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final current = ModalRoute.of(context)?.settings.name;
-      if (current != null) setState(() => _selectedRoute = current);
-      final bloc = context.read<AuthBloc>();
-      if (bloc.state is! AuthUserLoadSuccess) bloc.add(AuthUserRequested());
+      final currentRoute = ModalRoute.of(context)?.settings.name;
+      if (currentRoute != null) {
+        setState(() => _selectedRoute = currentRoute);
+      }
+
+      final authBloc = context.read<AuthBloc>();
+      if (authBloc.state is! AuthUserLoadSuccess) {
+        authBloc.add(AuthUserRequested());
+      }
     });
   }
 
@@ -57,49 +55,36 @@ class _SidebarState extends State<Sidebar> {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        Widget header;
-        Widget avatar;
+        late final Widget avatar;
+        late final Widget header;
+
         if (state is AuthUserLoadSuccess) {
+          avatar = CircleAvatar(
+            radius: 36,
+            backgroundColor: Colors.white,
+            backgroundImage: state.user.profileImageUrl != null
+                ? NetworkImage(state.user.profileImageUrl!)
+                : null,
+            child: state.user.profileImageUrl == null
+                ? const Icon(Icons.person, size: 44, color: AppColors.mainColor)
+                : null,
+          );
           header = Text(
-            state.username,
+            state.user.name,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           );
-          avatar = CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.white,
-            backgroundImage:
-                state.profileImageUrl != null
-                    ? NetworkImage(state.profileImageUrl!)
-                    : null,
-            child:
-                state.profileImageUrl == null
-                    ? const Icon(
-                      Icons.person,
-                      size: 44,
-                      color: AppColors.mainColor,
-                    )
-                    : null,
-          );
         } else if (state is AuthUserLoadFailure) {
-          header = const Text('Erreur', style: TextStyle(color: Colors.white));
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
             child: Icon(Icons.person, size: 44, color: AppColors.mainColor),
           );
+          header = const Text('Erreur', style: TextStyle(color: Colors.white));
         } else {
-          header = const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          );
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
@@ -108,7 +93,16 @@ class _SidebarState extends State<Sidebar> {
               strokeWidth: 2,
             ),
           );
+          header = const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
+            ),
+          );
         }
+
         return Container(
           width: 260,
           color: AppColors.mainColor,
@@ -122,7 +116,6 @@ class _SidebarState extends State<Sidebar> {
                     const SizedBox(height: 12),
                     header,
                     const SizedBox(height: 32),
-                    // Make sidebar scrollable if content overflows
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
@@ -133,8 +126,7 @@ class _SidebarState extends State<Sidebar> {
                                 icon: item['icon'] as IconData,
                                 route: item['route'] as String,
                                 selectedRoute: _selectedRoute,
-                                onTap:
-                                    () => _onItemTap(item['route'] as String),
+                                onTap: () => _onItemTap(item['route'] as String),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -187,11 +179,6 @@ class _SidebarItem extends StatelessWidget {
   final String? selectedRoute;
   final VoidCallback onTap;
 
-  static const IconData energy_savings_leaf = IconData(
-    0xf07a0,
-    fontFamily: 'MaterialIcons',
-  );
-
   const _SidebarItem({
     Key? key,
     required this.label,
@@ -201,17 +188,22 @@ class _SidebarItem extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
+  static const IconData energySavingsLeaf = IconData(
+    0xf07a0,
+    fontFamily: 'MaterialIcons',
+  );
+
   @override
   Widget build(BuildContext context) {
     final isSelected = route == selectedRoute;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color:
-            isSelected
-                ? AppColors.accentGreen.withOpacity(0.2)
-                : Colors.transparent,
+        color: isSelected
+            ? AppColors.accentGreen.withOpacity(0.2)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
@@ -237,7 +229,7 @@ class _SidebarItem extends StatelessWidget {
               return Transform.rotate(
                 angle: value * 2 * 3.14159,
                 child: Icon(
-                  isSelected ? energy_savings_leaf : Icons.chevron_right,
+                  isSelected ? energySavingsLeaf : Icons.chevron_right,
                   key: ValueKey(isSelected ? 'leaf' : 'chevron'),
                   color: isSelected ? AppColors.accentGreen : Colors.white70,
                 ),
@@ -252,6 +244,7 @@ class _SidebarItem extends StatelessWidget {
 
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -259,9 +252,11 @@ class _LogoutButton extends StatelessWidget {
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentGreen,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-        icon: ImageIcon(
+        icon: const ImageIcon(
           AssetImage("assets/icons/logout_account_exit_door.png"),
           color: Colors.white,
         ),

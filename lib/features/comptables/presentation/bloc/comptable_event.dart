@@ -1,15 +1,15 @@
 import 'package:equatable/equatable.dart';
 
-abstract class EmployeeEvent extends Equatable {
+abstract class ComptableEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class LoadEmployees extends EmployeeEvent {}
+class LoadComptables extends ComptableEvent {}
 
-class AddEmployee extends EmployeeEvent {
+class AddComptable extends ComptableEvent {
   final String username, email, password, cin, tel, role;
-  AddEmployee({
+  AddComptable({
     required this.username,
     required this.email,
     required this.password,
@@ -21,19 +21,19 @@ class AddEmployee extends EmployeeEvent {
   List<Object?> get props => [username, email, password, cin, tel, role];
 }
 
-class UpdateEmployeeRole extends EmployeeEvent {
+class UpdateComptableRole extends ComptableEvent {
   final int userId;
   final String newRole;
 
-  UpdateEmployeeRole(this.userId, this.newRole);
+  UpdateComptableRole(this.userId, this.newRole);
   @override
   List<Object?> get props => [userId, newRole];
 }
 
-class DeleteEmployee extends EmployeeEvent {
+class DeleteComptable extends ComptableEvent {
   final int userId;
 
-  DeleteEmployee(this.userId);
+  DeleteComptable(this.userId);
   @override
   List<Object?> get props => [userId];
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/utils/token_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/models/user_model.dart';
 
 class AuthRepository {
   final String baseUrl;
@@ -76,7 +77,7 @@ class AuthRepository {
     return null;
   }
 
-  Future<Map<String, dynamic>> fetchCurrentUser() async {
+  Future<User> fetchCurrentUser() async {
     final uri = Uri.parse('$baseUrl/api/users/me/');
     final res = await _withAuth(
       (t) => http.get(
@@ -88,7 +89,8 @@ class AuthRepository {
       ),
     );
     if (res.statusCode == 200) {
-      return jsonDecode(res.body) as Map<String, dynamic>;
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      return User.fromJson(json); 
     }
     throw Exception('Failed to fetch user (${res.statusCode}): ${res.body}');
   }

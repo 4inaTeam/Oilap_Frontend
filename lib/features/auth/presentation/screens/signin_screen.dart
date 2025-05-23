@@ -191,7 +191,7 @@ class _SignInViewState extends State<_SignInView> {
                                                     ),
                                               )
                                               : const Text(
-                                                'Se connecer',
+                                                'Se connecter',
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                 ),

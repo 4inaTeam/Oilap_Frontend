@@ -14,7 +14,6 @@ class ClientListScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ← Clients header
             Row(
               children: [
                 IconButton(

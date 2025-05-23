@@ -1,69 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../bloc/employee_bloc.dart';
-import '../bloc/employee_event.dart';
-import '../bloc/employee_state.dart';
+import '../bloc/comptable_bloc.dart';
+import '../bloc/comptable_event.dart';
+import '../bloc/comptable_state.dart';
 
-class EmployeeAddDialog extends StatefulWidget {
-  const EmployeeAddDialog({Key? key}) : super(key: key);
+class ComptableUpdateDialog extends StatefulWidget {
+  const ComptableUpdateDialog({Key? key}) : super(key: key);
 
   @override
-  State<EmployeeAddDialog> createState() => _EmployeeAddDialogState();
+  State<ComptableUpdateDialog> createState() => _ComptableUpdateDialogState();
 }
 
-class _EmployeeAddDialogState extends State<EmployeeAddDialog> {
-  final _formKey       = GlobalKey<FormState>();
-  final _usernameCtr   = TextEditingController();
-  final _emailCtr      = TextEditingController();
-  final _cinCtr        = TextEditingController();
-  final _phoneCtr      = TextEditingController();
-  final _passwordCtr   = TextEditingController();
-  String _role         = 'EMPLOYEE';
-  bool   _submitted    = false;
+class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _usernameCtr = TextEditingController();
+  final _emailCtr = TextEditingController();
+  final _cinCtr = TextEditingController();
+  final _phoneCtr = TextEditingController();
+  final _passwordCtr = TextEditingController();
+  final String _role = 'ACCOUNTANT';
+  bool _submitted = false;
+
+  @override
+  void dispose() {
+    _usernameCtr.dispose();
+    _emailCtr.dispose();
+    _cinCtr.dispose();
+    _phoneCtr.dispose();
+    _passwordCtr.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<EmployeeBloc, EmployeeState>(
+    return BlocListener<ComptableBloc, ComptableState>(
       listener: (ctx, state) {
-        if (state is EmployeeAddSuccess) {
+        if (state is ComptableAddSuccess && mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Employé ajouté avec succès')),
+            const SnackBar(content: Text('Comptable mis à jour avec succès')),
           );
         }
-        if (state is EmployeeOperationFailure) {
+
+        if (state is ComptableOperationFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${state.message}')),
+            SnackBar(content: Text('Erreur: ${state.message}'))
           );
         }
       },
       child: AlertDialog(
-        title: const Text('Ajouter un employé'),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 600;
-                return isWide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildColumn1()),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildColumn2()),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildColumn1(),
-                          const SizedBox(height: 12),
-                          _buildColumn2(),
-                        ],
-                      );
-              },
+        title: const Text('Mettre à jour un comptable'),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 600;
+                  return isWide
+                      ? IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _buildColumn1()),
+                              const SizedBox(width: 16),
+                              Expanded(child: _buildColumn2()),
+                            ],
+                          ),
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildColumn1(),
+                            const SizedBox(height: 12),
+                            _buildColumn2(),
+                          ],
+                        );
+                },
+              ),
             ),
           ),
         ),
@@ -76,25 +92,25 @@ class _EmployeeAddDialogState extends State<EmployeeAddDialog> {
             ),
             child: const Text('Annuler'),
           ),
-          BlocBuilder<EmployeeBloc, EmployeeState>(
+          BlocBuilder<ComptableBloc, ComptableState>(
             builder: (ctx, state) {
-              final loading = state is EmployeeLoading;
+              final loading = state is ComptableLoading;
               return ElevatedButton(
                 onPressed: loading
                     ? null
                     : () {
                         if (!_formKey.currentState!.validate()) return;
                         setState(() => _submitted = true);
-                        ctx.read<EmployeeBloc>().add(
-                          AddEmployee(
-                            username: _usernameCtr.text.trim(),
-                            email:    _emailCtr.text.trim(),
-                            password: _passwordCtr.text,
-                            cin:      _cinCtr.text.trim(),
-                            tel:      _phoneCtr.text.trim(),
-                            role:     _role,
-                          ),
-                        );
+                        ctx.read<ComptableBloc>().add(
+                              AddComptable(
+                                username: _usernameCtr.text.trim(),
+                                email: _emailCtr.text.trim(),
+                                password: _passwordCtr.text,
+                                cin: _cinCtr.text.trim(),
+                                tel: _phoneCtr.text.trim(),
+                                role: _role,
+                              ),
+                            );
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentGreen,
@@ -163,29 +179,6 @@ class _EmployeeAddDialogState extends State<EmployeeAddDialog> {
             validator: (v) => v == null || v.length != 8 ? '8 chiffres requis' : null,
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _role,
-            decoration: const InputDecoration(labelText: 'Rôle'),
-            items: const [
-              DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employé')),
-              DropdownMenuItem(value: 'ACCOUNTANT', child: Text('Comptable')),
-            ],
-            onChanged: (s) => setState(() => _role = s!),
-          ),
         ],
       );
-
-  @override
-  void dispose() {
-    for (final c in [
-      _usernameCtr,
-      _emailCtr,
-      _cinCtr,
-      _phoneCtr,
-      _passwordCtr
-    ]) {
-      c.dispose();
-    }
-    super.dispose();
-  }
 }

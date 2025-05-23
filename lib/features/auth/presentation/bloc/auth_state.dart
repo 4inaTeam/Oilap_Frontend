@@ -1,3 +1,5 @@
+import '../../../../core/models/user_model.dart';
+
 abstract class AuthState {}
 
 class AuthInitial extends AuthState {}
@@ -21,10 +23,9 @@ class AuthLoggedOut extends AuthState {}
 class AuthUserLoadInProgress extends AuthState {}
 
 class AuthUserLoadSuccess extends AuthState {
-  final String username;
-  final String? profileImageUrl;
+  final User user;
 
-  AuthUserLoadSuccess(this.username, {this.profileImageUrl});
+  AuthUserLoadSuccess(this.user);
 }
 
 class AuthUserLoadFailure extends AuthState {

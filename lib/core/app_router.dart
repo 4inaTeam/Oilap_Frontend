@@ -16,37 +16,30 @@ import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // Splash & Auth
       case '/':
         return MaterialPageRoute(builder: (_) => const SplashScreen());
       case '/signin':
         return MaterialPageRoute(builder: (_) => const SignInScreen());
 
-      // Dashboard (root)
       case '/dashboard':
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
 
-      // Clients
       case '/clients':
         return MaterialPageRoute(builder: (_) => const ClientListScreen());
       case '/clients/profile':
         return MaterialPageRoute(builder: (_) => const ClientProfileScreen());
 
-      // Comptables
       case '/comptables':
         return MaterialPageRoute(builder: (_) => const ComptableListScreen());
 
-      // Employees
       case '/employees':
         return MaterialPageRoute(builder: (_) => const EmployeeListScreen());
 
-      // Produits
       case '/produits':
         return MaterialPageRoute(builder: (_) => const ProductListScreen());
       case '/produits/detail':
         return MaterialPageRoute(builder: (_) => const ProductDetailScreen());
 
-      // Factures
       case '/factures':
         return MaterialPageRoute(builder: (_) => const FactureListScreen());
       case '/factures/detail':
@@ -54,11 +47,8 @@ class AppRouter {
       case '/factures/upload':
         return MaterialPageRoute(builder: (_) => FactureUploadScreen());
 
-      // Paramètres
       case '/parametres':
         return MaterialPageRoute(builder: (_) => const ParametresScreen());
-
-      // TODO: add more routes here
 
       default:
         throw Exception('Route not found: ${settings.name}');

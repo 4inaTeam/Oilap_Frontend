@@ -25,4 +25,6 @@ class AppColors {
   static const Color yellowLight = Color(0xFFEBF094);
 
   static const Color parametereColor = Color(0xFF797A7F);
+
+  static const Color delete = Color(0xFFFC0A0A);
 }
