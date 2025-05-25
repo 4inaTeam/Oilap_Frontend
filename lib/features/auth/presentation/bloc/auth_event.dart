@@ -1,6 +1,5 @@
 abstract class AuthEvent {}
 
-/// Triggered when the user taps “Se connecter”
 class AuthLoginRequested extends AuthEvent {
   final String identifier;
   final String password;

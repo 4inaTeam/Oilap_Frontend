@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
+import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 import 'package:oilab_frontend/app.dart';
-
 
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/auth/presentation/bloc/auth_bloc.dart';
@@ -17,10 +16,18 @@ import 'package:oilab_frontend/features/employees/presentation/bloc/employee_blo
 import 'package:oilab_frontend/features/parametres/data/profile_repository.dart';
 import 'package:oilab_frontend/features/parametres/presentation/bloc/profile_bloc.dart';
 
+import 'features/clients/data/client_repository.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final backendUrl = kIsWeb ? 'http://localhost:8000' : 'http://127.0.0.1:8000';
+  String backendUrl;
+  if (kIsWeb) {
+    backendUrl = 'http://localhost:8000';
+  } else {
+    backendUrl = 'http://192.168.100.8:8000';
+  }
+
   SharedPreferences? sharedPreferences;
 
   if (kIsWeb) {
@@ -35,44 +42,50 @@ void main() async {
     MultiRepositoryProvider(
       providers: [
         RepositoryProvider(
-          create:
-              (_) => AuthRepository(
-                baseUrl: backendUrl,
-                sharedPreferences: sharedPreferences,
-              ),
+          create: (_) => AuthRepository(
+            baseUrl: backendUrl,
+            sharedPreferences: sharedPreferences,
+          ),
         ),
         RepositoryProvider(
           create: (_) => ProfileRepository(baseUrl: backendUrl),
         ),
         RepositoryProvider(
-          create:
-              (context) => EmployeeRepository(
-                baseUrl: backendUrl,
-                authRepo: context.read<AuthRepository>(),
-              ),
+          create: (context) => EmployeeRepository(
+            baseUrl: backendUrl,
+            authRepo: context.read(),
+          ),
         ),
         RepositoryProvider(
-          create:
-              (context) => ComptableRepository(
-                baseUrl: backendUrl,
-                authRepo: context.read<AuthRepository>(),
-              ),
+          create: (context) => ComptableRepository(
+            baseUrl: backendUrl,
+            authRepo: context.read(),
+          ),
+        ),
+        RepositoryProvider(
+          create: (context) => ClientRepository(
+            baseUrl: backendUrl,
+            authRepo: context.read(),
+          ),
         ),
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider(create: (ctx) => AuthBloc(ctx.read<AuthRepository>())),
+          BlocProvider(create: (ctx) => AuthBloc(ctx.read())),
           BlocProvider(
-            create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
+            create: (ctx) => PasswordResetBloc(ctx.read()),
           ),
           BlocProvider(
-            create: (ctx) => ProfileBloc(ctx.read<ProfileRepository>()),
+            create: (ctx) => ProfileBloc(ctx.read()),
           ),
           BlocProvider(
-            create: (ctx) => EmployeeBloc(ctx.read<EmployeeRepository>()),
+            create: (ctx) => EmployeeBloc(ctx.read()),
           ),
           BlocProvider(
-            create: (ctx) => ComptableBloc(ctx.read<ComptableRepository>()),
+            create: (ctx) => ComptableBloc(ctx.read()),
+          ),
+          BlocProvider(
+            create: (ctx) => ClientBloc(ctx.read()),
           ),
         ],
         child: const MyApp(),

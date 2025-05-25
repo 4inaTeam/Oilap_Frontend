@@ -1,66 +1,66 @@
 import 'package:equatable/equatable.dart';
 import '../../../../core/models/user_model.dart';
 
-abstract class ComptableState extends Equatable {
+abstract class ClientState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class ComptableInitial extends ComptableState {}
+class ClientInitial extends ClientState {}
 
-class ComptableLoading extends ComptableState {}
+class ClientLoading extends ClientState {}
 
-class ComptableLoadSuccess extends ComptableState {
-  final List<User> comptables;
+class ClientLoadSuccess extends ClientState {
+  final List<User> clients;
   final int currentPage;
   final int totalPages;
-  final int totalComptables;
+  final int totalClients;
   final int pageSize;
   final String? currentSearchQuery;
 
-  ComptableLoadSuccess({
-    required this.comptables,
+  ClientLoadSuccess({
+    required this.clients,
     required this.currentPage,
     required this.totalPages,
-    required this.totalComptables,
+    required this.totalClients,
     required this.pageSize,
     this.currentSearchQuery,
   });
 
   @override
   List<Object?> get props => [
-    comptables,
+    clients,
     currentPage,
     totalPages,
-    totalComptables,
+    totalClients,
     pageSize,
     currentSearchQuery,
   ];
 
-  ComptableLoadSuccess copyWith({
-    List<User>? comptables,
+  ClientLoadSuccess copyWith({
+    List<User>? clients,
     int? currentPage,
     int? totalPages,
-    int? totalComptables,
+    int? totalClients,
     int? pageSize,
     String? currentSearchQuery,
   }) {
-    return ComptableLoadSuccess(
-      comptables: comptables ?? this.comptables,
+    return ClientLoadSuccess(
+      clients: clients ?? this.clients,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
-      totalComptables: totalComptables ?? this.totalComptables,
+      totalClients: totalClients ?? this.totalClients,
       pageSize: pageSize ?? this.pageSize,
       currentSearchQuery: currentSearchQuery ?? this.currentSearchQuery,
     );
   }
 }
 
-class ComptableOperationFailure extends ComptableState {
+class ClientOperationFailure extends ClientState {
   final String message;
-  ComptableOperationFailure(this.message);
+  ClientOperationFailure(this.message);
   @override
   List<Object?> get props => [message];
 }
 
-class ComptableAddSuccess extends ComptableState {}
+class ClientAddSuccess extends ClientState {}

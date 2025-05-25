@@ -1,16 +1,16 @@
 import 'package:equatable/equatable.dart';
 
-abstract class ComptableEvent extends Equatable {
+abstract class ClientEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class LoadComptables extends ComptableEvent {
+class LoadClients extends ClientEvent {
   final int page;
   final int pageSize;
   final String? searchQuery;
 
-  LoadComptables({
+  LoadClients({
     this.page = 1,
     this.pageSize = 6,
     this.searchQuery,
@@ -20,12 +20,12 @@ class LoadComptables extends ComptableEvent {
   List<Object?> get props => [page, pageSize, searchQuery];
 }
 
-class SearchComptables extends ComptableEvent {
+class SearchClients extends ClientEvent {
   final String query;
   final int page;
   final int pageSize;
 
-  SearchComptables({
+  SearchClients({
     required this.query,
     this.page = 1,
     this.pageSize = 6,
@@ -35,7 +35,7 @@ class SearchComptables extends ComptableEvent {
   List<Object?> get props => [query, page, pageSize];
 }
 
-class ChangePage extends ComptableEvent {
+class ChangePage extends ClientEvent {
   final int page;
   final String? currentSearchQuery;
 
@@ -45,9 +45,10 @@ class ChangePage extends ComptableEvent {
   List<Object?> get props => [page, currentSearchQuery];
 }
 
-class AddComptable extends ComptableEvent {
+class AddClient extends ClientEvent {
   final String username, email, password, cin, tel, role;
-  AddComptable({
+
+  AddClient({
     required this.username,
     required this.email,
     required this.password,
@@ -55,23 +56,26 @@ class AddComptable extends ComptableEvent {
     required this.tel,
     required this.role,
   });
+
   @override
   List<Object?> get props => [username, email, password, cin, tel, role];
 }
 
-class UpdateComptableRole extends ComptableEvent {
+class UpdateClientRole extends ClientEvent {
   final int userId;
   final String newRole;
 
-  UpdateComptableRole(this.userId, this.newRole);
+  UpdateClientRole(this.userId, this.newRole);
+
   @override
   List<Object?> get props => [userId, newRole];
 }
 
-class DeleteComptable extends ComptableEvent {
+class DeleteClient extends ClientEvent {
   final int userId;
 
-  DeleteComptable(this.userId);
+  DeleteClient(this.userId);
+
   @override
   List<Object?> get props => [userId];
 }

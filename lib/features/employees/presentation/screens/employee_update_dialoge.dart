@@ -6,7 +6,10 @@ import '../bloc/employee_event.dart';
 import '../bloc/employee_state.dart';
 
 class EmployeeUpdateDialog extends StatefulWidget {
-  const EmployeeUpdateDialog({Key? key}) : super(key: key);
+  // *** UPDATED: Accept employee data as parameter ***
+  final dynamic employee;
+  
+  const EmployeeUpdateDialog({Key? key, required this.employee}) : super(key: key);
 
   @override
   State<EmployeeUpdateDialog> createState() => _EmployeeUpdateDialogState();
@@ -23,6 +26,24 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
   bool _submitted = false;
 
   @override
+  void initState() {
+    super.initState();
+    // *** UPDATED: Populate fields with existing employee data ***
+    _populateFields();
+  }
+
+  // *** NEW: Method to populate form fields with existing data ***
+  void _populateFields() {
+    if (widget.employee != null) {
+      _usernameCtr.text = widget.employee.name ?? '';
+      _emailCtr.text = widget.employee.email ?? '';
+      _cinCtr.text = widget.employee.cin ?? '';
+      _phoneCtr.text = widget.employee.tel ?? '';
+      // Note: Password field is left empty for security reasons
+    }
+  }
+
+  @override
   void dispose() {
     _usernameCtr.dispose();
     _emailCtr.dispose();
@@ -36,10 +57,11 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
   Widget build(BuildContext context) {
     return BlocListener<EmployeeBloc, EmployeeState>(
       listener: (ctx, state) {
-        if (state is EmployeeAddSuccess && mounted) {
+        // *** UPDATED: Listen for update success instead of add success ***
+        if (state is EmployeeUpdateSuccess && mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Employé metre a jour avec succès')),
+            const SnackBar(content: Text('Employé mis à jour avec succès')),
           );
         }
 
@@ -50,7 +72,7 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
         }
       },
       child: AlertDialog(
-        title: const Text('Mettre ajour un employé'),
+        title: const Text('Mettre à jour un employé'),
         content: SizedBox(
           width: MediaQuery.of(context).size.width * 0.8,
           child: Form(
@@ -101,11 +123,14 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
                     : () {
                         if (!_formKey.currentState!.validate()) return;
                         setState(() => _submitted = true);
+                        
+                        // *** UPDATED: Dispatch UpdateEmployee event instead of AddEmployee ***
                         ctx.read<EmployeeBloc>().add(
-                              AddEmployee(
+                              UpdateEmployee(
+                                id: widget.employee.id,
                                 username: _usernameCtr.text.trim(),
                                 email: _emailCtr.text.trim(),
-                                password: _passwordCtr.text,
+                                password: _passwordCtr.text.isNotEmpty ? _passwordCtr.text : null,
                                 cin: _cinCtr.text.trim(),
                                 tel: _phoneCtr.text.trim(),
                                 role: _role,
@@ -125,7 +150,7 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
                         ),
                       )
                     : const Text(
-                        'Enregistrer',
+                        'Mettre à jour',
                         style: TextStyle(color: Colors.white),
                       ),
               );
@@ -155,9 +180,13 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _passwordCtr,
-            decoration: const InputDecoration(labelText: 'Mot de passe'),
+            decoration: const InputDecoration(
+              labelText: 'Nouveau mot de passe (optionnel)',
+              hintText: 'Laissez vide pour garder l\'ancien'
+            ),
             obscureText: true,
-            validator: (v) => v == null || v.length < 6 ? 'Au moins 6 caractères' : null,
+            // *** UPDATED: Password is optional for updates ***
+            validator: (v) => v != null && v.isNotEmpty && v.length < 6 ? 'Au moins 6 caractères' : null,
           ),
         ],
       );

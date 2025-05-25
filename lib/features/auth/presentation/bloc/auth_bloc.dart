@@ -14,9 +14,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLoginRequested(
-    AuthLoginRequested event,
-    Emitter<AuthState> emit,
-  ) async {
+      AuthLoginRequested event,
+      Emitter<AuthState> emit,
+      ) async {
     emit(AuthLoadInProgress());
     try {
       await _repo.login(identifier: event.identifier, password: event.password);
@@ -30,14 +30,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onCheckExistingToken(
-    AuthCheckExistingToken event,
-    Emitter<AuthState> emit,
-  ) async {
+      AuthCheckExistingToken event,
+      Emitter<AuthState> emit,
+      ) async {
     emit(AuthLoadInProgress());
     try {
       final token = await _repo.getAccessToken();
       if (token != null) {
         emit(AuthLoadSuccess(token));
+        // Automatically fetch user data when we have a valid token
+        add(AuthUserRequested());
       } else {
         emit(AuthInitial());
       }
@@ -47,22 +49,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutRequested(
-    AuthLogoutRequested event,
-    Emitter<AuthState> emit,
-  ) async {
+      AuthLogoutRequested event,
+      Emitter<AuthState> emit,
+      ) async {
     await _repo.logout();
     emit(AuthLoggedOut());
   }
 
   Future<void> _onUserRequested(
-    AuthUserRequested event,
-    Emitter<AuthState> emit,
-  ) async {
+      AuthUserRequested event,
+      Emitter<AuthState> emit,
+      ) async {
+    // Don't emit loading state if we're already authenticated
+    if (state is! AuthLoadSuccess) {
+      emit(AuthUserLoadInProgress());
+    }
+
     try {
-      final user = await _repo.fetchCurrentUser(); // returns User
+      final user = await _repo.fetchCurrentUser();
       emit(AuthUserLoadSuccess(user));
     } catch (e) {
-      emit(AuthUserLoadFailure(e.toString()));
+      final errorMessage = e.toString();
+      print('User fetch error: $errorMessage');
+
+      // If authentication failed completely, logout the user
+      if (errorMessage.contains('please login again') ||
+          errorMessage.contains('No access token available')) {
+        await _repo.logout();
+        emit(AuthLoggedOut());
+      } else {
+        emit(AuthUserLoadFailure(errorMessage));
+      }
     }
   }
 }

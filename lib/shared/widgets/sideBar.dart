@@ -36,8 +36,12 @@ class _SidebarState extends State<Sidebar> {
         setState(() => _selectedRoute = currentRoute);
       }
 
+      // Request user data if not already loaded
       final authBloc = context.read<AuthBloc>();
-      if (authBloc.state is! AuthUserLoadSuccess) {
+      final currentState = authBloc.state;
+
+      // Only request user data if we're authenticated but don't have user data yet
+      if (currentState is AuthLoadSuccess && currentState is! AuthUserLoadSuccess) {
         authBloc.add(AuthUserRequested());
       }
     });
@@ -59,18 +63,21 @@ class _SidebarState extends State<Sidebar> {
         late final Widget header;
 
         if (state is AuthUserLoadSuccess) {
+          // User data loaded successfully
           avatar = CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
-            backgroundImage: state.user.profileImageUrl != null
+            backgroundImage: state.user.profileImageUrl != null &&
+                state.user.profileImageUrl!.isNotEmpty
                 ? NetworkImage(state.user.profileImageUrl!)
                 : null,
-            child: state.user.profileImageUrl == null
+            child: state.user.profileImageUrl == null ||
+                state.user.profileImageUrl!.isEmpty
                 ? const Icon(Icons.person, size: 44, color: AppColors.mainColor)
                 : null,
           );
           header = Text(
-            state.user.name,
+            state.user.name.isNotEmpty ? state.user.name : 'Utilisateur',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -78,13 +85,44 @@ class _SidebarState extends State<Sidebar> {
             ),
           );
         } else if (state is AuthUserLoadFailure) {
+          // User data failed to load
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
             child: Icon(Icons.person, size: 44, color: AppColors.mainColor),
           );
-          header = const Text('Erreur', style: TextStyle(color: Colors.white));
-        } else {
+          header = Column(
+            children: [
+              const Text('Erreur', style: TextStyle(color: Colors.white)),
+              TextButton(
+                onPressed: () {
+                  context.read<AuthBloc>().add(AuthUserRequested());
+                },
+                child: const Text(
+                  'Réessayer',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          );
+        } else if (state is AuthLoggedOut) {
+          // User has been logged out (possibly due to token issues)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/signin');
+            }
+          });
+          avatar = const CircleAvatar(
+            radius: 36,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, size: 44, color: AppColors.mainColor),
+          );
+          header = const Text(
+            'Déconnecté',
+            style: TextStyle(color: Colors.white),
+          );
+        } else if (state is AuthLoadSuccess) {
+          // Authenticated but user data not loaded yet
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
@@ -94,12 +132,32 @@ class _SidebarState extends State<Sidebar> {
             ),
           );
           header = const SizedBox(
-            width: 24,
+            width: 100,
             height: 24,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
             ),
+          );
+
+          // Trigger user data fetch if not already in progress
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.read<AuthBloc>().add(AuthUserRequested());
+            }
+          });
+        } else {
+          // Not authenticated or loading authentication
+          avatar = const CircleAvatar(
+            radius: 36,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, size: 44, color: AppColors.mainColor),
+          );
+          header = const Text(
+            'Non connecté',
+            style: TextStyle(color: Colors.white),
           );
         }
 
@@ -121,7 +179,7 @@ class _SidebarState extends State<Sidebar> {
                         child: Column(
                           children: [
                             ..._items.map(
-                              (item) => _SidebarItem(
+                                  (item) => _SidebarItem(
                                 label: item['label'] as String,
                                 icon: item['icon'] as IconData,
                                 route: item['route'] as String,

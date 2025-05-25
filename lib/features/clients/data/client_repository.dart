@@ -3,27 +3,27 @@ import 'package:http/http.dart' as http;
 import '../../../core/models/user_model.dart';
 import '../../auth/data/auth_repository.dart';
 
-class ComptablePaginationResult {
-  final List<User> comptables;
+class ClientPaginationResult {
+  final List<User> clients;
   final int totalCount;
   final int currentPage;
   final int totalPages;
 
-  ComptablePaginationResult({
-    required this.comptables,
+  ClientPaginationResult({
+    required this.clients,
     required this.totalCount,
     required this.currentPage,
     required this.totalPages,
   });
 }
 
-class ComptableRepository {
+class ClientRepository {
   final String baseUrl;
   final AuthRepository authRepo;
 
-  ComptableRepository({required this.baseUrl, required this.authRepo});
+  ClientRepository({required this.baseUrl, required this.authRepo});
 
-  Future<ComptablePaginationResult> fetchComptables({
+  Future<ClientPaginationResult> fetchClients({
     int page = 1,
     int pageSize = 8,
     String? searchQuery,
@@ -65,28 +65,29 @@ class ComptableRepository {
         } else {
           // Non-paginated response - filter client-side
           final allData = responseData as List<dynamic>;
-          final allComptables = allData
+          final allClients = allData
               .map((e) {
             final userJson = Map<String, dynamic>.from(e);
             userJson['username'] = e['name'];
             return userJson;
           })
               .map((e) => User.fromJson(e))
-              .where((user) => user.role == 'ACCOUNTANT')
+              .where((user) => user.role == 'CLIENT')
               .toList();
 
           // Apply search filter
           if (searchQuery != null && searchQuery.isNotEmpty) {
-            allComptables.removeWhere((user) =>
+            allClients.removeWhere((user) =>
             !user.cin.toLowerCase().contains(searchQuery.toLowerCase()));
           }
 
-          totalCount = allComptables.length;
+          totalCount = allClients.length;
 
+          // Apply pagination
           final startIndex = (page - 1) * pageSize;
           //final endIndex = startIndex + pageSize;
 
-          data = allComptables
+          data = allClients
               .skip(startIndex)
               .take(pageSize)
               .map((user) => {
@@ -102,20 +103,20 @@ class ComptableRepository {
               .toList();
         }
 
-        final comptables = data
+        final clients = data
             .map((e) {
           final userJson = Map<String, dynamic>.from(e);
           userJson['username'] = e['name'];
           return userJson;
         })
             .map((e) => User.fromJson(e))
-            .where((user) => user.role == 'ACCOUNTANT')
+            .where((user) => user.role == 'CLIENT')
             .toList();
 
         final totalPages = (totalCount / pageSize).ceil();
 
-        return ComptablePaginationResult(
-          comptables: comptables,
+        return ClientPaginationResult(
+          clients: clients,
           totalCount: totalCount,
           currentPage: page,
           totalPages: totalPages,
@@ -127,7 +128,7 @@ class ComptableRepository {
     }
   }
 
-  Future<List<User>> fetchAllComptables() async {
+  Future<List<User>> fetchAllClients() async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
@@ -147,7 +148,7 @@ class ComptableRepository {
           return userJson;
         })
             .map((e) => User.fromJson(e))
-            .where((user) => user.role == 'ACCOUNTANT')
+            .where((user) => user.role == 'CLIENT')
             .toList();
       }
       throw Exception('Failed with status ${resp.statusCode}');
@@ -156,7 +157,7 @@ class ComptableRepository {
     }
   }
 
-  Future<void> createComptable({
+  Future<void> createClient({
     required String username,
     required String email,
     required String password,
@@ -179,7 +180,7 @@ class ComptableRepository {
         'password': password,
         'cin': cin,
         'tel': tel,
-        'role': 'ACCOUNTANT',
+        'role': 'CLIENT',
       }),
     );
 
@@ -191,7 +192,7 @@ class ComptableRepository {
   Future<void> updateRole(int userId, String newRole) async {
     final token = await authRepo.getAccessToken();
     final response = await http.put(
-      Uri.parse('$baseUrl/api/users/$userId/'),
+      Uri.parse('$baseUrl/api/users/clients/$userId/update/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -201,7 +202,7 @@ class ComptableRepository {
     if (response.statusCode != 200) throw Exception('Update failed');
   }
 
-  Future<void> deleteComptable(int userId) async {
+  Future<void> deleteClient(int userId) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
 

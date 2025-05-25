@@ -1,86 +1,86 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'comptable_event.dart';
-import 'comptable_state.dart';
-import '../../data/comptable_repository.dart';
+import 'client_event.dart';
+import 'client_state.dart';
+import '../../data/client_repository.dart';
 
-class ComptableBloc extends Bloc<ComptableEvent, ComptableState> {
-  final ComptableRepository repo;
+class ClientBloc extends Bloc<ClientEvent, ClientState> {
+  final ClientRepository repo;
 
-  ComptableBloc(this.repo) : super(ComptableInitial()) {
-    on<LoadComptables>((event, emit) async {
-      emit(ComptableLoading());
+  ClientBloc(this.repo) : super(ClientInitial()) {
+    on<LoadClients>((event, emit) async {
+      emit(ClientLoading());
       try {
-        final result = await repo.fetchComptables(
+        final result = await repo.fetchClients(
           page: event.page,
           pageSize: event.pageSize,
           searchQuery: event.searchQuery,
         );
 
-        emit(ComptableLoadSuccess(
-          comptables: result.comptables,
+        emit(ClientLoadSuccess(
+          clients: result.clients,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
-          totalComptables: result.totalCount,
+          totalClients: result.totalCount,
           pageSize: event.pageSize,
           currentSearchQuery: event.searchQuery,
         ));
       } catch (err) {
-        emit(ComptableOperationFailure(err.toString()));
+        emit(ClientOperationFailure(err.toString()));
       }
     });
 
-    on<SearchComptables>((event, emit) async {
-      emit(ComptableLoading());
+    on<SearchClients>((event, emit) async {
+      emit(ClientLoading());
       try {
-        final result = await repo.fetchComptables(
+        final result = await repo.fetchClients(
           page: event.page,
           pageSize: event.pageSize,
           searchQuery: event.query,
         );
 
-        emit(ComptableLoadSuccess(
-          comptables: result.comptables,
+        emit(ClientLoadSuccess(
+          clients: result.clients,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
-          totalComptables: result.totalCount,
+          totalClients: result.totalCount,
           pageSize: event.pageSize,
           currentSearchQuery: event.query,
         ));
       } catch (err) {
-        emit(ComptableOperationFailure(err.toString()));
+        emit(ClientOperationFailure(err.toString()));
       }
     });
 
     on<ChangePage>((event, emit) async {
-      if (state is ComptableLoadSuccess) {
-        final currentState = state as ComptableLoadSuccess;
-        emit(ComptableLoading());
+      if (state is ClientLoadSuccess) {
+        final currentState = state as ClientLoadSuccess;
+        emit(ClientLoading());
 
         try {
-          final result = await repo.fetchComptables(
+          final result = await repo.fetchClients(
             page: event.page,
             pageSize: currentState.pageSize,
             searchQuery: event.currentSearchQuery,
           );
 
-          emit(ComptableLoadSuccess(
-            comptables: result.comptables,
+          emit(ClientLoadSuccess(
+            clients: result.clients,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
-            totalComptables: result.totalCount,
+            totalClients: result.totalCount,
             pageSize: currentState.pageSize,
             currentSearchQuery: event.currentSearchQuery,
           ));
         } catch (err) {
-          emit(ComptableOperationFailure(err.toString()));
+          emit(ClientOperationFailure(err.toString()));
         }
       }
     });
 
-    on<AddComptable>((event, emit) async {
-      emit(ComptableLoading());
+    on<AddClient>((event, emit) async {
+      emit(ClientLoading());
       try {
-        await repo.createComptable(
+        await repo.createClient(
           username: event.username,
           email: event.email,
           password: event.password,
@@ -88,78 +88,78 @@ class ComptableBloc extends Bloc<ComptableEvent, ComptableState> {
           tel: event.tel,
           role: event.role,
         );
-        emit(ComptableAddSuccess());
+        emit(ClientAddSuccess());
 
         // Reload the first page after adding
-        final result = await repo.fetchComptables(page: 1, pageSize: 8);
-        emit(ComptableLoadSuccess(
-          comptables: result.comptables,
+        final result = await repo.fetchClients(page: 1, pageSize: 8);
+        emit(ClientLoadSuccess(
+          clients: result.clients,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
-          totalComptables: result.totalCount,
+          totalClients: result.totalCount,
           pageSize: 8,
         ));
       } catch (err) {
-        emit(ComptableOperationFailure(err.toString()));
+        emit(ClientOperationFailure(err.toString()));
       }
     });
 
-    on<UpdateComptableRole>((event, emit) async {
-      if (state is ComptableLoadSuccess) {
-        final currentState = state as ComptableLoadSuccess;
+    on<UpdateClientRole>((event, emit) async {
+      if (state is ClientLoadSuccess) {
+        final currentState = state as ClientLoadSuccess;
         try {
-          emit(ComptableLoading());
+          emit(ClientLoading());
           await repo.updateRole(event.userId, event.newRole);
 
-          final result = await repo.fetchComptables(
+          final result = await repo.fetchClients(
             page: currentState.currentPage,
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
           );
 
-          emit(ComptableLoadSuccess(
-            comptables: result.comptables,
+          emit(ClientLoadSuccess(
+            clients: result.clients,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
-            totalComptables: result.totalCount,
+            totalClients: result.totalCount,
             pageSize: currentState.pageSize,
             currentSearchQuery: currentState.currentSearchQuery,
           ));
         } catch (e) {
-          emit(ComptableOperationFailure(e.toString()));
+          emit(ClientOperationFailure(e.toString()));
         }
       }
     });
 
-    on<DeleteComptable>((event, emit) async {
-      if (state is ComptableLoadSuccess) {
-        final currentState = state as ComptableLoadSuccess;
-        emit(ComptableLoading());
+    on<DeleteClient>((event, emit) async {
+      if (state is ClientLoadSuccess) {
+        final currentState = state as ClientLoadSuccess;
+        emit(ClientLoading());
         try {
-          await repo.deleteComptable(event.userId);
+          await repo.deleteClient(event.userId);
 
           // Check if we need to go to previous page after deletion
           int targetPage = currentState.currentPage;
-          if (currentState.comptables.length == 1 && currentState.currentPage > 1) {
+          if (currentState.clients.length == 1 && currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;
           }
 
-          final result = await repo.fetchComptables(
+          final result = await repo.fetchClients(
             page: targetPage,
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
           );
 
-          emit(ComptableLoadSuccess(
-            comptables: result.comptables,
+          emit(ClientLoadSuccess(
+            clients: result.clients,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
-            totalComptables: result.totalCount,
+            totalClients: result.totalCount,
             pageSize: currentState.pageSize,
             currentSearchQuery: currentState.currentSearchQuery,
           ));
         } catch (err) {
-          emit(ComptableOperationFailure(err.toString()));
+          emit(ClientOperationFailure(err.toString()));
         }
       }
     });
