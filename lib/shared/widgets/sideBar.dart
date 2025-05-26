@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -27,6 +28,9 @@ class _SidebarState extends State<Sidebar> {
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
+  static const String baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
+
+
   @override
   void initState() {
     super.initState();
@@ -36,11 +40,11 @@ class _SidebarState extends State<Sidebar> {
         setState(() => _selectedRoute = currentRoute);
       }
 
-      // Request user data if not already loaded
+  
       final authBloc = context.read<AuthBloc>();
       final currentState = authBloc.state;
 
-      // Only request user data if we're authenticated but don't have user data yet
+
       if (currentState is AuthLoadSuccess && currentState is! AuthUserLoadSuccess) {
         authBloc.add(AuthUserRequested());
       }
@@ -55,6 +59,61 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
+  // Helper method to construct full image URL
+  String? _getFullImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+    
+    // If it's already a full URL, return as is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // If it's a relative path, prepend the base URL
+    if (imageUrl.startsWith('/')) {
+      return '$baseUrl$imageUrl';
+    }
+    
+    // If it doesn't start with /, add both base URL and /
+    return '$baseUrl/$imageUrl';
+  }
+
+  // Helper method to create profile avatar with error handling
+  Widget _buildProfileAvatar(String? profileImageUrl) {
+    final fullImageUrl = _getFullImageUrl(profileImageUrl);
+    
+    if (fullImageUrl == null) {
+      return const CircleAvatar(
+        radius: 36,
+        backgroundColor: Colors.white,
+        child: Icon(Icons.person, size: 44, color: AppColors.mainColor),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 36,
+      backgroundColor: Colors.white,
+      child: ClipOval(
+        child: Image.network(
+          fullImageUrl,
+          width: 72,
+          height: 72,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            // Show default icon if image fails to load
+            return const Icon(Icons.person, size: 44, color: AppColors.mainColor);
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const CircularProgressIndicator(
+              color: AppColors.mainColor,
+              strokeWidth: 2,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
@@ -64,18 +123,7 @@ class _SidebarState extends State<Sidebar> {
 
         if (state is AuthUserLoadSuccess) {
           // User data loaded successfully
-          avatar = CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.white,
-            backgroundImage: state.user.profileImageUrl != null &&
-                state.user.profileImageUrl!.isNotEmpty
-                ? NetworkImage(state.user.profileImageUrl!)
-                : null,
-            child: state.user.profileImageUrl == null ||
-                state.user.profileImageUrl!.isEmpty
-                ? const Icon(Icons.person, size: 44, color: AppColors.mainColor)
-                : null,
-          );
+          avatar = _buildProfileAvatar(state.user.profileImageUrl);
           header = Text(
             state.user.name.isNotEmpty ? state.user.name : 'Utilisateur',
             style: const TextStyle(

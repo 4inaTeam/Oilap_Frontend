@@ -138,7 +138,6 @@ class ComptableBloc extends Bloc<ComptableEvent, ComptableState> {
         try {
           await repo.deleteComptable(event.userId);
 
-          // Check if we need to go to previous page after deletion
           int targetPage = currentState.currentPage;
           if (currentState.comptables.length == 1 && currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;
@@ -161,6 +160,51 @@ class ComptableBloc extends Bloc<ComptableEvent, ComptableState> {
         } catch (err) {
           emit(ComptableOperationFailure(err.toString()));
         }
+      }
+    });
+
+    on<UpdateComptable>((event, emit) async {
+      emit(ComptableLoading());
+      try {
+        await repo.updateComptable(
+          id: event.id,
+          username: event.username,
+          email: event.email,
+          password: event.password,
+          cin: event.cin,
+          tel: event.tel,
+          role: event.role,
+        );
+        
+        emit(ComptableUpdateSuccess());
+
+        final currentState = state;
+        int currentPage = 1;
+        int pageSize = 8;
+        String? searchQuery;
+
+        if (currentState is ComptableLoadSuccess) {
+          currentPage = currentState.currentPage;
+          pageSize = currentState.pageSize;
+          searchQuery = currentState.currentSearchQuery;
+        }
+
+        final result = await repo.fetchComptables(
+          page: currentPage,
+          pageSize: pageSize,
+          searchQuery: searchQuery,
+        );
+        
+        emit(ComptableLoadSuccess(
+          comptables: result.comptables,
+          currentPage: result.currentPage,
+          totalPages: result.totalPages,
+          totalComptables: result.totalCount,
+          pageSize: pageSize,
+          currentSearchQuery: searchQuery,
+        ));
+      } catch (err) {
+        emit(ComptableOperationFailure(err.toString()));
       }
     });
   }

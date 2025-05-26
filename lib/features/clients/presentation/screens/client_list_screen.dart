@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:oilab_frontend/features/clients/presentation/screens/client_profile_screen.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
@@ -55,7 +56,11 @@ class __ClientListViewState extends State<_ClientListView> {
 
   void _changePage(int page) {
     context.read<ClientBloc>().add(
-      ChangePage(page, currentSearchQuery: _currentSearchQuery.isEmpty ? null : _currentSearchQuery),
+      ChangePage(
+        page,
+        currentSearchQuery:
+            _currentSearchQuery.isEmpty ? null : _currentSearchQuery,
+      ),
     );
   }
 
@@ -82,13 +87,13 @@ class __ClientListViewState extends State<_ClientListView> {
     );
   }
 
-  void _confirmDeletion(int userId) {
+  void _confirmDisactivate(int userId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmer la suppression'),
+        title: const Text('Confirmer la disactivation de comptes'),
         content: const Text(
-          'Êtes-vous sûr de vouloir supprimer ce client?',
+          'Êtes-vous sûr de vouloir disactiver ce client?',
         ),
         actions: [
           TextButton(
@@ -97,10 +102,10 @@ class __ClientListViewState extends State<_ClientListView> {
           ),
           TextButton(
             onPressed: () {
-              context.read<ClientBloc>().add(DeleteClient(userId));
+              context.read<ClientBloc>().add(DisactivateClient(userId));
               Navigator.pop(context);
             },
-            child: const Text('Supprimer'),
+            child: const Text('Disactiver'),
           ),
         ],
       ),
@@ -141,7 +146,6 @@ class __ClientListViewState extends State<_ClientListView> {
           child: TextField(
             controller: _searchController,
             onChanged: (value) {
-              // Debounce search to avoid too many API calls
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (_searchController.text == value) {
                   _performSearch(value.trim());
@@ -155,12 +159,12 @@ class __ClientListViewState extends State<_ClientListView> {
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _currentSearchQuery.isNotEmpty
                   ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _searchController.clear();
-                  _performSearch('');
-                },
-              )
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _performSearch('');
+                      },
+                    )
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -181,9 +185,7 @@ class __ClientListViewState extends State<_ClientListView> {
           ),
           onPressed: () => showDialog(
             context: context,
-            builder: (context) {
-              return const ClientAddDialog();
-            },
+            builder: (context) => const ClientAddDialog(),
           ),
           icon: Image.asset('assets/icons/Vector.png', width: 16, height: 16),
           label: const Text(
@@ -244,20 +246,26 @@ class __ClientListViewState extends State<_ClientListView> {
                         DataColumn(label: Text('Numéro de téléphone')),
                         DataColumn(label: Text('Email')),
                         DataColumn(label: Text('CIN')),
+                        DataColumn(label: Text('Status')),
                         DataColumn(label: Text('Action')),
                       ],
                       rows: state.clients
                           .map(
                             (u) => DataRow(
-                          cells: [
-                            DataCell(Text(u.name)),
-                            DataCell(Text(u.tel ?? '')),
-                            DataCell(Text(u.email)),
-                            DataCell(Text(u.cin)),
-                            DataCell(_buildActionButtons(u.id)),
-                          ],
-                        ),
-                      )
+                              cells: [
+                                DataCell(Text(u.name)),
+                                DataCell(Text(u.tel ?? '')),
+                                DataCell(Text(u.email)),
+                                DataCell(Text(u.cin)),
+                                DataCell(
+                                  Text(
+                                    u.isActive == true ? 'Actif' : 'Inactif',
+                                  ),
+                                ),
+                                DataCell(_buildActionButtons(u.id)),
+                              ],
+                            ),
+                          )
                           .toList(),
                     ),
                   ),
@@ -278,10 +286,7 @@ class __ClientListViewState extends State<_ClientListView> {
                   const SizedBox(height: 16),
                   Text(
                     'Erreur: ${state.message}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.red.shade600,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.red.shade600),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -309,17 +314,31 @@ class __ClientListViewState extends State<_ClientListView> {
           icon: const Icon(Icons.edit, color: Colors.green),
           onPressed: () => showDialog(
             context: context,
-            builder: (context) {
-              return const ClientUpdateDialog();
-            },
+            builder: (context) => ClientUpdateDialog(clientId: userId),
           ),
         ),
         const SizedBox(width: 5),
         Text('|', style: TextStyle(color: Colors.grey.shade600)),
         const SizedBox(width: 5),
         IconButton(
-          icon: const Icon(Icons.delete, color: AppColors.delete),
-          onPressed: () => _confirmDeletion(userId),
+          icon: Image.asset(
+            'assets/icons/Disactivate.png',
+            width: 16,
+            height: 16,
+          ),
+          onPressed: () => _confirmDisactivate(userId),
+        ),
+        const SizedBox(width: 5),
+        Text('|', style: TextStyle(color: Colors.grey.shade600)),
+        const SizedBox(width: 5),
+        IconButton(
+          icon: Image.asset('assets/icons/View.png', width: 16, height: 16),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ClientProfileScreen(clientId: userId),
+            ),
+          ),
         ),
       ],
     );
@@ -333,9 +352,10 @@ class __ClientListViewState extends State<_ClientListView> {
         }
 
         final startItem = (state.currentPage - 1) * state.pageSize + 1;
-        final endItem = (state.currentPage * state.pageSize) > state.totalClients
-            ? state.totalClients
-            : state.currentPage * state.pageSize;
+        final endItem =
+            (state.currentPage * state.pageSize) > state.totalClients
+                ? state.totalClients
+                : state.currentPage * state.pageSize;
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
@@ -347,7 +367,10 @@ class __ClientListViewState extends State<_ClientListView> {
                   state.totalClients > 0
                       ? 'Affichage des données $startItem à $endItem sur ${state.totalClients} clients'
                       : 'Aucun client trouvé',
-                  style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.parametereColor,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               if (state.totalPages > 1) _buildPaginationControls(state),
@@ -363,12 +386,18 @@ class __ClientListViewState extends State<_ClientListView> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: state.currentPage > 1 ? () => _changePage(state.currentPage - 1) : null,
+          onPressed:
+              state.currentPage > 1
+                  ? () => _changePage(state.currentPage - 1)
+                  : null,
           icon: const Icon(Icons.chevron_left),
         ),
         ..._buildPageNumbers(state),
         IconButton(
-          onPressed: state.currentPage < state.totalPages ? () => _changePage(state.currentPage + 1) : null,
+          onPressed:
+              state.currentPage < state.totalPages
+                  ? () => _changePage(state.currentPage + 1)
+                  : null,
           icon: const Icon(Icons.chevron_right),
         ),
       ],
@@ -380,52 +409,53 @@ class __ClientListViewState extends State<_ClientListView> {
     int currentPage = state.currentPage;
     int totalPages = state.totalPages;
 
-    // Always show first page
     if (totalPages > 0) {
-      pageNumbers.add(_PageNumber(
-        1,
-        isActive: currentPage == 1,
-        onTap: () => _changePage(1),
-      ));
+      pageNumbers.add(
+        _PageNumber(1, isActive: currentPage == 1, onTap: () => _changePage(1)),
+      );
     }
 
-    // Show ellipsis if there's a gap between 1 and current page range
     if (currentPage > 3) {
-      pageNumbers.add(const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4),
-        child: Text('…', style: TextStyle(fontSize: 16)),
-      ));
+      pageNumbers.add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text('…', style: TextStyle(fontSize: 16)),
+        ),
+      );
     }
 
-    // Show pages around current page
     int start = (currentPage - 1).clamp(2, totalPages);
     int end = (currentPage + 1).clamp(2, totalPages);
 
     for (int i = start; i <= end; i++) {
       if (i != 1 && i != totalPages) {
-        pageNumbers.add(_PageNumber(
-          i,
-          isActive: currentPage == i,
-          onTap: () => _changePage(i),
-        ));
+        pageNumbers.add(
+          _PageNumber(
+            i,
+            isActive: currentPage == i,
+            onTap: () => _changePage(i),
+          ),
+        );
       }
     }
 
-    // Show ellipsis if there's a gap between current page range and last page
     if (currentPage < totalPages - 2) {
-      pageNumbers.add(const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4),
-        child: Text('…', style: TextStyle(fontSize: 16)),
-      ));
+      pageNumbers.add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text('…', style: TextStyle(fontSize: 16)),
+        ),
+      );
     }
 
-    // Always show last page if it's not the first page
     if (totalPages > 1) {
-      pageNumbers.add(_PageNumber(
-        totalPages,
-        isActive: currentPage == totalPages,
-        onTap: () => _changePage(totalPages),
-      ));
+      pageNumbers.add(
+        _PageNumber(
+          totalPages,
+          isActive: currentPage == totalPages,
+          onTap: () => _changePage(totalPages),
+        ),
+      );
     }
 
     return pageNumbers;

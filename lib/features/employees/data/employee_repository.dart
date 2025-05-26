@@ -53,16 +53,16 @@ class EmployeeRepository {
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
 
-        // Handle both paginated and non-paginated responses
+        
         List<dynamic> data;
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
-          // Paginated response
+          
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? data.length;
         } else {
-          // Non-paginated response - filter client-side
+          
           final allData = responseData as List<dynamic>;
           final allEmployees =
               allData
@@ -75,7 +75,7 @@ class EmployeeRepository {
                   .where((user) => user.role == 'EMPLOYEE')
                   .toList();
 
-          // Apply search filter
+          
           if (searchQuery != null && searchQuery.isNotEmpty) {
             allEmployees.removeWhere(
               (user) =>
@@ -86,7 +86,7 @@ class EmployeeRepository {
           totalCount = allEmployees.length;
 
           final startIndex = (page - 1) * pageSize;
-          //final endIndex = startIndex + pageSize;
+          
 
           data =
               allEmployees
@@ -194,7 +194,6 @@ class EmployeeRepository {
     }
   }
 
-  // *** NEW: Update employee method ***
   Future<void> updateEmployee({
     required int id,
     required String username,

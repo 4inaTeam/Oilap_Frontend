@@ -74,8 +74,9 @@ flutter:
     - assets/icons/logout_account_exit_door.png
     - assets/icons/trash.png
     - assets/icons/Edit.png
-    - assets/icons/veiw.png
     - assets/icons/Vector.png
+    - assets/icons/Disactivate.png
+    - assets/icons/View.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

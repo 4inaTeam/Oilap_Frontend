@@ -75,3 +75,26 @@ class DeleteComptable extends ComptableEvent {
   @override
   List<Object?> get props => [userId];
 }
+
+class UpdateComptable extends ComptableEvent {
+  final int id;
+  final String username;
+  final String email;
+  final String? password;
+  final String cin;
+  final String tel;
+  final String role;
+
+  UpdateComptable({
+    required this.id,
+    required this.username,
+    required this.email,
+    this.password,
+    required this.cin,
+    required this.tel,
+    required this.role,
+  });
+
+  @override
+  List<Object?> get props => [id, username, email, password, cin, tel, role];
+}

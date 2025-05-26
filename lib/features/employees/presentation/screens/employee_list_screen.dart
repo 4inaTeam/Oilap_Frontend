@@ -254,7 +254,6 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
                             DataCell(Text(u.tel ?? '')),
                             DataCell(Text(u.email)),
                             DataCell(Text(u.cin)),
-                            // *** UPDATED: Pass employee data to action buttons ***
                             DataCell(_buildActionButtons(u)),
                           ],
                         ),
@@ -302,7 +301,7 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
     );
   }
 
-  // *** UPDATED: Accept employee object instead of just userId ***
+
   Widget _buildActionButtons(dynamic employee) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -312,7 +311,7 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
           onPressed: () => showDialog(
             context: context,
             builder: (context) {
-              // *** UPDATED: Pass employee data to update dialog ***
+              
               return EmployeeUpdateDialog(employee: employee);
             },
           ),

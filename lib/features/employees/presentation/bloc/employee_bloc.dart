@@ -90,7 +90,6 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         );
         emit(EmployeeAddSuccess());
 
-        // Reload the first page after adding
         final result = await repo.fetchEmployees(page: 1, pageSize: 8);
         emit(EmployeeLoadSuccess(
           employees: result.employees,
@@ -104,7 +103,6 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
       }
     });
 
-    // *** NEW: UpdateEmployee handler ***
     on<UpdateEmployee>((event, emit) async {
       emit(EmployeeLoading());
       try {
@@ -120,7 +118,6 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         
         emit(EmployeeUpdateSuccess());
 
-        // Reload current page after updating
         final currentState = state;
         int currentPage = 1;
         int pageSize = 8;
@@ -185,7 +182,6 @@ class EmployeeBloc extends Bloc<EmployeeEvent, EmployeeState> {
         try {
           await repo.deleteEmployee(event.userId);
 
-          // Check if we need to go to previous page after deletion
           int targetPage = currentState.currentPage;
           if (currentState.employees.length == 1 && currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;

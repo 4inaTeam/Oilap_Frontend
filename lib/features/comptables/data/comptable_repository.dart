@@ -25,14 +25,13 @@ class ComptableRepository {
 
   Future<ComptablePaginationResult> fetchComptables({
     int page = 1,
-    int pageSize = 8,
+    int pageSize = 6,
     String? searchQuery,
   }) async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      // Build query parameters
       final queryParams = <String, String>{
         'page': page.toString(),
         'page_size': pageSize.toString(),
@@ -42,9 +41,9 @@ class ComptableRepository {
         queryParams['cin'] = searchQuery;
       }
 
-      final uri = Uri.parse('$baseUrl/api/users/get/').replace(
-        queryParameters: queryParams,
-      );
+      final uri = Uri.parse(
+        '$baseUrl/api/users/get/',
+      ).replace(queryParameters: queryParams);
 
       final resp = await http.get(
         uri,
@@ -54,63 +53,65 @@ class ComptableRepository {
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
 
-        // Handle both paginated and non-paginated responses
         List<dynamic> data;
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
-          // Paginated response
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? data.length;
         } else {
-          // Non-paginated response - filter client-side
           final allData = responseData as List<dynamic>;
-          final allComptables = allData
-              .map((e) {
-            final userJson = Map<String, dynamic>.from(e);
-            userJson['username'] = e['name'];
-            return userJson;
-          })
-              .map((e) => User.fromJson(e))
-              .where((user) => user.role == 'ACCOUNTANT')
-              .toList();
+          final allComptables =
+              allData
+                  .map((e) {
+                    final userJson = Map<String, dynamic>.from(e);
+                    userJson['username'] = e['name'];
+                    return userJson;
+                  })
+                  .map((e) => User.fromJson(e))
+                  .where((user) => user.role == 'ACCOUNTANT')
+                  .toList();
 
-          // Apply search filter
           if (searchQuery != null && searchQuery.isNotEmpty) {
-            allComptables.removeWhere((user) =>
-            !user.cin.toLowerCase().contains(searchQuery.toLowerCase()));
+            allComptables.removeWhere(
+              (user) =>
+                  !user.cin.toLowerCase().contains(searchQuery.toLowerCase()),
+            );
           }
 
           totalCount = allComptables.length;
 
           final startIndex = (page - 1) * pageSize;
-          //final endIndex = startIndex + pageSize;
 
-          data = allComptables
-              .skip(startIndex)
-              .take(pageSize)
-              .map((user) => {
-            'id': user.id,
-            'name': user.name,
-            'email': user.email,
-            'cin': user.cin,
-            'tel': user.tel,
-            'role': user.role,
-            'profile_photo': user.profileImageUrl,
-            'isActive': user.isActive,
-          })
-              .toList();
+          data =
+              allComptables
+                  .skip(startIndex)
+                  .take(pageSize)
+                  .map(
+                    (user) => {
+                      'id': user.id,
+                      'name': user.name,
+                      'email': user.email,
+                      'cin': user.cin,
+                      'tel': user.tel,
+                      'role': user.role,
+                      'profile_photo': user.profileImageUrl,
+                      'isActive': user.isActive,
+                    },
+                  )
+                  .toList();
         }
 
-        final comptables = data
-            .map((e) {
-          final userJson = Map<String, dynamic>.from(e);
-          userJson['username'] = e['name'];
-          return userJson;
-        })
-            .map((e) => User.fromJson(e))
-            .where((user) => user.role == 'ACCOUNTANT')
-            .toList();
+        final comptables =
+            data
+                .map((e) {
+                  final userJson = Map<String, dynamic>.from(e);
+                  userJson['username'] = e['name'];
+                  return userJson;
+                })
+                .map((e) => User.fromJson(e))
+                .where((user) => user.role == 'ACCOUNTANT')
+                .toList();
 
         final totalPages = (totalCount / pageSize).ceil();
 
@@ -142,10 +143,10 @@ class ComptableRepository {
 
         return data
             .map((e) {
-          final userJson = Map<String, dynamic>.from(e);
-          userJson['username'] = e['name'];
-          return userJson;
-        })
+              final userJson = Map<String, dynamic>.from(e);
+              userJson['username'] = e['name'];
+              return userJson;
+            })
             .map((e) => User.fromJson(e))
             .where((user) => user.role == 'ACCOUNTANT')
             .toList();
@@ -212,6 +213,66 @@ class ComptableRepository {
 
     if (resp.statusCode != 204) {
       throw Exception('Delete failed: ${resp.body}');
+    }
+  }
+
+  Future<void> updateComptable({
+    required int id,
+    required String username,
+    required String email,
+    String? password,
+    required String cin,
+    required String tel,
+    required String role,
+  }) async {
+    final token = await authRepo.getAccessToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final Map<String, dynamic> requestBody = {
+      'username': username,
+      'email': email,
+      'cin': cin,
+      'tel': tel,
+      'role': 'ACCOUNTANT',
+    };
+
+    if (password != null && password.isNotEmpty) {
+      requestBody['password'] = password;
+    }
+
+    final resp = await http.patch(
+      Uri.parse('$baseUrl/api/users/employees-accountants/$id/update/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (resp.statusCode != 200) {
+      final responseBody = resp.body;
+      String errorMessage = 'Update failed';
+
+      try {
+        final errorData = json.decode(responseBody);
+        if (errorData is Map<String, dynamic>) {
+          final errors = <String>[];
+          errorData.forEach((key, value) {
+            if (value is List) {
+              errors.addAll(value.cast<String>());
+            } else if (value is String) {
+              errors.add(value);
+            }
+          });
+          if (errors.isNotEmpty) {
+            errorMessage = errors.join(', ');
+          }
+        }
+      } catch (e) {
+        errorMessage = 'Update failed: $responseBody';
+      }
+
+      throw Exception(errorMessage);
     }
   }
 }

@@ -61,12 +61,11 @@ class AddEmployee extends EmployeeEvent {
   List<Object?> get props => [username, email, password, cin, tel, role];
 }
 
-// *** NEW: UpdateEmployee event ***
 class UpdateEmployee extends EmployeeEvent {
   final int id;
   final String username;
   final String email;
-  final String? password; // Optional for updates
+  final String? password;
   final String cin;
   final String tel;
   final String role;

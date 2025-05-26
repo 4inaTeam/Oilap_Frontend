@@ -90,7 +90,6 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
         );
         emit(ClientAddSuccess());
 
-        // Reload the first page after adding
         final result = await repo.fetchClients(page: 1, pageSize: 8);
         emit(ClientLoadSuccess(
           clients: result.clients,
@@ -104,19 +103,28 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
       }
     });
 
-    on<UpdateClientRole>((event, emit) async {
-      if (state is ClientLoadSuccess) {
-        final currentState = state as ClientLoadSuccess;
-        try {
-          emit(ClientLoading());
-          await repo.updateRole(event.userId, event.newRole);
+    on<UpdateClient>((event, emit) async {
+      emit(ClientLoading());
+      try {
+        await repo.updateClient(
+          clientId: event.clientId,
+          username: event.username,
+          email: event.email,
+          cin: event.cin,
+          tel: event.tel,
+          password: event.password,
+        );
+        
+        emit(ClientUpdateSuccess());
 
+        if (state is ClientLoadSuccess) {
+          final currentState = state as ClientLoadSuccess;
           final result = await repo.fetchClients(
             page: currentState.currentPage,
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
           );
-
+          
           emit(ClientLoadSuccess(
             clients: result.clients,
             currentPage: result.currentPage,
@@ -125,20 +133,49 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             pageSize: currentState.pageSize,
             currentSearchQuery: currentState.currentSearchQuery,
           ));
-        } catch (e) {
-          emit(ClientOperationFailure(e.toString()));
+        } else {
+          final result = await repo.fetchClients(page: 1, pageSize: 8);
+          emit(ClientLoadSuccess(
+            clients: result.clients,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalClients: result.totalCount,
+            pageSize: 8,
+          ));
         }
+      } catch (err) {
+        emit(ClientOperationFailure(err.toString()));
       }
     });
 
-    on<DeleteClient>((event, emit) async {
+    on<GetClientForUpdate>((event, emit) async {
+      emit(ClientLoading());
+      try {
+        final client = await repo.getClientById(event.clientId);
+        emit(ClientDetailsLoaded(client));
+      } catch (err) {
+        emit(ClientOperationFailure(err.toString()));
+      }
+    });
+
+    on<ViewClientProfile>((event, emit) async {
+      emit(ClientLoading());
+      try {
+        final client = await repo.getClientById(event.clientId);
+        emit(ClientProfileLoaded(client));
+      } catch (err) {
+        emit(ClientOperationFailure(err.toString()));
+      }
+    });
+
+    on<DisactivateClient>((event, emit) async {
       if (state is ClientLoadSuccess) {
         final currentState = state as ClientLoadSuccess;
         emit(ClientLoading());
         try {
-          await repo.deleteClient(event.userId);
+          await repo.disactivateClient(event.userId);
+          emit(ClientDeactivateSuccess());
 
-          // Check if we need to go to previous page after deletion
           int targetPage = currentState.currentPage;
           if (currentState.clients.length == 1 && currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;

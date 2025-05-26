@@ -30,9 +30,7 @@ class _DesktopScaffold extends StatelessWidget {
       body: SafeArea(
         child: Row(
           children: [
-            // Fixed-width sidebar
             const SizedBox(width: 250, child: Sidebar()),
-            // Main content
             Expanded(
               child: Column(
                 children: [Expanded(child: child), const FooterWidget()],

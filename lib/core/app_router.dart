@@ -4,7 +4,6 @@ import 'package:oilab_frontend/features/auth/presentation/screens/signin_screen.
 import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
 import 'package:oilab_frontend/features/comptables/presentation/screens/comptable_list_screen.dart';
 import 'package:oilab_frontend/features/employees/presentation/screens/employee_list_screen.dart';
-import 'package:oilab_frontend/features/clients/presentation/screens/client_profile_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_list_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_detail_screen.dart';
 import 'package:oilab_frontend/features/factures/presentation/screens/facture_list_screen.dart';
@@ -26,8 +25,6 @@ class AppRouter {
 
       case '/clients':
         return MaterialPageRoute(builder: (_) => const ClientListScreen());
-      case '/clients/profile':
-        return MaterialPageRoute(builder: (_) => const ClientProfileScreen());
 
       case '/comptables':
         return MaterialPageRoute(builder: (_) => const ComptableListScreen());

@@ -141,7 +141,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
           child: TextField(
             controller: _searchController,
             onChanged: (value) {
-              // Debounce search to avoid too many API calls
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (_searchController.text == value) {
                   _performSearch(value.trim());
@@ -254,7 +253,7 @@ class __ComptableListViewState extends State<_ComptableListView> {
                             DataCell(Text(u.tel ?? '')),
                             DataCell(Text(u.email)),
                             DataCell(Text(u.cin)),
-                            DataCell(_buildActionButtons(u.id)),
+                            DataCell(_buildActionButtons(u)),
                           ],
                         ),
                       )
@@ -301,7 +300,8 @@ class __ComptableListViewState extends State<_ComptableListView> {
     );
   }
 
-  Widget _buildActionButtons(int userId) {
+
+  Widget _buildActionButtons(dynamic comptable) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -310,7 +310,8 @@ class __ComptableListViewState extends State<_ComptableListView> {
           onPressed: () => showDialog(
             context: context,
             builder: (context) {
-              return const ComptableUpdateDialog();
+  
+              return ComptableUpdateDialog(comptable: comptable);
             },
           ),
         ),
@@ -319,7 +320,7 @@ class __ComptableListViewState extends State<_ComptableListView> {
         const SizedBox(width: 5),
         IconButton(
           icon: const Icon(Icons.delete, color: AppColors.delete),
-          onPressed: () => _confirmDeletion(userId),
+          onPressed: () => _confirmDeletion(comptable.id),
         ),
       ],
     );
@@ -380,7 +381,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
     int currentPage = state.currentPage;
     int totalPages = state.totalPages;
 
-    // Always show first page
     if (totalPages > 0) {
       pageNumbers.add(_PageNumber(
         1,
@@ -389,7 +389,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
       ));
     }
 
-    // Show ellipsis if there's a gap between 1 and current page range
     if (currentPage > 3) {
       pageNumbers.add(const Padding(
         padding: EdgeInsets.symmetric(horizontal: 4),
@@ -397,7 +396,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
       ));
     }
 
-    // Show pages around current page
     int start = (currentPage - 1).clamp(2, totalPages);
     int end = (currentPage + 1).clamp(2, totalPages);
 
@@ -411,7 +409,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
       }
     }
 
-    // Show ellipsis if there's a gap between current page range and last page
     if (currentPage < totalPages - 2) {
       pageNumbers.add(const Padding(
         padding: EdgeInsets.symmetric(horizontal: 4),
@@ -419,7 +416,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
       ));
     }
 
-    // Always show last page if it's not the first page
     if (totalPages > 1) {
       pageNumbers.add(_PageNumber(
         totalPages,

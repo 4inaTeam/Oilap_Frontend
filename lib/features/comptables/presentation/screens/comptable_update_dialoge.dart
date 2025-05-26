@@ -6,7 +6,10 @@ import '../bloc/comptable_event.dart';
 import '../bloc/comptable_state.dart';
 
 class ComptableUpdateDialog extends StatefulWidget {
-  const ComptableUpdateDialog({Key? key}) : super(key: key);
+  // *** UPDATED: Accept comptable data as parameter ***
+  final dynamic comptable;
+  
+  const ComptableUpdateDialog({Key? key, required this.comptable}) : super(key: key);
 
   @override
   State<ComptableUpdateDialog> createState() => _ComptableUpdateDialogState();
@@ -23,6 +26,24 @@ class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
   bool _submitted = false;
 
   @override
+  void initState() {
+    super.initState();
+    // *** UPDATED: Populate fields with existing comptable data ***
+    _populateFields();
+  }
+
+  // *** NEW: Method to populate form fields with existing data ***
+  void _populateFields() {
+    if (widget.comptable != null) {
+      _usernameCtr.text = widget.comptable.name ?? '';
+      _emailCtr.text = widget.comptable.email ?? '';
+      _cinCtr.text = widget.comptable.cin ?? '';
+      _phoneCtr.text = widget.comptable.tel ?? '';
+      // Note: Password field is left empty for security reasons
+    }
+  }
+
+  @override
   void dispose() {
     _usernameCtr.dispose();
     _emailCtr.dispose();
@@ -36,7 +57,8 @@ class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
   Widget build(BuildContext context) {
     return BlocListener<ComptableBloc, ComptableState>(
       listener: (ctx, state) {
-        if (state is ComptableAddSuccess && mounted) {
+        // *** UPDATED: Listen for update success instead of add success ***
+        if (state is ComptableUpdateSuccess && mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Comptable mis à jour avec succès')),
@@ -101,11 +123,14 @@ class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
                     : () {
                         if (!_formKey.currentState!.validate()) return;
                         setState(() => _submitted = true);
+                        
+                        // *** UPDATED: Dispatch UpdateComptable event instead of AddComptable ***
                         ctx.read<ComptableBloc>().add(
-                              AddComptable(
+                              UpdateComptable(
+                                id: widget.comptable.id,
                                 username: _usernameCtr.text.trim(),
                                 email: _emailCtr.text.trim(),
-                                password: _passwordCtr.text,
+                                password: _passwordCtr.text.isNotEmpty ? _passwordCtr.text : null,
                                 cin: _cinCtr.text.trim(),
                                 tel: _phoneCtr.text.trim(),
                                 role: _role,
@@ -125,7 +150,7 @@ class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
                         ),
                       )
                     : const Text(
-                        'Enregistrer',
+                        'Mettre à jour',
                         style: TextStyle(color: Colors.white),
                       ),
               );
@@ -155,9 +180,13 @@ class _ComptableUpdateDialogState extends State<ComptableUpdateDialog> {
           const SizedBox(height: 12),
           TextFormField(
             controller: _passwordCtr,
-            decoration: const InputDecoration(labelText: 'Mot de passe'),
+            decoration: const InputDecoration(
+              labelText: 'Nouveau mot de passe (optionnel)',
+              hintText: 'Laissez vide pour garder l\'ancien'
+            ),
             obscureText: true,
-            validator: (v) => v == null || v.length < 6 ? 'Au moins 6 caractères' : null,
+            // *** UPDATED: Password is optional for updates ***
+            validator: (v) => v != null && v.isNotEmpty && v.length < 6 ? 'Au moins 6 caractères' : null,
           ),
         ],
       );

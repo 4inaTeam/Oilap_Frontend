@@ -61,21 +61,53 @@ class AddClient extends ClientEvent {
   List<Object?> get props => [username, email, password, cin, tel, role];
 }
 
-class UpdateClientRole extends ClientEvent {
-  final int userId;
-  final String newRole;
+// Updated UpdateClient event
+class UpdateClient extends ClientEvent {
+  final int clientId;
+  final String username;
+  final String email;
+  final String cin;
+  final String tel;
+  final String? password; // Optional password update
 
-  UpdateClientRole(this.userId, this.newRole);
+  UpdateClient({
+    required this.clientId,
+    required this.username,
+    required this.email,
+    required this.cin,
+    required this.tel,
+    this.password,
+  });
 
   @override
-  List<Object?> get props => [userId, newRole];
+  List<Object?> get props => [clientId, username, email, cin, tel, password];
 }
 
-class DeleteClient extends ClientEvent {
+class DisactivateClient extends ClientEvent {
   final int userId;
 
-  DeleteClient(this.userId);
+  DisactivateClient(this.userId);
 
   @override
   List<Object?> get props => [userId];
+}
+
+// New event to get client details for update
+class GetClientForUpdate extends ClientEvent {
+  final int clientId;
+
+  GetClientForUpdate(this.clientId);
+
+  @override
+  List<Object?> get props => [clientId];
+}
+
+// New event to view client profile
+class ViewClientProfile extends ClientEvent {
+  final int clientId;
+
+  ViewClientProfile(this.clientId);
+
+  @override
+  List<Object?> get props => [clientId];
 }

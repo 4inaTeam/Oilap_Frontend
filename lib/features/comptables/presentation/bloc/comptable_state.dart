@@ -64,3 +64,5 @@ class ComptableOperationFailure extends ComptableState {
 }
 
 class ComptableAddSuccess extends ComptableState {}
+
+class ComptableUpdateSuccess extends ComptableState {}

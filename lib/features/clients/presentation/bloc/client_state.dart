@@ -64,3 +64,29 @@ class ClientOperationFailure extends ClientState {
 }
 
 class ClientAddSuccess extends ClientState {}
+
+// New state for successful client update
+class ClientUpdateSuccess extends ClientState {}
+
+// New state for client deactivate success
+class ClientDeactivateSuccess extends ClientState {}
+
+// New state for client details loaded for update
+class ClientDetailsLoaded extends ClientState {
+  final User client;
+
+  ClientDetailsLoaded(this.client);
+
+  @override
+  List<Object?> get props => [client];
+}
+
+// New state for client profile view
+class ClientProfileLoaded extends ClientState {
+  final User client;
+
+  ClientProfileLoaded(this.client);
+
+  @override
+  List<Object?> get props => [client];
+}
