@@ -325,11 +325,15 @@ class _MobileProductList extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                _InfoRow(Icons.scale, 'Quantité', product.quantity != null ? '${product.quantity} Kg' : ''),
+                _InfoRow(
+                  Icons.scale,
+                  'Quantité',
+                  product.quantity != null ? '${product.quantity} Kg' : '',
+                ),
                 _InfoRow(Icons.place, 'Origine', product.origine ?? ''),
-                _InfoRow(Icons.person, 'Propriétaire', product.owner ?? ''),
-                _InfoRow(Icons.access_time, 'Entrée', product.inTime ?? ''),
-                _InfoRow(Icons.access_time, 'Sortie', product.outTime ?? ''),
+                _InfoRow(Icons.person, 'Propriétaire', product.ownerName ?? ''),
+                _InfoRow(Icons.access_time, 'Entrée', product.createdAt ?? ''),
+                _InfoRow(Icons.access_time, 'Sortie', ''),
                 _InfoRow(Icons.info, 'Statut', product.status ?? ''),
               ],
             ),
@@ -389,20 +393,25 @@ class _ProductTable extends StatelessWidget {
           DataColumn(label: Text('Statut')),
           DataColumn(label: Text('Actions')),
         ],
-        rows: Products.map(
-          (product) => DataRow(
-            cells: [
-              DataCell(Text(product.quality ?? '')),
-              DataCell(Text(product.qty != null ? '${product.qty} Kg' : '')),
-              DataCell(Text(product.origin ?? '')),
-              DataCell(Text(product.owner ?? '')),
-              DataCell(Text(product.inTime ?? '')),
-              DataCell(Text(product.outTime ?? '')),
-              DataCell(Text(product.status ?? '')),
-              DataCell(_ActionButtons(Product: product)),
-            ],
-          ),
-        ).toList(),
+        rows:
+            Products.map(
+              (product) => DataRow(
+                cells: [
+                  DataCell(Text(product.quality ?? '')),
+                  DataCell(
+                    Text(
+                      product.quantity != null ? '${product.quantity} Kg' : '',
+                    ),
+                  ),
+                  DataCell(Text(product.origine ?? '')),
+                  DataCell(Text(product.ownerName ?? '')),
+                  DataCell(Text(product.createdAt ?? '')),
+                  DataCell(Text('')),
+                  DataCell(Text(product.status ?? '')),
+                  DataCell(_ActionButtons(Product: product)),
+                ],
+              ),
+            ).toList(),
       ),
     );
   }
