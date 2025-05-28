@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
 import 'core/app_router.dart';
-import 'features/auth/presentation/screens/signin_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
         primaryColor: const Color(0xFF3A5B22),
         useMaterial3: true,
       ),
-      home: const SignInScreen(),
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       onGenerateRoute: AppRouter.generateRoute,

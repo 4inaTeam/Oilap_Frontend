@@ -27,10 +27,10 @@ class DashboardScreen extends StatelessWidget {
                     final screenWidth = constraints.maxWidth;
                     // Calculate search bar width based on screen size
                     final searchBarWidth = switch (screenWidth) {
-                      > 1200 => 300.0, // Desktop
-                      > 800 => 250.0, // Tablet
-                      > 600 => 200.0, // Small tablet
-                      _ => 150.0, // Mobile
+                      > 1200 => 300.0,
+                      > 800 => 250.0,
+                      > 600 => 200.0,
+                      _ => 150.0,
                     };
 
                     return Row(

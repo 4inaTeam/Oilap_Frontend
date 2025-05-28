@@ -27,17 +27,18 @@ class _DesktopScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Row(
-          children: [
-            const SizedBox(width: 250, child: Sidebar()),
-            Expanded(
-              child: Column(
-                children: [Expanded(child: child), const FooterWidget()],
-              ),
+      body: Row(
+        children: [
+          const SizedBox(width: 250, child: Sidebar()),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(child: child), 
+                const FooterWidget()
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -55,11 +56,10 @@ class _MobileScaffold extends StatelessWidget {
         title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         leading: Builder(
-          builder:
-              (ctx) => IconButton(
-                icon: const Icon(Icons.menu, color: Colors.white),
-                onPressed: () => Scaffold.of(ctx).openDrawer(),
-              ),
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
         ),
         actions: [
           IconButton(
@@ -73,7 +73,7 @@ class _MobileScaffold extends StatelessWidget {
         ],
       ),
       drawer: const Drawer(child: Sidebar()),
-      body: SafeArea(child: child),
+      body: child, 
       bottomNavigationBar: const FooterWidget(),
     );
   }

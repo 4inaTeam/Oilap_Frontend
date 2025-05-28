@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../../../core/models/user_model.dart';
+import 'package:oilab_frontend/core/models/product_model.dart';
+import 'package:oilab_frontend/core/models/user_model.dart';
 
 abstract class ClientState extends Equatable {
   @override
@@ -58,20 +59,19 @@ class ClientLoadSuccess extends ClientState {
 
 class ClientOperationFailure extends ClientState {
   final String message;
+  
   ClientOperationFailure(this.message);
+  
   @override
   List<Object?> get props => [message];
 }
 
 class ClientAddSuccess extends ClientState {}
 
-// New state for successful client update
 class ClientUpdateSuccess extends ClientState {}
 
-// New state for client deactivate success
 class ClientDeactivateSuccess extends ClientState {}
 
-// New state for client details loaded for update
 class ClientDetailsLoaded extends ClientState {
   final User client;
 
@@ -81,12 +81,21 @@ class ClientDetailsLoaded extends ClientState {
   List<Object?> get props => [client];
 }
 
-// New state for client profile view
 class ClientProfileLoaded extends ClientState {
   final User client;
+  final List<Product>? products; 
 
-  ClientProfileLoaded(this.client);
+  ClientProfileLoaded(this.client, {this.products});
 
   @override
-  List<Object?> get props => [client];
+  List<Object?> get props => [client, products];
+}
+
+class ClientProductsLoaded extends ClientState {
+  final List<Product> products;
+
+  ClientProductsLoaded(this.products);
+
+  @override
+  List<Object?> get props => [products];
 }

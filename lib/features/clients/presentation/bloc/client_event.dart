@@ -61,14 +61,13 @@ class AddClient extends ClientEvent {
   List<Object?> get props => [username, email, password, cin, tel, role];
 }
 
-// Updated UpdateClient event
 class UpdateClient extends ClientEvent {
   final int clientId;
   final String username;
   final String email;
   final String cin;
   final String tel;
-  final String? password; // Optional password update
+  final String? password;
 
   UpdateClient({
     required this.clientId,
@@ -92,7 +91,6 @@ class DisactivateClient extends ClientEvent {
   List<Object?> get props => [userId];
 }
 
-// New event to get client details for update
 class GetClientForUpdate extends ClientEvent {
   final int clientId;
 
@@ -102,7 +100,6 @@ class GetClientForUpdate extends ClientEvent {
   List<Object?> get props => [clientId];
 }
 
-// New event to view client profile
 class ViewClientProfile extends ClientEvent {
   final int clientId;
 
@@ -110,4 +107,13 @@ class ViewClientProfile extends ClientEvent {
 
   @override
   List<Object?> get props => [clientId];
+}
+
+class LoadClientProducts extends ClientEvent {
+  final String clientCin;
+
+  LoadClientProducts(this.clientCin);
+
+  @override
+  List<Object?> get props => [clientCin];
 }

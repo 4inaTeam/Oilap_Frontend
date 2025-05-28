@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:oilab_frontend/features/energie/presentation/screens/energie_list_screen.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
 import 'package:oilab_frontend/features/auth/presentation/screens/signin_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
@@ -46,6 +47,9 @@ class AppRouter {
 
       case '/parametres':
         return MaterialPageRoute(builder: (_) => const ParametresScreen());
+      
+      case '/energie':
+        return MaterialPageRoute(builder: (_) => const EnergieScrren()); 
 
       default:
         throw Exception('Route not found: ${settings.name}');

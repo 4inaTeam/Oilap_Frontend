@@ -5,7 +5,7 @@ class User {
   final String cin;
   final String? tel;
   final String role;
-  final String? profileImageUrl;
+  final String? profilePhotoUrl;
   final bool isActive;
 
   User({
@@ -15,7 +15,7 @@ class User {
     required this.cin,
     this.tel,
     required this.role,
-    this.profileImageUrl,
+    this.profilePhotoUrl,
     required this.isActive,
   });
 
@@ -26,7 +26,7 @@ class User {
     cin: json['cin'] as String? ?? '',
     tel: json['tel'] as String?,
     role: json['role'] as String? ?? 'CLIENT',
-    profileImageUrl: json['profile_photo'] as String?,
+    profilePhotoUrl: json['profile_photo'] as String?,
     isActive: json['isActive'] as bool? ?? false,
   );
 }

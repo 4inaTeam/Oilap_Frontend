@@ -59,25 +59,20 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
-  // Helper method to construct full image URL
   String? _getFullImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return null;
     
-    // If it's already a full URL, return as is
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
     
-    // If it's a relative path, prepend the base URL
     if (imageUrl.startsWith('/')) {
       return '$baseUrl$imageUrl';
     }
     
-    // If it doesn't start with /, add both base URL and /
     return '$baseUrl/$imageUrl';
   }
 
-  // Helper method to create profile avatar with error handling
   Widget _buildProfileAvatar(String? profileImageUrl) {
     final fullImageUrl = _getFullImageUrl(profileImageUrl);
     
@@ -99,7 +94,6 @@ class _SidebarState extends State<Sidebar> {
           height: 72,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            // Show default icon if image fails to load
             return const Icon(Icons.person, size: 44, color: AppColors.mainColor);
           },
           loadingBuilder: (context, child, loadingProgress) {
@@ -122,8 +116,7 @@ class _SidebarState extends State<Sidebar> {
         late final Widget header;
 
         if (state is AuthUserLoadSuccess) {
-          // User data loaded successfully
-          avatar = _buildProfileAvatar(state.user.profileImageUrl);
+          avatar = _buildProfileAvatar(state.user.profilePhotoUrl);
           header = Text(
             state.user.name.isNotEmpty ? state.user.name : 'Utilisateur',
             style: const TextStyle(
@@ -133,7 +126,6 @@ class _SidebarState extends State<Sidebar> {
             ),
           );
         } else if (state is AuthUserLoadFailure) {
-          // User data failed to load
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,
@@ -190,14 +182,12 @@ class _SidebarState extends State<Sidebar> {
             ),
           );
 
-          // Trigger user data fetch if not already in progress
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               context.read<AuthBloc>().add(AuthUserRequested());
             }
           });
         } else {
-          // Not authenticated or loading authentication
           avatar = const CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white,

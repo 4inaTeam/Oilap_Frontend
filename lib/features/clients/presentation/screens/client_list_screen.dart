@@ -64,6 +64,15 @@ class __ClientListViewState extends State<_ClientListView> {
     );
   }
 
+
+  void _refreshClientList() {
+    if (_currentSearchQuery.isEmpty) {
+      context.read<ClientBloc>().add(LoadClients());
+    } else {
+      context.read<ClientBloc>().add(SearchClients(query: _currentSearchQuery));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -183,10 +192,17 @@ class __ClientListViewState extends State<_ClientListView> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          onPressed: () => showDialog(
-            context: context,
-            builder: (context) => const ClientAddDialog(),
-          ),
+          onPressed: () async {
+            // Wait for the dialog to close and refresh if needed
+            final result = await showDialog(
+              context: context,
+              builder: (context) => const ClientAddDialog(),
+            );
+            // If a client was added, refresh the list
+            if (result == true) {
+              _refreshClientList();
+            }
+          },
           icon: Image.asset('assets/icons/Vector.png', width: 16, height: 16),
           label: const Text(
             'Ajouter un nouveau',
@@ -312,10 +328,17 @@ class __ClientListViewState extends State<_ClientListView> {
       children: [
         IconButton(
           icon: const Icon(Icons.edit, color: Colors.green),
-          onPressed: () => showDialog(
-            context: context,
-            builder: (context) => ClientUpdateDialog(clientId: userId),
-          ),
+          onPressed: () async {
+            // Wait for the dialog to close and refresh if needed
+            final result = await showDialog(
+              context: context,
+              builder: (context) => ClientUpdateDialog(clientId: userId),
+            );
+            // If client was updated, refresh the list
+            if (result == true) {
+              _refreshClientList();
+            }
+          },
         ),
         const SizedBox(width: 5),
         Text('|', style: TextStyle(color: Colors.grey.shade600)),
@@ -333,12 +356,17 @@ class __ClientListViewState extends State<_ClientListView> {
         const SizedBox(width: 5),
         IconButton(
           icon: Image.asset('assets/icons/View.png', width: 16, height: 16),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ClientProfileScreen(clientId: userId),
-            ),
-          ),
+          onPressed: () async {
+            // Navigate to ClientProfileScreen and wait for return
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClientProfileScreen(clientId: userId),
+              ),
+            );
+            // Refresh the client list when returning from profile screen
+            _refreshClientList();
+          },
         ),
       ],
     );

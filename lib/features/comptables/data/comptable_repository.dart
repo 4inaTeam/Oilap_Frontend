@@ -95,7 +95,7 @@ class ComptableRepository {
                       'cin': user.cin,
                       'tel': user.tel,
                       'role': user.role,
-                      'profile_photo': user.profileImageUrl,
+                      'profile_photo': user.profilePhotoUrl,
                       'isActive': user.isActive,
                     },
                   )

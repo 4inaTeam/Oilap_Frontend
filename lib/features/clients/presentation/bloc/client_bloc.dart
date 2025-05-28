@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/core/models/product_model.dart';
 import 'client_event.dart';
 import 'client_state.dart';
 import '../../data/client_repository.dart';
@@ -16,14 +17,16 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           searchQuery: event.searchQuery,
         );
 
-        emit(ClientLoadSuccess(
-          clients: result.clients,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalClients: result.totalCount,
-          pageSize: event.pageSize,
-          currentSearchQuery: event.searchQuery,
-        ));
+        emit(
+          ClientLoadSuccess(
+            clients: result.clients,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalClients: result.totalCount,
+            pageSize: event.pageSize,
+            currentSearchQuery: event.searchQuery,
+          ),
+        );
       } catch (err) {
         emit(ClientOperationFailure(err.toString()));
       }
@@ -38,14 +41,16 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           searchQuery: event.query,
         );
 
-        emit(ClientLoadSuccess(
-          clients: result.clients,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalClients: result.totalCount,
-          pageSize: event.pageSize,
-          currentSearchQuery: event.query,
-        ));
+        emit(
+          ClientLoadSuccess(
+            clients: result.clients,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalClients: result.totalCount,
+            pageSize: event.pageSize,
+            currentSearchQuery: event.query,
+          ),
+        );
       } catch (err) {
         emit(ClientOperationFailure(err.toString()));
       }
@@ -63,14 +68,16 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             searchQuery: event.currentSearchQuery,
           );
 
-          emit(ClientLoadSuccess(
-            clients: result.clients,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalClients: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: event.currentSearchQuery,
-          ));
+          emit(
+            ClientLoadSuccess(
+              clients: result.clients,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalClients: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: event.currentSearchQuery,
+            ),
+          );
         } catch (err) {
           emit(ClientOperationFailure(err.toString()));
         }
@@ -91,13 +98,15 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
         emit(ClientAddSuccess());
 
         final result = await repo.fetchClients(page: 1, pageSize: 8);
-        emit(ClientLoadSuccess(
-          clients: result.clients,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalClients: result.totalCount,
-          pageSize: 8,
-        ));
+        emit(
+          ClientLoadSuccess(
+            clients: result.clients,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalClients: result.totalCount,
+            pageSize: 8,
+          ),
+        );
       } catch (err) {
         emit(ClientOperationFailure(err.toString()));
       }
@@ -114,7 +123,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           tel: event.tel,
           password: event.password,
         );
-        
+
         emit(ClientUpdateSuccess());
 
         if (state is ClientLoadSuccess) {
@@ -124,24 +133,28 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
           );
-          
-          emit(ClientLoadSuccess(
-            clients: result.clients,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalClients: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: currentState.currentSearchQuery,
-          ));
+
+          emit(
+            ClientLoadSuccess(
+              clients: result.clients,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalClients: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
         } else {
           final result = await repo.fetchClients(page: 1, pageSize: 8);
-          emit(ClientLoadSuccess(
-            clients: result.clients,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalClients: result.totalCount,
-            pageSize: 8,
-          ));
+          emit(
+            ClientLoadSuccess(
+              clients: result.clients,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalClients: result.totalCount,
+              pageSize: 8,
+            ),
+          );
         }
       } catch (err) {
         emit(ClientOperationFailure(err.toString()));
@@ -161,10 +174,56 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
     on<ViewClientProfile>((event, emit) async {
       emit(ClientLoading());
       try {
+        print(
+          'ViewClientProfile: Loading profile for client ID: ${event.clientId}',
+        );
+
+        // First get the client details
         final client = await repo.getClientById(event.clientId);
-        emit(ClientProfileLoaded(client));
+        print(
+          'ViewClientProfile: Client loaded - ${client.name} (CIN: ${client.cin})',
+        );
+
+        // Then get the products
+        List<Product> products = [];
+        try {
+          // Use client.cin as the identifier for products
+          products = await repo.getClientProducts(client.cin);
+          print(
+            'ViewClientProfile: Loaded ${products.length} products for client CIN ${client.cin}',
+          );
+        } catch (productError) {
+          print(
+            'ViewClientProfile: Error loading products - ${productError.toString()}',
+          );
+          // Continue without products rather than failing entirely
+        }
+
+        emit(ClientProfileLoaded(client, products: products));
       } catch (err) {
-        emit(ClientOperationFailure(err.toString()));
+        print('ViewClientProfile: Error - ${err.toString()}');
+        emit(
+          ClientOperationFailure(
+            'Failed to load client profile: ${err.toString()}',
+          ),
+        );
+      }
+    });
+
+    on<LoadClientProducts>((event, emit) async {
+      try {
+        emit(ClientLoading());
+
+        // Use clientCin for fetching products
+        final products = await repo.getClientProducts(event.clientCin);
+
+        emit(ClientProductsLoaded(products));
+      } catch (e) {
+        emit(
+          ClientOperationFailure(
+            'Failed to load client products: ${e.toString()}',
+          ),
+        );
       }
     });
 
@@ -177,7 +236,8 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           emit(ClientDeactivateSuccess());
 
           int targetPage = currentState.currentPage;
-          if (currentState.clients.length == 1 && currentState.currentPage > 1) {
+          if (currentState.clients.length == 1 &&
+              currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;
           }
 
@@ -187,14 +247,16 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             searchQuery: currentState.currentSearchQuery,
           );
 
-          emit(ClientLoadSuccess(
-            clients: result.clients,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalClients: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: currentState.currentSearchQuery,
-          ));
+          emit(
+            ClientLoadSuccess(
+              clients: result.clients,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalClients: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
         } catch (err) {
           emit(ClientOperationFailure(err.toString()));
         }

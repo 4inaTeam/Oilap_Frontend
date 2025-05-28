@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/core/models/user_model.dart';
+import 'package:oilab_frontend/core/models/product_model.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
+import 'package:oilab_frontend/features/clients/presentation/widgets/client_history_widget.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
 class ClientProfileScreen extends StatefulWidget {
@@ -24,39 +26,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth <= 600;
     final isTablet = screenWidth > 600 && screenWidth <= 1200;
     final isDesktop = screenWidth > 1200;
-
-    final stats = {
-      'Quantité entrée': '800 Kg',
-      'Litres produits': '132,4 L',
-      'Montant dépensé': '800 DT',
-      'Dernière visite': '12/01/2025',
-    };
-
-    final history = [
-      {
-        'entrée': '12/01/2025\n09:45',
-        'estimé': '30:05',
-        'sortie': '12/01/2025\n10:15',
-        'ville': 'Tunis',
-        'statut': 'En cours',
-        'quantité': '400 Kg',
-        'prix': '400 DT',
-      },
-      {
-        'entrée': '12/12/2024\n09:45',
-        'estimé': '30:05',
-        'sortie': '12/12/2024\n10:15',
-        'ville': 'Sfax',
-        'statut': 'Fini',
-        'quantité': '400 Kg',
-        'prix': '400 DT',
-      },
-    ];
 
     return BlocConsumer<ClientBloc, ClientState>(
       listener: (context, state) {
@@ -67,20 +42,70 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         }
       },
       builder: (context, state) {
+        // Show loading state
+        if (state is ClientLoading) {
+          return AppLayout(child: Center(child: CircularProgressIndicator()));
+        }
+
+        // Show the actual profile content
         if (state is ClientProfileLoaded) {
+          print('Building profile screen for client: ${state.client.name}');
+          print('Products available: ${state.products?.length ?? 0}');
+
+          // Get products for this specific client
+          final clientProducts = state.products ?? [];
+
+          // Additional debug logging
+          clientProducts.forEach((product) {
+            print(
+              'Product ${product.id}: clientCin=${product.clientCin}, clientId=${product.clientId}',
+            );
+          });
+
           return _buildContent(
             state.client,
-            stats,
-            history,
+            clientProducts,
             isMobile,
             isTablet,
             isDesktop,
           );
         }
 
+        // Show error state
         if (state is ClientOperationFailure) {
           return AppLayout(
-            child: Center(child: Text('Error: ${state.message}')),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red.shade400,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error Loading Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<ClientBloc>().add(
+                        ViewClientProfile(widget.clientId),
+                      );
+                    },
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
@@ -91,12 +116,13 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
   Widget _buildContent(
     User user,
-    Map<String, String> stats,
-    List<Map<String, String>> history,
+    List<Product> products,
     bool isMobile,
     bool isTablet,
     bool isDesktop,
   ) {
+    final stats = _calculateStatsFromProducts(products);
+
     return AppLayout(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -115,11 +141,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                   SizedBox(height: isMobile ? 24 : (isTablet ? 32 : 40)),
                   _buildStatsSection(stats, isMobile, isTablet, isDesktop),
                   SizedBox(height: isMobile ? 24 : (isTablet ? 32 : 40)),
-                  _buildHistorySection(
+                  _buildProductsSection(
                     context,
-                    history,
+                    products,
                     isMobile,
                     isTablet,
+                    isDesktop,
                     constraints,
                   ),
                 ],
@@ -129,6 +156,40 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         },
       ),
     );
+  }
+
+  Map<String, String> _calculateStatsFromProducts(List<Product> products) {
+    if (products.isEmpty) {
+      return {
+        'Total Products': '0',
+        'Total Value': '0 DT',
+        'Pending Orders': '0',
+        'Completed Orders': '0',
+      };
+    }
+
+    final totalProducts = products.length;
+    final totalValue = products.fold<double>(
+      0,
+      (sum, product) => sum + product.price,
+    );
+    final pendingCount =
+        products.where((p) => p.status.toLowerCase() == 'pending').length;
+    final completedCount =
+        products
+            .where(
+              (p) =>
+                  p.status.toLowerCase() == 'completed' ||
+                  p.status.toLowerCase() == 'fini',
+            )
+            .length;
+
+    return {
+      'Total Products': totalProducts.toString(),
+      'Total Value': '${totalValue.toStringAsFixed(2)} DT',
+      'Pending Orders': pendingCount.toString(),
+      'Completed Orders': completedCount.toString(),
+    };
   }
 
   Widget _buildHeader(BuildContext context, bool isMobile, bool isTablet) {
@@ -171,77 +232,115 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   ) {
     return Column(
       children: [
+        // Factures button positioned at top right
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ElevatedButton.icon(
+              icon: Icon(
+                Icons.folder,
+                size: isMobile ? 16 : 18,
+                color: Colors.white,
+              ),
+              label: Text(
+                'Factures',
+                style: TextStyle(
+                  fontSize: isMobile ? 12 : 14,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : (isTablet ? 20 : 24),
+                  vertical: isMobile ? 8 : (isTablet ? 12 : 14),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                // TODO: navigate to invoices
+              },
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+
+        // Profile avatar and info centered
         Center(
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Stack(
                 children: [
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.folder, size: isMobile ? 16 : 18, color: Colors.white,),
-                    label: Text(
-                      'Factures',
-                      style: TextStyle(
-                        fontSize: isMobile ? 12 : 14,
-                        color: Colors.white,
+                  CircleAvatar(
+                    radius: isDesktop ? 50 : (isTablet ? 45 : 40),
+                    backgroundColor: Colors.grey.shade300,
+                    backgroundImage:
+                        user.profilePhotoUrl != null
+                            ? NetworkImage(user.profilePhotoUrl!)
+                            : null,
+                    child:
+                        user.profilePhotoUrl == null
+                            ? Icon(
+                              Icons.person,
+                              size: isDesktop ? 60 : (isTablet ? 54 : 48),
+                              color: Colors.grey.shade600,
+                            )
+                            : null,
+                  ),
+                  // Yellow border ring
+                  Positioned.fill(
+                    child: CircleAvatar(
+                      radius: isDesktop ? 50 : (isTablet ? 45 : 40),
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.accentYellow,
+                            width: 3,
+                          ),
+                        ),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentGreen,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isMobile ? 12 : (isTablet ? 20 : 24),
-                        vertical: isMobile ? 8 : (isTablet ? 12 : 14),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () {
-                      // TODO: navigate to invoices
-                    },
                   ),
                 ],
-              ),
-              CircleAvatar(
-                radius: isDesktop ? 50 : (isTablet ? 45 : 32),
-                backgroundColor: AppColors.accentYellow,
-                backgroundImage:
-                    user.profileImageUrl != null
-                        ? NetworkImage(user.profileImageUrl!)
-                        : null,
-                child:
-                    user.profileImageUrl == null
-                        ? Icon(
-                          Icons.person,
-                          size: isDesktop ? 60 : (isTablet ? 54 : 38),
-                          color: Colors.grey,
-                        )
-                        : null,
               ),
               SizedBox(height: 16),
               Text(
                 user.name,
                 style: TextStyle(
-                  fontSize: isDesktop ? 28 : (isTablet ? 20 : 16),
+                  fontSize: isDesktop ? 24 : (isTablet ? 20 : 18),
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 12),
+
+              // Contact info in a row
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Tel: ${user.tel}',
+                    user.tel ?? 'N/A',
                     style: TextStyle(
-                      fontSize: isDesktop ? 16 : 14,
+                      fontSize: isDesktop ? 14 : 12,
                       color: Colors.grey.shade600,
                     ),
                   ),
-                  SizedBox(width: 16),
+                  SizedBox(width: 24),
                   Text(
-                    'CIN: ${user.cin}',
+                    user.email,
                     style: TextStyle(
-                      fontSize: isDesktop ? 16 : 14,
+                      fontSize: isDesktop ? 14 : 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  SizedBox(width: 24),
+                  Text(
+                    user.role,
+                    style: TextStyle(
+                      fontSize: isDesktop ? 14 : 12,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -250,7 +349,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
             ],
           ),
         ),
-        SizedBox(height: isMobile ? 12 : 16),
       ],
     );
   }
@@ -261,47 +359,19 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     bool isTablet,
     bool isDesktop,
   ) {
-    if (isDesktop) {
-      return Row(
-        children:
-            stats.entries
-                .map(
-                  (e) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _buildStatCard(e, isMobile, isTablet, isDesktop),
-                    ),
+    return Row(
+      children:
+          stats.entries
+              .map(
+                (e) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: _buildStatCard(e, isMobile, isTablet, isDesktop),
                   ),
-                )
-                .toList(),
-      );
-    } else if (isTablet) {
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 3,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        children:
-            stats.entries
-                .map((e) => _buildStatCard(e, isMobile, isTablet, isDesktop))
-                .toList(),
-      );
-    } else {
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 2.0,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        children:
-            stats.entries
-                .map((e) => _buildStatCard(e, isMobile, isTablet, isDesktop))
-                .toList(),
-      );
-    }
+                ),
+              )
+              .toList(),
+    );
   }
 
   Widget _buildStatCard(
@@ -311,31 +381,36 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     bool isDesktop,
   ) {
     return Container(
-      padding: EdgeInsets.all(isMobile ? 6 : (isTablet ? 10 : 12)),
+      padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 16 : 20)),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          FittedBox(
-            child: Text(
-              stat.value,
-              style: TextStyle(
-                fontSize: isMobile ? 12 : (isTablet ? 16 : 18),
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+          Text(
+            stat.value,
+            style: TextStyle(
+              fontSize: isMobile ? 16 : (isTablet ? 18 : 20),
+              fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
-          SizedBox(height: isMobile ? 2 : (isTablet ? 4 : 6)),
+          SizedBox(height: 8),
           Text(
             stat.key,
             style: TextStyle(
-              fontSize: isMobile ? 8 : (isTablet ? 10 : 12),
+              fontSize: isMobile ? 11 : (isTablet ? 12 : 13),
               color: Colors.grey.shade600,
             ),
             textAlign: TextAlign.center,
@@ -347,330 +422,76 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
-  Widget _buildHistorySection(
+  Widget _buildProductsSection(
     BuildContext context,
-    List<Map<String, String>> history,
+    List<Product> products,
+    bool isMobile,
     bool isTablet,
     bool isDesktop,
     BoxConstraints constraints,
   ) {
+    // Debugging output to verify client-product matching
+    /*print('Displaying products for client: ${widget.clientId}');
+    print(
+      'Client CIN: ${context.read<ClientBloc>().state is ClientProfileLoaded ? (context.read<ClientBloc>().state as ClientProfileLoaded).client.cin : "N/A"}',
+    );
+    products.forEach(
+      (p) => print(
+        'Product ${p.id} clientCin: ${p.clientCin}, clientId: ${p.clientId}',
+      ),
+    );*/
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Historique des visites',
-          style: TextStyle(
-            fontSize: isTablet ? 20 : 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         const SizedBox(height: 16),
-        if (isDesktop)
-          _buildDesktopTable(history)
-        else if (isTablet)
-          _buildTabletTable(history)
+        if (products.isEmpty)
+          _buildEmptyState()
         else
-          _buildMobileCards(history),
+          ClientHistoryWidget(
+            products: products,
+            isMobile: isMobile,
+            isTablet: isTablet,
+            isDesktop: isDesktop,
+            constraints: constraints,
+          ),
       ],
     );
   }
 
-  // Keep all table and card building methods exactly as in your original code
-  // ...
-}
-
-Widget _buildDesktopTable(List<Map<String, String>> history) {
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: DataTable(
-      columnSpacing: 20,
-      headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-      columns: const [
-        DataColumn(label: Text('Temp d\'entrée')),
-        DataColumn(label: Text('Temps estimé')),
-        DataColumn(label: Text('Temp de sortie')),
-        DataColumn(label: Text('Ville')),
-        DataColumn(label: Text('Statut')),
-        DataColumn(label: Text('Quantity')),
-        DataColumn(label: Text('Prix total')),
-        DataColumn(label: Text('Action')),
-      ],
-      rows: history.map((item) => _buildDataRow(item, false)).toList(),
-    ),
-  );
-}
-
-Widget _buildTabletTable(List<Map<String, String>> history) {
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: DataTable(
-      columnSpacing: 16,
-      headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
-      columns: const [
-        DataColumn(label: Text('Entrée')),
-        DataColumn(label: Text('Ville')),
-        DataColumn(label: Text('Statut')),
-        DataColumn(label: Text('Quantité')),
-        DataColumn(label: Text('Prix')),
-        DataColumn(label: Text('Action')),
-      ],
-      rows: history.map((item) => _buildSimplifiedDataRow(item)).toList(),
-    ),
-  );
-}
-
-Widget _buildMobileCards(List<Map<String, String>> history) {
-  return Column(
-    children: history.map((item) => _buildMobileCard(item)).toList(),
-  );
-}
-
-Widget _buildMobileCard(Map<String, String> item) {
-  final isDone = item['statut'] == 'Fini';
-  final dotColor = isDone ? AppColors.accentGreen : AppColors.accentYellow;
-
-  return Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                item['ville']!,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Row(
-                children: [
-                  CircleAvatar(radius: 6, backgroundColor: dotColor),
-                  const SizedBox(width: 6),
-                  Text(item['statut']!),
-                ],
-              ),
-            ],
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Entrée: ${item['entrée']!.split('\n')[0]}'),
-              Text('Quantité: ${item['quantité']!}'),
-            ],
+          SizedBox(height: 16),
+          Text(
+            'No Products Found',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade600,
+            ),
           ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Sortie: ${item['sortie']!.split('\n')[0]}'),
-              Text('Prix: ${item['prix']!}'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit, size: 18, color: Colors.green),
-                onPressed: () {
-                  // TODO: edit this entry
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                onPressed: () {
-                  // TODO: remove this entry
-                },
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.visibility,
-                  size: 18,
-                  color: Colors.blue,
-                ),
-                onPressed: () {
-                  // TODO: view details
-                },
-              ),
-            ],
+          SizedBox(height: 8),
+          Text(
+            'This client has no products in the system yet.',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
-    ),
-  );
-}
-
-DataRow _buildDataRow(Map<String, String> item, bool isCompact) {
-  final isDone = item['statut'] == 'Fini';
-  final dotColor = isDone ? AppColors.accentGreen : AppColors.accentYellow;
-
-  return DataRow(
-    cells: [
-      DataCell(
-        SizedBox(
-          width: 80,
-          child: Text(
-            item['entrée']!,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-          ),
-        ),
-      ),
-      DataCell(Text(item['estimé']!, style: const TextStyle(fontSize: 12))),
-      DataCell(
-        SizedBox(
-          width: 80,
-          child: Text(
-            item['sortie']!,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-          ),
-        ),
-      ),
-      DataCell(Text(item['ville']!, style: const TextStyle(fontSize: 12))),
-      DataCell(
-        SizedBox(
-          width: 80,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(radius: 4, backgroundColor: dotColor),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  item['statut']!,
-                  style: const TextStyle(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      DataCell(Text(item['quantité']!, style: const TextStyle(fontSize: 12))),
-      DataCell(Text(item['prix']!, style: const TextStyle(fontSize: 12))),
-      DataCell(SizedBox(width: 120, child: _buildActionButtons())),
-    ],
-  );
-}
-
-DataRow _buildSimplifiedDataRow(Map<String, String> item) {
-  final isDone = item['statut'] == 'Fini';
-  final dotColor = isDone ? AppColors.accentGreen : AppColors.accentYellow;
-
-  return DataRow(
-    cells: [
-      DataCell(
-        SizedBox(
-          width: 70,
-          child: Text(
-            item['entrée']!.split('\n')[0],
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
-      DataCell(
-        SizedBox(
-          width: 60,
-          child: Text(
-            item['ville']!,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
-      DataCell(
-        SizedBox(
-          width: 70,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(radius: 4, backgroundColor: dotColor),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  item['statut']!,
-                  style: const TextStyle(fontSize: 11),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      DataCell(
-        SizedBox(
-          width: 60,
-          child: Text(
-            item['quantité']!,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
-      DataCell(
-        SizedBox(
-          width: 50,
-          child: Text(
-            item['prix']!,
-            style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ),
-      DataCell(SizedBox(width: 100, child: _buildActionButtons(compact: true))),
-    ],
-  );
-}
-
-Widget _buildActionButtons({bool compact = false}) {
-  final iconSize = compact ? 14.0 : 16.0;
-  final padding = compact ? 4.0 : 8.0;
-
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SizedBox(
-        width: iconSize + padding,
-        height: iconSize + padding,
-        child: IconButton(
-          padding: EdgeInsets.zero,
-          icon: Icon(Icons.edit, size: iconSize, color: Colors.green),
-          onPressed: () {
-            // TODO: edit this entry
-          },
-        ),
-      ),
-      SizedBox(
-        width: iconSize + padding,
-        height: iconSize + padding,
-        child: IconButton(
-          padding: EdgeInsets.zero,
-          icon: Icon(Icons.delete, size: iconSize, color: Colors.red),
-          onPressed: () {
-            // TODO: remove this entry
-          },
-        ),
-      ),
-      SizedBox(
-        width: iconSize + padding,
-        height: iconSize + padding,
-        child: IconButton(
-          padding: EdgeInsets.zero,
-          icon: Icon(Icons.visibility, size: iconSize, color: Colors.blue),
-          onPressed: () {
-            // TODO: view details
-          },
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }
