@@ -6,6 +6,7 @@ import 'package:oilab_frontend/core/models/product_model.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
+import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/widgets/client_history_widget.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
@@ -52,13 +53,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           print('Building profile screen for client: ${state.client.name}');
           print('Products available: ${state.products?.length ?? 0}');
 
-          // Get products for this specific client
           final clientProducts = state.products ?? [];
 
-          // Additional debug logging
+          // Debug logging with null safety
           clientProducts.forEach((product) {
             print(
-              'Product ${product.id}: clientCin=${product.clientCin}, clientId=${product.clientId}',
+              'Product ${product.id}: client=${product.client}, details=${product.clientDetails}',
             );
           });
 
@@ -158,40 +158,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
-  Map<String, String> _calculateStatsFromProducts(List<Product> products) {
-    if (products.isEmpty) {
-      return {
-        'Total Products': '0',
-        'Total Value': '0 DT',
-        'Pending Orders': '0',
-        'Completed Orders': '0',
-      };
-    }
-
-    final totalProducts = products.length;
-    final totalValue = products.fold<double>(
-      0,
-      (sum, product) => sum + product.price,
-    );
-    final pendingCount =
-        products.where((p) => p.status.toLowerCase() == 'pending').length;
-    final completedCount =
-        products
-            .where(
-              (p) =>
-                  p.status.toLowerCase() == 'completed' ||
-                  p.status.toLowerCase() == 'fini',
-            )
-            .length;
-
-    return {
-      'Total Products': totalProducts.toString(),
-      'Total Value': '${totalValue.toStringAsFixed(2)} DT',
-      'Pending Orders': pendingCount.toString(),
-      'Completed Orders': completedCount.toString(),
-    };
-  }
-
   Widget _buildHeader(BuildContext context, bool isMobile, bool isTablet) {
     return Row(
       children: [
@@ -200,12 +166,21 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
             Icons.arrow_back,
             size: isMobile ? 24 : (isTablet ? 28 : 32),
           ),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Ensure data is reloaded when returning
+            context.read<ClientBloc>()
+              ..add(LoadClients())
+              ..add(ViewClientProfile(widget.clientId));
+
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const ClientListScreen()),
+            );
+          },
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'Client Profile',
+            'Profil Client',
             style: TextStyle(
               fontSize: isMobile ? 18 : (isTablet ? 22 : 28),
               fontWeight: FontWeight.bold,
@@ -221,6 +196,86 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           onPressed: () {},
         ),
       ],
+    );
+  }
+
+  Map<String, String> _calculateStatsFromProducts(List<Product> products) {
+    if (products.isEmpty) {
+      return {
+        'Total des produits': '0',
+        'Valeur totale': '0 DT',
+        'En cours': '0',
+        'Terminé': '0',
+      };
+    }
+
+    final totalProducts = products.length;
+    final totalValue = products.fold<double>(
+      0,
+      (sum, product) => sum + (product.price ?? 0),
+    );
+
+    final pendingCount =
+        products
+            .where(
+              (p) =>
+                  p.status?.toLowerCase() == 'en cours' ||
+                  p.status?.toLowerCase() == 'pending',
+            )
+            .length;
+
+    final completedCount =
+        products
+            .where(
+              (p) =>
+                  p.status?.toLowerCase() == 'terminé' ||
+                  p.status?.toLowerCase() == 'fini' ||
+                  p.status?.toLowerCase() == 'completed' ||
+                  p.status?.toLowerCase() == 'done',
+            )
+            .length;
+
+    return {
+      'Total des produits': totalProducts.toString(),
+      'Valeur totale': '${totalValue.toStringAsFixed(2)} DT',
+      'En cours': pendingCount.toString(),
+      'Terminé': completedCount.toString(),
+    };
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Aucun produit trouvé',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ce client n\'a pas encore de produits dans le système.',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -430,68 +485,28 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     bool isDesktop,
     BoxConstraints constraints,
   ) {
-    // Debugging output to verify client-product matching
-    /*print('Displaying products for client: ${widget.clientId}');
-    print(
-      'Client CIN: ${context.read<ClientBloc>().state is ClientProfileLoaded ? (context.read<ClientBloc>().state as ClientProfileLoaded).client.cin : "N/A"}',
-    );
-    products.forEach(
-      (p) => print(
-        'Product ${p.id} clientCin: ${p.clientCin}, clientId: ${p.clientId}',
-      ),
-    );*/
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          'Historique des produits',
+          style: TextStyle(
+            fontSize: isMobile ? 18 : 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 16),
         if (products.isEmpty)
           _buildEmptyState()
         else
           ClientHistoryWidget(
             products: products,
+            constraints: constraints,
             isMobile: isMobile,
             isTablet: isTablet,
             isDesktop: isDesktop,
-            constraints: constraints,
           ),
       ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No Products Found',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'This client has no products in the system yet.',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
     );
   }
 }

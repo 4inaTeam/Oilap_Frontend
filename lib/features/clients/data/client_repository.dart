@@ -314,162 +314,57 @@ class ClientRepository {
     }
   }
 
-  List<Product> _parseProductsData(List<dynamic> responseData, String clientCin) {
-    print('Parsing ${responseData.length} products for client $clientCin');
-
-    final products =
-        responseData
-            .map<Product?>((item) {
-              try {
-                final productJson = Map<String, dynamic>.from(item);
-
-                // Debug: Print raw product data
-                print('Raw product data: $productJson');
-
-                final product = Product.fromJson(productJson);
-
-                // Debug: Print parsed product
-                print(
-                  'Parsed product: ID=${product.id}, clientCin=${product.clientCin}, clientId=${product.clientId}',
-                );
-
-                return product;
-              } catch (e) {
-                print('Error parsing product: $e, Data: $item');
-                return null;
-              }
-            })
-            .where((product) => product != null)
-            .cast<Product>()
-            .toList();
-
-    print('Parsed ${products.length} total products');
-
-    // Filter products for the specific client
-    final clientProducts =
-        products.where((product) {
-          final matchesClient = product.clientCin == clientCin;
-          print(
-            'Product ${product.id} matches clientCin $clientCin: $matchesClient (clientCin: ${product.clientCin}, clientId: ${product.clientId})',
-          );
-          return matchesClient;
-        }).toList();
-
-    print('Filtered ${clientProducts.length} products for client $clientCin');
-    return clientProducts;
-  }
-
   Future<List<Product>> getClientProducts(String clientCin) async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      print('Fetching products for client CIN: $clientCin');
-
-      // Try the specific endpoint first
-      try {
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/products/admin/client-products/$clientCin/'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-
-        print('Specific endpoint - Status: ${response.statusCode}');
-        print('Specific endpoint - Body: ${response.body}');
-
-        if (response.statusCode == 200) {
-          final responseBody = response.body.trim();
-          if (responseBody.isEmpty) {
-            print('Empty response body from specific endpoint');
-            return [];
-          }
-
-          final dynamic responseData = json.decode(responseBody);
-
-          if (responseData is List) {
-            return _parseProductsData(responseData, clientCin);
-          } else if (responseData is Map &&
-              responseData.containsKey('results')) {
-            return _parseProductsData(responseData['results'], clientCin);
-          } else if (responseData is Map && responseData.containsKey('data')) {
-            return _parseProductsData(responseData['data'], clientCin);
-          } else {
-            print(
-              'Unexpected response format from specific endpoint: ${responseData.runtimeType}',
-            );
-            // Don't return empty, try fallback
-          }
-        } else {
-          print('Specific endpoint failed with status: ${response.statusCode}');
-        }
-      } catch (e) {
-        print('Specific endpoint error: $e');
-      }
-
-      // Fallback to general endpoint
-      print('Trying fallback: general products endpoint');
-
-      final fallbackResponse = await http.get(
-        Uri.parse('$baseUrl/api/products/client/products/'),
+      // Try first with the specific endpoint
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/products/?client=$clientCin'),
         headers: {
           'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
       );
 
-      print('Fallback endpoint - Status: ${fallbackResponse.statusCode}');
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final data =
+            responseData is Map
+                ? (responseData['results'] ?? responseData['data'] ?? [])
+                : responseData;
 
-      if (fallbackResponse.statusCode == 200) {
-        final responseBody = fallbackResponse.body.trim();
-        if (responseBody.isEmpty) {
-          print('Empty response body from fallback endpoint');
-          return [];
-        }
+        if (data is! List) return [];
 
-        final dynamic responseData = json.decode(responseBody);
-
-        if (responseData is List) {
-          return _parseProductsData(responseData, clientCin);
-        } else if (responseData is Map && responseData.containsKey('results')) {
-          return _parseProductsData(responseData['results'], clientCin);
-        } else {
-          print(
-            'Unexpected response format from fallback endpoint: ${responseData.runtimeType}',
-          );
-          return [];
-        }
+        return _parseProductsData(data, clientCin);
       }
-
-      // Final fallback - try to get all products and filter client-side
-      print('Trying final fallback: all products endpoint');
-
-      final allProductsResponse = await http.get(
-        Uri.parse('$baseUrl/api/products/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (allProductsResponse.statusCode == 200) {
-        final responseBody = allProductsResponse.body.trim();
-        if (responseBody.isEmpty) return [];
-
-        final dynamic responseData = json.decode(responseBody);
-
-        if (responseData is List) {
-          return _parseProductsData(responseData, clientCin);
-        } else if (responseData is Map && responseData.containsKey('results')) {
-          return _parseProductsData(responseData['results'], clientCin);
-        }
-      }
-
-      throw Exception('All endpoints failed to fetch products');
+      return [];
     } catch (e) {
-      print('Error in getClientProducts for client $clientCin: $e');
-      rethrow;
+      print('Error fetching client products: $e');
+      return [];
     }
+  }
+
+  List<Product> _parseProductsData(
+    List<dynamic> responseData,
+    String clientCin,
+  ) {
+    return responseData
+        .map((item) {
+          final productJson = Map<String, dynamic>.from(item);
+
+          if (productJson['client'] == clientCin) {
+            if (!productJson.containsKey('client_details')) {
+              productJson['client_details'] = {
+                'cin': clientCin,
+                'username': productJson['client_name'] ?? 'Client $clientCin',
+              };
+            }
+          }
+          return Product.fromJson(productJson);
+        })
+        .where((product) => product.client == clientCin)
+        .toList();
   }
 }

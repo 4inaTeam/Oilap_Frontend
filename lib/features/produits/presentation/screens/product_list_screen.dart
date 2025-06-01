@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_add_dialog.dart';
@@ -22,10 +23,10 @@ class _ProductListView extends StatefulWidget {
   const _ProductListView({Key? key}) : super(key: key);
 
   @override
-  __ProductListViewState createState() => __ProductListViewState();
+  _ProductListViewState createState() => _ProductListViewState();
 }
 
-class __ProductListViewState extends State<_ProductListView> {
+class _ProductListViewState extends State<_ProductListView> {
   final TextEditingController _searchController = TextEditingController();
   String _currentSearchQuery = '';
 
@@ -33,7 +34,9 @@ class __ProductListViewState extends State<_ProductListView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ProductBloc>().add(LoadProducts());
+      if (mounted) {
+        context.read<ProductBloc>().add(LoadProducts());
+      }
     });
   }
 
@@ -117,7 +120,7 @@ class _AppBar extends StatelessWidget {
         ],
         Expanded(
           child: Text(
-            'Employés',
+            'Products',
             style: TextStyle(
               fontSize: isMobile ? 20 : 22,
               fontWeight: FontWeight.bold,
@@ -228,8 +231,8 @@ class _ProductContent extends StatelessWidget {
           return state.products.isEmpty
               ? const _EmptyState()
               : isMobile
-              ? _MobileProductList(Products: state.products)
-              : _ProductTable(Products: state.products);
+              ? _MobileProductList(products: state.products)
+              : _ProductTable(products: state.products);
         }
 
         if (state is ProductOperationFailure) {
@@ -251,7 +254,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+          Icon(
+            Icons.inventory_2_outlined,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
           const SizedBox(height: 16),
           Text(
             'Aucun produit trouvé',
@@ -292,17 +299,28 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-class _MobileProductList extends StatelessWidget {
-  final List<dynamic> Products;
+String _formatDate(String? dateStr) {
+  if (dateStr == null || dateStr.isEmpty) return '-';
+  try {
+    final date = DateTime.parse(dateStr);
+    return DateFormat('dd/MM/yyyy HH:mm').format(date);
+  } catch (e) {
+    debugPrint('Error formatting date: $e for date: $dateStr');
+    return '-';
+  }
+}
 
-  const _MobileProductList({required this.Products});
+class _MobileProductList extends StatelessWidget {
+  final List<dynamic> products;
+
+  const _MobileProductList({required this.products});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      itemCount: Products.length,
+      itemCount: products.length,
       itemBuilder: (context, index) {
-        final product = Products[index];
+        final product = products[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
@@ -314,14 +332,14 @@ class _MobileProductList extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        product.quality ?? '',
+                        product.quality?.toString() ?? '',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    _ActionButtons(Product: product, isMobile: true),
+                    _ActionButtons(product: product, isMobile: true),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -331,9 +349,25 @@ class _MobileProductList extends StatelessWidget {
                   product.quantity != null ? '${product.quantity} Kg' : '',
                 ),
                 _InfoRow(Icons.place, 'Origine', product.origine ?? ''),
-                _InfoRow(Icons.person, 'Propriétaire', product.ownerName ?? ''),
-                _InfoRow(Icons.access_time, 'Entrée', product.createdAt ?? ''),
-                _InfoRow(Icons.access_time, 'Sortie', ''),
+                _InfoRow(
+                  Icons.person,
+                  'Propriétaire',
+                  product.clientDetails?['username']?.toString() ??
+                      product.client ??
+                      '-',
+                ),
+                _InfoRow(
+                  Icons.access_time,
+                  'Temps d\'entrée',
+                  _formatDate(product.createdAt?.toString()),
+                ),
+                _InfoRow(
+                  Icons.schedule,
+                  'Date d\'sortire',
+                  product.estimationDate != null
+                      ? _formatDate(product.estimationDate.toString())
+                      : '-',
+                ),
                 _InfoRow(Icons.info, 'Statut', product.status ?? ''),
               ],
             ),
@@ -374,9 +408,9 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _ProductTable extends StatelessWidget {
-  final List<dynamic> Products;
+  final List<dynamic> products;
 
-  const _ProductTable({required this.Products});
+  const _ProductTable({required this.products});
 
   @override
   Widget build(BuildContext context) {
@@ -388,40 +422,56 @@ class _ProductTable extends StatelessWidget {
           DataColumn(label: Text('Quantité')),
           DataColumn(label: Text('Origine')),
           DataColumn(label: Text('Propriétaire')),
-          DataColumn(label: Text('Entrée')),
-          DataColumn(label: Text('Sortie')),
+          DataColumn(label: Text('Temps d\'entrée')),
+          DataColumn(label: Text('Temps d\'sortie')),
           DataColumn(label: Text('Statut')),
           DataColumn(label: Text('Actions')),
         ],
         rows:
-            Products.map(
-              (product) => DataRow(
-                cells: [
-                  DataCell(Text(product.quality ?? '')),
-                  DataCell(
-                    Text(
-                      product.quantity != null ? '${product.quantity} Kg' : '',
-                    ),
-                  ),
-                  DataCell(Text(product.origine ?? '')),
-                  DataCell(Text(product.ownerName ?? '')),
-                  DataCell(Text(product.createdAt ?? '')),
-                  DataCell(Text('')),
-                  DataCell(Text(product.status ?? '')),
-                  DataCell(_ActionButtons(Product: product)),
-                ],
-              ),
-            ).toList(),
+            products
+                .map((product) {
+                  if (product == null) return null;
+
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(product.quality?.toString() ?? '')),
+                      DataCell(
+                        Text(
+                          product.quantity != null
+                              ? '${product.quantity} Kg'
+                              : '',
+                        ),
+                      ),
+                      DataCell(Text(product.origine?.toString() ?? '')),
+                      DataCell(Text(product.ownerName?.toString() ?? '')),
+                      DataCell(
+                        Text(_formatDate(product.createdAt?.toString())),
+                      ),
+                      DataCell(
+                        Text(
+                          product.estimationDate != null
+                              ? _formatDate(product.estimationDate.toString())
+                              : '-',
+                        ),
+                      ),
+                      DataCell(Text(product.status?.toString() ?? '')),
+                      DataCell(_ActionButtons(product: product)),
+                    ],
+                  );
+                })
+                .where((row) => row != null)
+                .cast<DataRow>()
+                .toList(),
       ),
     );
   }
 }
 
 class _ActionButtons extends StatelessWidget {
-  final dynamic Product;
+  final dynamic product;
   final bool isMobile;
 
-  const _ActionButtons({required this.Product, this.isMobile = false});
+  const _ActionButtons({required this.product, this.isMobile = false});
 
   void _confirmDeletion(BuildContext context) {
     showDialog(
@@ -439,7 +489,7 @@ class _ActionButtons extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  context.read<ProductBloc>().add(DeleteProduct(Product.id));
+                  context.read<ProductBloc>().add(DeleteProduct(product.id));
                   Navigator.pop(context);
                 },
                 child: const Text('Delete'),
@@ -461,7 +511,7 @@ class _ActionButtons extends StatelessWidget {
           onPressed:
               () => showDialog(
                 context: context,
-                builder: (context) => ProductUpdateDialog(product: Product),
+                builder: (context) => ProductUpdateDialog(product: product),
               ),
         ),
         if (!isMobile) ...[
@@ -519,7 +569,7 @@ class _PaginationFooter extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Affichage $startItem à $endItem sur ${state.totalProducts} employés',
+                          'Affichage $startItem à $endItem sur ${state.totalProducts} produits',
                           style: TextStyle(
                             color: AppColors.parametereColor,
                             fontSize: 12,

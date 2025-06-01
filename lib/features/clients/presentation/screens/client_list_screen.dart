@@ -33,7 +33,9 @@ class __ClientListViewState extends State<_ClientListView> {
   @override
   void initState() {
     super.initState();
-    context.read<ClientBloc>().add(LoadClients());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ClientBloc>().add(LoadClients());
+    });
   }
 
   @override
@@ -43,67 +45,405 @@ class __ClientListViewState extends State<_ClientListView> {
   }
 
   void _performSearch(String query) {
-    setState(() {
-      _currentSearchQuery = query;
-    });
-
-    if (query.isEmpty) {
-      context.read<ClientBloc>().add(LoadClients());
-    } else {
-      context.read<ClientBloc>().add(SearchClients(query: query));
-    }
+    if (!mounted) return;
+    setState(() => _currentSearchQuery = query);
+    
+    final event = query.isEmpty 
+        ? LoadClients() 
+        : SearchClients(query: query);
+    context.read<ClientBloc>().add(event);
   }
 
   void _changePage(int page) {
+    if (!mounted) return;
     context.read<ClientBloc>().add(
-      ChangePage(
-        page,
-        currentSearchQuery:
-            _currentSearchQuery.isEmpty ? null : _currentSearchQuery,
-      ),
+      ChangePage(page, currentSearchQuery: _currentSearchQuery.isEmpty ? null : _currentSearchQuery),
     );
-  }
-
-
-  void _refreshClientList() {
-    if (_currentSearchQuery.isEmpty) {
-      context.read<ClientBloc>().add(LoadClients());
-    } else {
-      context.read<ClientBloc>().add(SearchClients(query: _currentSearchQuery));
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
-
     return AppLayout(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildAppBar(isMobile, context),
-            const SizedBox(height: 16),
-            _buildSearchAndAddButton(isMobile),
-            const SizedBox(height: 24),
-            _buildClientTable(),
-            const SizedBox(height: 16),
-            _buildPaginationFooter(),
-          ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          
+          return Padding(
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            child: Column(
+              children: [
+                _AppBar(isMobile: isMobile),
+                SizedBox(height: isMobile ? 12 : 16),
+                _SearchSection(
+                  controller: _searchController,
+                  onSearch: _performSearch,
+                  currentQuery: _currentSearchQuery,
+                  isMobile: isMobile,
+                ),
+                SizedBox(height: isMobile ? 16 : 24),
+                Expanded(child: _ClientContent(isMobile: isMobile)),
+                _PaginationFooter(
+                  isMobile: isMobile,
+                  onPageChange: _changePage,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AppBar extends StatelessWidget {
+  final bool isMobile;
+  
+  const _AppBar({required this.isMobile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (!isMobile) ...[
+          IconButton(
+            icon: const Icon(Icons.arrow_back, size: 28),
+            onPressed: () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const DashboardScreen()),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Text(
+            'Clients',
+            style: TextStyle(
+              fontSize: isMobile ? 20 : 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.notifications_none),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchSection extends StatelessWidget {
+  final TextEditingController controller;
+  final Function(String) onSearch;
+  final String currentQuery;
+  final bool isMobile;
+
+  const _SearchSection({
+    required this.controller,
+    required this.onSearch,
+    required this.currentQuery,
+    required this.isMobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final searchField = TextField(
+      controller: controller,
+      onChanged: (value) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (controller.text == value) onSearch(value.trim());
+        });
+      },
+      onSubmitted: (value) => onSearch(value.trim()),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Rechercher par CIN',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: currentQuery.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  controller.clear();
+                  onSearch('');
+                },
+              )
+            : null,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    final addButton = SizedBox(
+      width: isMobile ? double.infinity : null,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          iconColor: Colors.white,
+          backgroundColor: AppColors.accentGreen,
+          padding: EdgeInsets.symmetric(
+            vertical: isMobile ? 14 : 12,
+            horizontal: 16,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: () => showDialog(
+          context: context,
+          builder: (context) => const ClientAddDialog(),
+        ),
+        icon: Image.asset('assets/icons/Vector.png', width: 16, height: 16),
+        label: const Text('Ajouter un nouveau', style: TextStyle(color: Colors.white)),
+      ),
+    );
+
+    return isMobile
+        ? Column(
+            children: [
+              searchField,
+              const SizedBox(height: 12),
+              addButton,
+            ],
+          )
+        : Row(
+            children: [
+              Expanded(flex: 3, child: searchField),
+              const SizedBox(width: 16),
+              addButton,
+            ],
+          );
+  }
+}
+
+class _ClientContent extends StatelessWidget {
+  final bool isMobile;
+  
+  const _ClientContent({required this.isMobile});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ClientBloc, ClientState>(
+      builder: (context, state) {
+        if (state is ClientInitial || state is ClientLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (state is ClientLoadSuccess) {
+          return state.clients.isEmpty
+              ? const _EmptyState()
+              : isMobile
+                  ? _MobileClientList(clients: state.clients)
+                  : _ClientTable(clients: state.clients);
+        }
+        
+        if (state is ClientOperationFailure) {
+          return _ErrorState(message: state.message);
+        }
+        
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'Aucun client trouvé',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  
+  const _ErrorState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+          const SizedBox(height: 16),
+          Text(
+            'Erreur: $message',
+            style: TextStyle(fontSize: 16, color: Colors.red.shade600),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.read<ClientBloc>().add(LoadClients()),
+            child: const Text('Réessayer'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileClientList extends StatelessWidget {
+  final List<dynamic> clients;
+  
+  const _MobileClientList({required this.clients});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: clients.length,
+      itemBuilder: (context, index) {
+        final client = clients[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        client.name,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    _buildClientStatus(client.isActive),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(Icons.email, 'Email', client.email),
+                _InfoRow(Icons.phone, 'Téléphone', client.tel ?? 'N/A'),
+                _InfoRow(Icons.badge, 'CIN', client.cin),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _ActionButtons(client: client, isMobile: true),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClientStatus(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        isActive ? 'Actif' : 'Inactif',
+        style: TextStyle(
+          color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
+}
 
-  void _confirmDisactivate(int userId) {
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  
+  const _InfoRow(this.icon, this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 8),
+          Text('$label: ', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+          Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClientTable extends StatelessWidget {
+  final List<dynamic> clients;
+  
+  const _ClientTable({required this.clients});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Nom du client')),
+          DataColumn(label: Text('Numéro de téléphone')),
+          DataColumn(label: Text('Email')),
+          DataColumn(label: Text('CIN')),
+          DataColumn(label: Text('Status')),
+          DataColumn(label: Text('Action')),
+        ],
+        rows: clients
+            .map((client) => DataRow(cells: [
+                  DataCell(Text(client.name)),
+                  DataCell(Text(client.tel ?? '')),
+                  DataCell(Text(client.email)),
+                  DataCell(Text(client.cin)),
+                  DataCell(_buildClientStatus(client.isActive)),
+                  DataCell(_ActionButtons(client: client)),
+                ]))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildClientStatus(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        isActive ? 'Actif' : 'Inactif',
+        style: TextStyle(
+          color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  final dynamic client;
+  final bool isMobile;
+  
+  const _ActionButtons({required this.client, this.isMobile = false});
+
+  void _confirmDisactivation(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmer la disactivation de comptes'),
-        content: const Text(
-          'Êtes-vous sûr de vouloir disactiver ce client?',
-        ),
+        content: const Text('Êtes-vous sûr de vouloir disactiver ce client?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -111,7 +451,7 @@ class __ClientListViewState extends State<_ClientListView> {
           ),
           TextButton(
             onPressed: () {
-              context.read<ClientBloc>().add(DisactivateClient(userId));
+              context.read<ClientBloc>().add(DisactivateClient(client.id));
               Navigator.pop(context);
             },
             child: const Text('Disactiver'),
@@ -121,404 +461,148 @@ class __ClientListViewState extends State<_ClientListView> {
     );
   }
 
-  Widget _buildAppBar(bool isMobile, BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (!isMobile)
-          IconButton(
-            icon: const Icon(Icons.arrow_back, size: 28),
-            onPressed: () => Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
-            ),
-          ),
-        if (!isMobile) const SizedBox(width: 8),
-        const Text(
-          'Clients',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchAndAddButton(bool isMobile) {
-    return Flex(
-      direction: isMobile ? Axis.vertical : Axis.horizontal,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Flexible(
-          child: TextField(
-            controller: _searchController,
-            onChanged: (value) {
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (_searchController.text == value) {
-                  _performSearch(value.trim());
-                }
-              });
-            },
-            onSubmitted: (value) => _performSearch(value.trim()),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: 'Rechercher par CIN',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _currentSearchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        _performSearch('');
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        if (!isMobile) const SizedBox(width: 16),
-        if (isMobile) const SizedBox(height: 12),
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            iconColor: Colors.white,
-            backgroundColor: AppColors.accentGreen,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          onPressed: () async {
-            // Wait for the dialog to close and refresh if needed
-            final result = await showDialog(
-              context: context,
-              builder: (context) => const ClientAddDialog(),
-            );
-            // If a client was added, refresh the list
-            if (result == true) {
-              _refreshClientList();
-            }
-          },
-          icon: Image.asset('assets/icons/Vector.png', width: 16, height: 16),
-          label: const Text(
-            'Ajouter un nouveau',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildClientTable() {
-    return Expanded(
-      child: BlocBuilder<ClientBloc, ClientState>(
-        builder: (ctx, state) {
-          if (state is ClientInitial || state is ClientLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is ClientLoadSuccess) {
-            if (state.clients.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 64,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _currentSearchQuery.isEmpty
-                          ? 'Aucun client trouvé'
-                          : 'Aucun client trouvé pour "${_currentSearchQuery}"',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: constraints.maxWidth,
-                      minHeight: 100,
-                    ),
-                    child: DataTable(
-                      columnSpacing: 20,
-                      columns: const [
-                        DataColumn(label: Text('Nom du client')),
-                        DataColumn(label: Text('Numéro de téléphone')),
-                        DataColumn(label: Text('Email')),
-                        DataColumn(label: Text('CIN')),
-                        DataColumn(label: Text('Status')),
-                        DataColumn(label: Text('Action')),
-                      ],
-                      rows: state.clients
-                          .map(
-                            (u) => DataRow(
-                              cells: [
-                                DataCell(Text(u.name)),
-                                DataCell(Text(u.tel ?? '')),
-                                DataCell(Text(u.email)),
-                                DataCell(Text(u.cin)),
-                                DataCell(
-                                  Text(
-                                    u.isActive == true ? 'Actif' : 'Inactif',
-                                  ),
-                                ),
-                                DataCell(_buildActionButtons(u.id)),
-                              ],
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                );
-              },
-            );
-          }
-          if (state is ClientOperationFailure) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Erreur: ${state.message}',
-                    style: TextStyle(fontSize: 16, color: Colors.red.shade600),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<ClientBloc>().add(LoadClients());
-                    },
-                    child: const Text('Réessayer'),
-                  ),
-                ],
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(int userId) {
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = isMobile ? 20.0 : 24.0;
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(Icons.edit, color: Colors.green),
-          onPressed: () async {
-            // Wait for the dialog to close and refresh if needed
-            final result = await showDialog(
-              context: context,
-              builder: (context) => ClientUpdateDialog(clientId: userId),
-            );
-            // If client was updated, refresh the list
-            if (result == true) {
-              _refreshClientList();
-            }
-          },
+          icon: Icon(Icons.edit, color: Colors.green, size: iconSize),
+          onPressed: () => showDialog(
+            context: context,
+            builder: (context) => ClientUpdateDialog(clientId: client.id),
+          ),
         ),
-        const SizedBox(width: 5),
-        Text('|', style: TextStyle(color: Colors.grey.shade600)),
-        const SizedBox(width: 5),
+        if (!isMobile) ...[
+          const SizedBox(width: 5),
+          Text('|', style: TextStyle(color: Colors.grey.shade600)),
+          const SizedBox(width: 5),
+        ],
         IconButton(
           icon: Image.asset(
             'assets/icons/Disactivate.png',
             width: 16,
             height: 16,
           ),
-          onPressed: () => _confirmDisactivate(userId),
+          onPressed: () => _confirmDisactivation(context),
         ),
-        const SizedBox(width: 5),
-        Text('|', style: TextStyle(color: Colors.grey.shade600)),
-        const SizedBox(width: 5),
+        if (!isMobile) ...[
+          const SizedBox(width: 5),
+          Text('|', style: TextStyle(color: Colors.grey.shade600)),
+          const SizedBox(width: 5),
+        ],
         IconButton(
           icon: Image.asset('assets/icons/View.png', width: 16, height: 16),
-          onPressed: () async {
-            // Navigate to ClientProfileScreen and wait for return
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ClientProfileScreen(clientId: userId),
-              ),
-            );
-            // Refresh the client list when returning from profile screen
-            _refreshClientList();
-          },
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ClientProfileScreen(clientId: client.id),
+            ),
+          ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildPaginationFooter() {
+class _PaginationFooter extends StatelessWidget {
+  final bool isMobile;
+  final Function(int) onPageChange;
+  
+  const _PaginationFooter({required this.isMobile, required this.onPageChange});
+
+  @override
+  Widget build(BuildContext context) {
     return BlocBuilder<ClientBloc, ClientState>(
       builder: (context, state) {
-        if (state is! ClientLoadSuccess) {
+        if (state is! ClientLoadSuccess || state.totalPages <= 1) {
           return const SizedBox.shrink();
         }
 
         final startItem = (state.currentPage - 1) * state.pageSize + 1;
-        final endItem =
-            (state.currentPage * state.pageSize) > state.totalClients
-                ? state.totalClients
-                : state.currentPage * state.pageSize;
+        final endItem = (state.currentPage * state.pageSize).clamp(0, state.totalClients);
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  state.totalClients > 0
-                      ? 'Affichage des données $startItem à $endItem sur ${state.totalClients} clients'
-                      : 'Aucun client trouvé',
-                  style: TextStyle(
-                    color: AppColors.parametereColor,
-                    fontSize: 12,
-                  ),
+          child: isMobile
+              ? Column(
+                  children: [
+                    Text(
+                      'Page ${state.currentPage} sur ${state.totalPages}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    _PaginationControls(state: state, onPageChange: onPageChange),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Affichage $startItem à $endItem sur ${state.totalClients} clients',
+                        style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
+                      ),
+                    ),
+                    _PaginationControls(state: state, onPageChange: onPageChange),
+                  ],
                 ),
-              ),
-              if (state.totalPages > 1) _buildPaginationControls(state),
-            ],
-          ),
         );
       },
     );
   }
+}
 
-  Widget _buildPaginationControls(ClientLoadSuccess state) {
+class _PaginationControls extends StatelessWidget {
+  final ClientLoadSuccess state;
+  final Function(int) onPageChange;
+  
+  const _PaginationControls({required this.state, required this.onPageChange});
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed:
-              state.currentPage > 1
-                  ? () => _changePage(state.currentPage - 1)
-                  : null,
+          onPressed: state.currentPage > 1 ? () => onPageChange(state.currentPage - 1) : null,
           icon: const Icon(Icons.chevron_left),
         ),
-        ..._buildPageNumbers(state),
+        ...List.generate(
+          (state.totalPages).clamp(0, 5),
+          (index) {
+            final pageNum = index + 1;
+            final isActive = pageNum == state.currentPage;
+            
+            return GestureDetector(
+              onTap: () => onPageChange(pageNum),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.mainColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                  border: !isActive ? Border.all(color: Colors.grey.shade300) : null,
+                ),
+                child: Text(
+                  '$pageNum',
+                  style: TextStyle(
+                    color: isActive ? Colors.white : AppColors.textColor,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
         IconButton(
-          onPressed:
-              state.currentPage < state.totalPages
-                  ? () => _changePage(state.currentPage + 1)
-                  : null,
+          onPressed: state.currentPage < state.totalPages ? () => onPageChange(state.currentPage + 1) : null,
           icon: const Icon(Icons.chevron_right),
         ),
       ],
-    );
-  }
-
-  List<Widget> _buildPageNumbers(ClientLoadSuccess state) {
-    List<Widget> pageNumbers = [];
-    int currentPage = state.currentPage;
-    int totalPages = state.totalPages;
-
-    if (totalPages > 0) {
-      pageNumbers.add(
-        _PageNumber(1, isActive: currentPage == 1, onTap: () => _changePage(1)),
-      );
-    }
-
-    if (currentPage > 3) {
-      pageNumbers.add(
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text('…', style: TextStyle(fontSize: 16)),
-        ),
-      );
-    }
-
-    int start = (currentPage - 1).clamp(2, totalPages);
-    int end = (currentPage + 1).clamp(2, totalPages);
-
-    for (int i = start; i <= end; i++) {
-      if (i != 1 && i != totalPages) {
-        pageNumbers.add(
-          _PageNumber(
-            i,
-            isActive: currentPage == i,
-            onTap: () => _changePage(i),
-          ),
-        );
-      }
-    }
-
-    if (currentPage < totalPages - 2) {
-      pageNumbers.add(
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text('…', style: TextStyle(fontSize: 16)),
-        ),
-      );
-    }
-
-    if (totalPages > 1) {
-      pageNumbers.add(
-        _PageNumber(
-          totalPages,
-          isActive: currentPage == totalPages,
-          onTap: () => _changePage(totalPages),
-        ),
-      );
-    }
-
-    return pageNumbers;
-  }
-}
-
-class _PageNumber extends StatelessWidget {
-  final int number;
-  final bool isActive;
-  final VoidCallback? onTap;
-
-  const _PageNumber(this.number, {this.isActive = false, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        width: 32,
-        height: 32,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.mainColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-          border: !isActive ? Border.all(color: Colors.grey.shade300) : null,
-        ),
-        child: Text(
-          '$number',
-          style: TextStyle(
-            color: isActive ? Colors.white : AppColors.textColor,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
     );
   }
 }

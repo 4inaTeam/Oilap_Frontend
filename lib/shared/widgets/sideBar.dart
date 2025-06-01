@@ -18,9 +18,17 @@ class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
 
   static const _items = [
-    {'label': 'Tableau de bord', 'icon': Icons.dashboard, 'route': '/dashboard'},
+    {
+      'label': 'Tableau de bord',
+      'icon': Icons.dashboard,
+      'route': '/dashboard',
+    },
     {'label': 'Employés', 'icon': Icons.group, 'route': '/employees'},
-    {'label': 'Comptables', 'icon': Icons.account_balance, 'route': '/comptables'},
+    {
+      'label': 'Comptables',
+      'icon': Icons.account_balance,
+      'route': '/comptables',
+    },
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
     {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
@@ -28,8 +36,8 @@ class _SidebarState extends State<Sidebar> {
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
-  static const String baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
-
+  static const String baseUrl =
+      kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
 
   @override
   void initState() {
@@ -40,12 +48,11 @@ class _SidebarState extends State<Sidebar> {
         setState(() => _selectedRoute = currentRoute);
       }
 
-  
       final authBloc = context.read<AuthBloc>();
       final currentState = authBloc.state;
 
-
-      if (currentState is AuthLoadSuccess && currentState is! AuthUserLoadSuccess) {
+      if (currentState is AuthLoadSuccess &&
+          currentState is! AuthUserLoadSuccess) {
         authBloc.add(AuthUserRequested());
       }
     });
@@ -61,21 +68,21 @@ class _SidebarState extends State<Sidebar> {
 
   String? _getFullImageUrl(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return null;
-    
+
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
-    
+
     if (imageUrl.startsWith('/')) {
       return '$baseUrl$imageUrl';
     }
-    
+
     return '$baseUrl/$imageUrl';
   }
 
   Widget _buildProfileAvatar(String? profileImageUrl) {
     final fullImageUrl = _getFullImageUrl(profileImageUrl);
-    
+
     if (fullImageUrl == null) {
       return const CircleAvatar(
         radius: 36,
@@ -94,7 +101,11 @@ class _SidebarState extends State<Sidebar> {
           height: 72,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return const Icon(Icons.person, size: 44, color: AppColors.mainColor);
+            return const Icon(
+              Icons.person,
+              size: 44,
+              color: AppColors.mainColor,
+            );
           },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
@@ -217,12 +228,13 @@ class _SidebarState extends State<Sidebar> {
                         child: Column(
                           children: [
                             ..._items.map(
-                                  (item) => _SidebarItem(
+                              (item) => _SidebarItem(
                                 label: item['label'] as String,
                                 icon: item['icon'] as IconData,
                                 route: item['route'] as String,
                                 selectedRoute: _selectedRoute,
-                                onTap: () => _onItemTap(item['route'] as String),
+                                onTap:
+                                    () => _onItemTap(item['route'] as String),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -297,9 +309,10 @@ class _SidebarItem extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color: isSelected
-            ? AppColors.accentGreen.withOpacity(0.2)
-            : Colors.transparent,
+        color:
+            isSelected
+                ? AppColors.accentGreen.withOpacity(0.2)
+                : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
@@ -348,9 +361,7 @@ class _LogoutButton extends StatelessWidget {
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accentGreen,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         icon: const ImageIcon(
           AssetImage("assets/icons/logout_account_exit_door.png"),

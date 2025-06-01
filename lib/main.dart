@@ -95,10 +95,10 @@ String _getBackendUrl() {
   if (kIsWeb) {
     return 'http://localhost:8000';
   } else if (Platform.isAndroid) {
-    return 'http://192.168.31.146:8000';
+    return 'http://10.0.2.2:8000';
   } else if (Platform.isIOS) {
     return 'http://localhost:8000';
   } else {
-    return 'http://192.168.31.146:8000';
+    return 'http://192.168.100.8:8000';
   }
 }

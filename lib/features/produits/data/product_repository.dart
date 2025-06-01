@@ -47,56 +47,46 @@ class ProductRepository {
 
       final resp = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
       );
 
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
-
         List<dynamic> data;
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
-          // Paginated response
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? data.length;
         } else {
-          // Non-paginated response - handle client-side pagination
-          final allData = responseData as List<dynamic>;
-          final allProducts = allData
-              .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-              .toList();
-
-          // Apply search filter if provided
-          if (searchQuery != null && searchQuery.isNotEmpty) {
-            allProducts.removeWhere((product) =>
-                !product.quality.toLowerCase().contains(searchQuery.toLowerCase()) &&
-                !product.origine.toLowerCase().contains(searchQuery.toLowerCase()) &&
-                !product.status.toLowerCase().contains(searchQuery.toLowerCase()) &&
-                !product.clientCin.toLowerCase().contains(searchQuery.toLowerCase()));
-          }
-
-          totalCount = allProducts.length;
-          final startIndex = (page - 1) * pageSize;
-
-          data = allProducts
-              .skip(startIndex)
-              .take(pageSize)
-              .map((product) => product.toJson())
-              .toList();
+          data = responseData as List<dynamic>;
+          totalCount = data.length;
         }
 
-        final products = data
-            .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-
-        final totalPages = (totalCount / pageSize).ceil();
+        final products =
+            data.map((item) {
+              final productJson = Map<String, dynamic>.from(item);
+              // Ensure client details are properly nested
+              if (productJson['client_details'] == null &&
+                  productJson['client'] != null) {
+                productJson['client_details'] = {
+                  'cin': productJson['client'],
+                  'username':
+                      productJson['client_name'] ??
+                      'Client ${productJson['client']}',
+                };
+              }
+              return Product.fromJson(productJson);
+            }).toList();
 
         return ProductPaginationResult(
           products: products,
           totalCount: totalCount,
           currentPage: page,
-          totalPages: totalPages,
+          totalPages: (totalCount / pageSize).ceil(),
         );
       }
       throw Exception('Failed with status ${resp.statusCode}');
@@ -238,7 +228,7 @@ class ProductRepository {
       },
       body: jsonEncode({'status': newStatus}),
     );
-    
+
     if (response.statusCode != 200) {
       throw Exception('Status update failed: ${response.body}');
     }
