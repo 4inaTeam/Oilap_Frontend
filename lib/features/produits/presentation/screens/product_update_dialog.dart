@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/models/product_model.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
 
 class ProductUpdateDialog extends StatefulWidget {
-  final dynamic product;
-  
-  const ProductUpdateDialog({Key? key, required this.product}) : super(key: key);
+  final Product product;
+
+  const ProductUpdateDialog({Key? key, required this.product})
+    : super(key: key);
 
   @override
   State<ProductUpdateDialog> createState() => _ProductUpdateDialogState();
@@ -16,198 +18,311 @@ class ProductUpdateDialog extends StatefulWidget {
 
 class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameCtr = TextEditingController();
-  final _emailCtr = TextEditingController();
-  final _cinCtr = TextEditingController();
-  final _phoneCtr = TextEditingController();
-  final _passwordCtr = TextEditingController();
+  final _qualityCtr = TextEditingController();
+  final _origineCtr = TextEditingController();
+  final _priceCtr = TextEditingController();
+  final _quantityCtr = TextEditingController();
+  final _clientCinCtr = TextEditingController();
   bool _submitted = false;
+  String? _selectedStatus; // Add this field
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
-    // *** UPDATED: Populate fields with existing product data ***
     _populateFields();
   }
 
-  // *** NEW: Method to populate form fields with existing data ***
   void _populateFields() {
-    if (widget.product != null) {
-      _usernameCtr.text = widget.product.name ?? '';
-      _emailCtr.text = widget.product.email ?? '';
-      _cinCtr.text = widget.product.cin ?? '';
-      _phoneCtr.text = widget.product.tel ?? '';
-      // Note: Password field is left empty for security reasons
-    }
+    _qualityCtr.text = widget.product.quality ?? '';
+    _origineCtr.text = widget.product.origine ?? '';
+    _priceCtr.text = widget.product.price?.toString() ?? '';
+    _quantityCtr.text = widget.product.quantity?.toString() ?? '';
+    _clientCinCtr.text = widget.product.client;
+    _selectedStatus =
+        widget.product.status == 'pending'
+            ? 'doing'
+            : widget.product.status; // Initialize with valid value
   }
 
   @override
   void dispose() {
-    _usernameCtr.dispose();
-    _emailCtr.dispose();
-    _cinCtr.dispose();
-    _phoneCtr.dispose();
-    _passwordCtr.dispose();
+    _isDisposed = true;
+    _qualityCtr.dispose();
+    _origineCtr.dispose();
+    _priceCtr.dispose();
+    _quantityCtr.dispose();
+    _clientCinCtr.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final dialogWidth =
+        screenSize.width < 600
+            ? screenSize.width * 0.9
+            : screenSize.width * 0.8;
+    final isMobile = screenSize.width < 600;
+
     return BlocListener<ProductBloc, ProductState>(
+      listenWhen: (_, __) => !_isDisposed,
       listener: (ctx, state) {
-        // *** UPDATED: Listen for update success instead of add success ***
-        if (state is ProductUpdateSuccess && mounted) {
+        if (!mounted || _isDisposed) return;
+
+        if (state is ProductUpdateSuccess) {
           Navigator.of(context).pop();
+
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Employé mis à jour avec succès')),
+            const SnackBar(
+              content: Text('Le produit a été mis à jour avec succès'),
+            ),
           );
+
+          // Finally reload products
+          Future.microtask(() {
+            if (!_isDisposed) {
+              context.read<ProductBloc>().add(
+                LoadProducts(page: 1, pageSize: 6),
+              );
+            }
+          });
         }
 
         if (state is ProductOperationFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${state.message}'))
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Erreur: ${state.message}')));
         }
       },
-      child: AlertDialog(
-        title: const Text('Mettre à jour un employé'),
-        content: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.8,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 600;
-                  return isWide
-                      ? IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _buildColumn1()),
-                              const SizedBox(width: 16),
-                              Expanded(child: _buildColumn2()),
-                            ],
-                          ),
-                        )
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildColumn1(),
-                            const SizedBox(height: 12),
-                            _buildColumn2(),
-                          ],
-                        );
-                },
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          width: dialogWidth,
+          constraints: BoxConstraints(
+            maxWidth: 500,
+            maxHeight: screenSize.height * 0.8,
+          ),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Mettre à jour le produit',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-            ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildInputField(
+                          label: 'Qualité',
+                          controller: _qualityCtr,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Origine',
+                          controller: _origineCtr,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Prix (DT)',
+                          controller: _priceCtr,
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Quantité',
+                          controller: _quantityCtr,
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'CIN Client',
+                          controller: _clientCinCtr,
+                        ),
+                        const SizedBox(height: 12),
+                        // Add Status Dropdown
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Status',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: _selectedStatus,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                              ),
+                              validator:
+                                  (value) =>
+                                      value == null ? 'Champ requis' : null,
+                              items:
+                                  ['doing', 'done'].map((status) {
+                                    return DropdownMenuItem(
+                                      value: status,
+                                      enabled: _canChangeStatus(status),
+                                      child: Text(status.toUpperCase()),
+                                    );
+                                  }).toList(),
+                              onChanged: (String? newValue) {
+                                if (newValue != null &&
+                                    _canChangeStatus(newValue)) {
+                                  setState(() => _selectedStatus = newValue);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Annuler'),
+                  ),
+                  const SizedBox(width: 8),
+                  BlocBuilder<ProductBloc, ProductState>(
+                    builder: (ctx, state) {
+                      final loading = state is ProductLoading;
+                      return ElevatedButton(
+                        onPressed: loading ? null : _handleUpdate,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mainColor,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 16 : 24,
+                            vertical: isMobile ? 12 : 16,
+                          ),
+                        ),
+                        child:
+                            loading
+                                ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : const Text('Mettre à jour'),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _submitted ? null : () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: AppColors.accentGreen,
-            ),
-            child: const Text('Annuler'),
-          ),
-          BlocBuilder<ProductBloc, ProductState>(
-            builder: (ctx, state) {
-              final loading = state is ProductLoading;
-              return ElevatedButton(
-                onPressed: loading
-                    ? null
-                    : () {
-                        if (!_formKey.currentState!.validate()) return;
-                        setState(() => _submitted = true);
-                        
-                        // *** UPDATED: Dispatch Updateproduct event instead of Addproduct ***
-                        ctx.read<ProductBloc>().add(
-                              UpdateProduct(
-                                id: widget.product.id,
-                                name: _usernameCtr.text,
-                                description: _emailCtr.text,
-                                category: _cinCtr.text,
-                                sku: _phoneCtr.text,
-                                barcode: _passwordCtr.text,   
-                                price: 0.0, 
-                                quantity: 0, 
-                               
-                              ),
-                            );
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
-                ),
-                child: loading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Mettre à jour',
-                        style: TextStyle(color: Colors.white),
-                      ),
-              );
-            },
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildColumn1() => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextFormField(
-            controller: _usernameCtr,
-            decoration: const InputDecoration(labelText: 'Nom d\'utilisateur'),
-            validator: (v) => v == null || v.isEmpty ? 'Requis' : null,
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textColor,
           ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _cinCtr,
-            decoration: const InputDecoration(labelText: 'CIN'),
-            keyboardType: TextInputType.number,
-            maxLength: 8,
-            validator: (v) => v == null || v.length != 8 ? '8 chiffres requis' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _passwordCtr,
-            decoration: const InputDecoration(
-              labelText: 'Nouveau mot de passe (optionnel)',
-              hintText: 'Laissez vide pour garder l\'ancien'
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
             ),
-            obscureText: true,
-            // *** UPDATED: Password is optional for updates ***
-            validator: (v) => v != null && v.isNotEmpty && v.length < 6 ? 'Au moins 6 caractères' : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
           ),
-        ],
-      );
+          validator:
+              (v) => v == null || v.isEmpty ? 'Ce champ est requis' : null,
+        ),
+      ],
+    );
+  }
 
-  Widget _buildColumn2() => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextFormField(
-            controller: _emailCtr,
-            decoration: const InputDecoration(labelText: 'Email'),
-            keyboardType: TextInputType.emailAddress,
-            validator: (v) => v == null || !v.contains('@') ? 'Email invalide' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _phoneCtr,
-            decoration: const InputDecoration(labelText: 'Téléphone'),
-            keyboardType: TextInputType.phone,
-            validator: (v) => v == null || v.length != 8 ? '8 chiffres requis' : null,
-          ),
-          const SizedBox(height: 12),
-        ],
+  void _handleUpdate() {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitted = true);
+
+    final price = double.tryParse(_priceCtr.text.trim());
+    final quantityDouble = double.tryParse(_quantityCtr.text.trim());
+    final quantity = quantityDouble?.toInt();
+
+    if (price == null || quantity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Prix et quantité doivent être des nombres valides'),
+        ),
       );
+      return;
+    }
+
+    context.read<ProductBloc>().add(
+      UpdateProduct(
+        id: widget.product.id,
+        quality: _qualityCtr.text.trim(),
+        origine: _origineCtr.text.trim(),
+        price: price,
+        quantity: quantity,
+        clientCin: _clientCinCtr.text.trim(),
+        status: _selectedStatus,
+      ),
+    );
+  }
+
+  bool _canChangeStatus(String status) {
+    if (widget.product.status == 'done') return false;
+    if (widget.product.status == 'doing' && status != 'done') return false;
+    return true;
+  }
 }

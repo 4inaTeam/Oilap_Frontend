@@ -26,7 +26,7 @@ class ClientRepository {
 
   Future<ClientPaginationResult> fetchClients({
     int page = 1,
-    int pageSize = 6,
+    int pageSize = 6, 
     String? searchQuery,
   }) async {
     try {
@@ -35,7 +35,7 @@ class ClientRepository {
 
       final queryParams = <String, String>{
         'page': page.toString(),
-        'page_size': pageSize.toString(),
+        'page_size': '6', 
       };
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -67,9 +67,8 @@ class ClientRepository {
                   .map((e) {
                     final userJson = Map<String, dynamic>.from(e);
                     userJson['username'] = e['name'];
-                    return userJson;
+                    return User.fromJson(userJson);
                   })
-                  .map((e) => User.fromJson(e))
                   .where((user) => user.role == 'CLIENT')
                   .toList();
 
@@ -81,13 +80,12 @@ class ClientRepository {
           }
 
           totalCount = allClients.length;
-
-          final startIndex = (page - 1) * pageSize;
+          final startIndex = (page - 1) * 6; 
 
           data =
               allClients
                   .skip(startIndex)
-                  .take(pageSize)
+                  .take(6)
                   .map(
                     (user) => {
                       'id': user.id,
@@ -114,7 +112,7 @@ class ClientRepository {
                 .where((user) => user.role == 'CLIENT')
                 .toList();
 
-        final totalPages = (totalCount / pageSize).ceil();
+        final totalPages = (totalCount / 6).ceil(); // Use fixed page size
 
         return ClientPaginationResult(
           clients: clients,

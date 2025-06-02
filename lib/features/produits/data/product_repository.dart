@@ -58,18 +58,25 @@ class ProductRepository {
         List<dynamic> data;
         int totalCount;
 
+        // Handle paginated response
         if (responseData is Map && responseData.containsKey('results')) {
           data = responseData['results'] as List<dynamic>;
-          totalCount = responseData['count'] as int? ?? data.length;
+          totalCount = responseData['count'] as int? ?? 0;
         } else {
-          data = responseData as List<dynamic>;
-          totalCount = data.length;
+          // Handle non-paginated response with manual pagination
+          final allData = responseData as List<dynamic>;
+          totalCount = allData.length;
+
+          // Calculate start and end indices for current page
+          final startIndex = (page - 1) * pageSize;
+
+          // Get slice of data for current page
+          data = allData.skip(startIndex).take(pageSize).toList();
         }
 
         final products =
             data.map((item) {
               final productJson = Map<String, dynamic>.from(item);
-              // Ensure client details are properly nested
               if (productJson['client_details'] == null &&
                   productJson['client'] != null) {
                 productJson['client_details'] = {
@@ -121,24 +128,21 @@ class ProductRepository {
     required String quality,
     required String origine,
     required double price,
-    required String status,
+    required double quantity,
     required String clientCin,
-    int? clientId,
+    String? status,
   }) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
 
-    final Map<String, dynamic> requestBody = {
+    final requestBody = {
       'quality': quality,
       'origine': origine,
       'price': price,
-      'status': status,
-      'client_Cin': clientCin,
+      'quantity': quantity,
+      'client': clientCin,
+      if (status != null) 'status': status,
     };
-
-    if (clientId != null) {
-      requestBody['client_id'] = clientId;
-    }
 
     final resp = await http.post(
       Uri.parse('$baseUrl/api/products/create/'),
@@ -156,27 +160,25 @@ class ProductRepository {
 
   Future<void> updateProduct({
     required int id,
-    required String quality,
-    required String origine,
-    required double price,
-    required String status,
-    required String clientCin,
-    int? clientId,
+    String? quality,
+    String? origine,
+    double? price,
+    double? quantity,
+    String? clientCin,
+    String? status,
   }) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
 
-    final Map<String, dynamic> requestBody = {
-      'quality': quality,
-      'origine': origine,
-      'price': price,
-      'status': status,
-      'client_Cin': clientCin,
-    };
+    // Build request body with only provided fields
+    final Map<String, dynamic> body = {};
 
-    if (clientId != null) {
-      requestBody['client_id'] = clientId;
-    }
+    if (quality != null) body['quality'] = quality;
+    if (origine != null) body['origine'] = origine;
+    if (price != null) body['price'] = price;
+    if (quantity != null) body['quantity'] = quantity;
+    if (clientCin != null) body['client'] = clientCin;
+    if (status != null) body['status'] = status;
 
     final resp = await http.patch(
       Uri.parse('$baseUrl/api/products/$id/update/'),
@@ -184,35 +186,12 @@ class ProductRepository {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode(requestBody),
+      body: jsonEncode(body),
     );
 
     if (resp.statusCode != 200) {
-      final responseBody = resp.body;
-      String errorMessage = 'Update failed';
-
-      try {
-        final errorData = json.decode(responseBody);
-        if (errorData is Map<String, dynamic>) {
-          // Extract specific field errors
-          final errors = <String>[];
-          errorData.forEach((key, value) {
-            if (value is List) {
-              errors.addAll(value.cast<String>());
-            } else if (value is String) {
-              errors.add(value);
-            }
-          });
-          if (errors.isNotEmpty) {
-            errorMessage = errors.join(', ');
-          }
-        }
-      } catch (e) {
-        // If we can't parse the error, use the raw response
-        errorMessage = 'Update failed: $responseBody';
-      }
-
-      throw Exception(errorMessage);
+      final errorData = json.decode(resp.body);
+      throw Exception(errorData['detail'] ?? errorData.toString());
     }
   }
 

@@ -25,7 +25,7 @@ class EmployeeRepository {
 
   Future<EmployeePaginationResult> fetchEmployees({
     int page = 1,
-    int pageSize = 6,
+    int pageSize = 6, // Keep default but ignore passed value
     String? searchQuery,
   }) async {
     try {
@@ -34,12 +34,8 @@ class EmployeeRepository {
 
       final queryParams = <String, String>{
         'page': page.toString(),
-        'page_size': pageSize.toString(),
+        'page_size': '6', // Force 6 items per page
       };
-
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['cin'] = searchQuery;
-      }
 
       final uri = Uri.parse(
         '$baseUrl/api/users/get/',
@@ -53,29 +49,24 @@ class EmployeeRepository {
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
 
-        
         List<dynamic> data;
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
-          
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? data.length;
         } else {
-          
           final allData = responseData as List<dynamic>;
           final allEmployees =
               allData
                   .map((e) {
                     final userJson = Map<String, dynamic>.from(e);
                     userJson['username'] = e['name'];
-                    return userJson;
+                    return User.fromJson(userJson);
                   })
-                  .map((e) => User.fromJson(e))
                   .where((user) => user.role == 'EMPLOYEE')
                   .toList();
 
-          
           if (searchQuery != null && searchQuery.isNotEmpty) {
             allEmployees.removeWhere(
               (user) =>
@@ -84,14 +75,12 @@ class EmployeeRepository {
           }
 
           totalCount = allEmployees.length;
-
-          final startIndex = (page - 1) * pageSize;
-          
+          final startIndex = (page - 1) * 6; // Use fixed page size
 
           data =
               allEmployees
                   .skip(startIndex)
-                  .take(pageSize)
+                  .take(6)
                   .map(
                     (user) => {
                       'id': user.id,
@@ -118,7 +107,7 @@ class EmployeeRepository {
                 .where((user) => user.role == 'EMPLOYEE')
                 .toList();
 
-        final totalPages = (totalCount / pageSize).ceil();
+        final totalPages = (totalCount / 6).ceil(); // Use fixed page size
 
         return EmployeePaginationResult(
           employees: employees,

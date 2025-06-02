@@ -1,8 +1,10 @@
 import 'package:equatable/equatable.dart';
 
 abstract class ProductEvent extends Equatable {
+  const ProductEvent();
+
   @override
-  List get props => [];
+  List<Object?> get props => [];
 }
 
 class LoadProducts extends ProductEvent {
@@ -10,14 +12,10 @@ class LoadProducts extends ProductEvent {
   final int pageSize;
   final String? searchQuery;
 
-  LoadProducts({
-    this.page = 1,
-    this.pageSize = 6,
-    this.searchQuery,
-  });
+  const LoadProducts({this.page = 1, this.pageSize = 6, this.searchQuery});
 
   @override
-  List get props => [page, pageSize, searchQuery];
+  List<Object?> get props => [page, pageSize, searchQuery];
 }
 
 class SearchProducts extends ProductEvent {
@@ -25,11 +23,7 @@ class SearchProducts extends ProductEvent {
   final int page;
   final int pageSize;
 
-  SearchProducts({
-    required this.query,
-    this.page = 1,
-    this.pageSize = 6,
-  });
+  SearchProducts({required this.query, this.page = 1, this.pageSize = 6});
 
   @override
   List get props => [query, page, pageSize];
@@ -61,32 +55,46 @@ class AddProduct extends ProductEvent {
   });
 
   @override
-  List get props => [name, description, category, sku, barcode, price, quantity];
+  List get props => [
+    name,
+    description,
+    category,
+    sku,
+    barcode,
+    price,
+    quantity,
+  ];
 }
 
 class UpdateProduct extends ProductEvent {
   final int id;
-  final String name;
-  final String description;
-  final String category;
-  final String sku;
-  final String barcode;
-  final double price;
-  final int quantity;
+  final String? quality;
+  final String? origine;
+  final double? price;
+  final int? quantity;
+  final String? clientCin;
+  final String? status;
 
-  UpdateProduct({
+  const UpdateProduct({
     required this.id,
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.sku,
-    required this.barcode,
-    required this.price,
-    required this.quantity,
+    this.quality,
+    this.origine,
+    this.price,
+    this.quantity,
+    this.clientCin,
+    this.status,
   });
 
   @override
-  List get props => [id, name, description, category, sku, barcode, price, quantity];
+  List<Object?> get props => [
+    id,
+    quality,
+    origine,
+    price,
+    quantity,
+    clientCin,
+    status,
+  ];
 }
 
 class UpdateProductStatus extends ProductEvent {
@@ -106,4 +114,23 @@ class DeleteProduct extends ProductEvent {
 
   @override
   List get props => [productId];
+}
+
+class CreateProduct extends ProductEvent {
+  final String quality;
+  final String origine;
+  final double price;
+  final double quantity;
+  final String clientCin;
+
+  const CreateProduct({
+    required this.quality,
+    required this.origine,
+    required this.price,
+    required this.quantity,
+    required this.clientCin,
+  });
+
+  @override
+  List<Object> get props => [quality, origine, price, quantity, clientCin];
 }

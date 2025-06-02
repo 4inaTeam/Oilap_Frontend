@@ -16,14 +16,16 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           searchQuery: event.searchQuery,
         );
 
-        emit(ProductLoadSuccess(
-          products: result.products,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalProducts: result.totalCount,
-          pageSize: event.pageSize,
-          currentSearchQuery: event.searchQuery,
-        ));
+        emit(
+          ProductLoadSuccess(
+            products: result.products,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalProducts: result.totalCount,
+            pageSize: event.pageSize,
+            currentSearchQuery: event.searchQuery,
+          ),
+        );
       } catch (err) {
         emit(ProductOperationFailure(err.toString()));
       }
@@ -38,14 +40,16 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           searchQuery: event.query,
         );
 
-        emit(ProductLoadSuccess(
-          products: result.products,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalProducts: result.totalCount,
-          pageSize: event.pageSize,
-          currentSearchQuery: event.query,
-        ));
+        emit(
+          ProductLoadSuccess(
+            products: result.products,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalProducts: result.totalCount,
+            pageSize: event.pageSize,
+            currentSearchQuery: event.query,
+          ),
+        );
       } catch (err) {
         emit(ProductOperationFailure(err.toString()));
       }
@@ -63,14 +67,16 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
             searchQuery: event.currentSearchQuery,
           );
 
-          emit(ProductLoadSuccess(
-            products: result.products,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalProducts: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: event.currentSearchQuery,
-          ));
+          emit(
+            ProductLoadSuccess(
+              products: result.products,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalProducts: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: event.currentSearchQuery,
+            ),
+          );
         } catch (err) {
           emit(ProductOperationFailure(err.toString()));
         }
@@ -81,24 +87,54 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       emit(ProductLoading());
       try {
         await repo.createProduct(
-          quality: event.name, // Using name as quality for now
-          origine: event.description, // Using description as origine for now
+          quality: event.name, 
+          quantity: event.quantity.toDouble(),
+          origine: event.description,
           price: event.price,
-          status: 'pending', // Default status
-          clientCin: event.sku, // Using sku as clientCin for now
+          status: 'pending',
+          clientCin: event.sku,
         );
         emit(ProductAddSuccess());
 
         final result = await repo.fetchProducts(page: 1, pageSize: 8);
-        emit(ProductLoadSuccess(
-          products: result.products,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalProducts: result.totalCount,
-          pageSize: 8,
-        ));
+        emit(
+          ProductLoadSuccess(
+            products: result.products,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalProducts: result.totalCount,
+            pageSize: 8,
+          ),
+        );
       } catch (err) {
         emit(ProductOperationFailure(err.toString()));
+      }
+    });
+
+    on<CreateProduct>((event, emit) async {
+      emit(ProductLoading());
+      try {
+        await repo.createProduct(
+          quality: event.quality,
+          origine: event.origine,
+          price: event.price,
+          quantity: event.quantity,
+          clientCin: event.clientCin,
+          status: 'pending',
+        );
+
+        final result = await repo.fetchProducts(page: 1, pageSize: 6);
+        emit(
+          ProductLoadSuccess(
+            products: result.products,
+            currentPage: 1,
+            totalPages: result.totalPages,
+            totalProducts: result.totalCount,
+            pageSize: 6,
+          ),
+        );
+      } catch (e) {
+        emit(ProductOperationFailure(e.toString()));
       }
     });
 
@@ -107,40 +143,35 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       try {
         await repo.updateProduct(
           id: event.id,
-          quality: event.name, // Using name as quality
-          origine: event.description, // Using description as origine
+          quality: event.quality,
+          origine: event.origine,
           price: event.price,
-          status: 'pending', // You might want to make this configurable
-          clientCin: event.sku, // Using sku as clientCin
+          quantity: event.quantity?.toDouble(),
+          clientCin: event.clientCin,
+          status: event.status,
         );
-        
+
         emit(ProductUpdateSuccess());
 
-        final currentState = state;
-        int currentPage = 1;
-        int pageSize = 8;
-        String? searchQuery;
+        if (state is ProductLoadSuccess) {
+          final currentState = state as ProductLoadSuccess;
+          final result = await repo.fetchProducts(
+            page: currentState.currentPage,
+            pageSize: currentState.pageSize,
+            searchQuery: currentState.currentSearchQuery,
+          );
 
-        if (currentState is ProductLoadSuccess) {
-          currentPage = currentState.currentPage;
-          pageSize = currentState.pageSize;
-          searchQuery = currentState.currentSearchQuery;
+          emit(
+            ProductLoadSuccess(
+              products: result.products,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalProducts: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
         }
-
-        final result = await repo.fetchProducts(
-          page: currentPage,
-          pageSize: pageSize,
-          searchQuery: searchQuery,
-        );
-        
-        emit(ProductLoadSuccess(
-          products: result.products,
-          currentPage: result.currentPage,
-          totalPages: result.totalPages,
-          totalProducts: result.totalCount,
-          pageSize: pageSize,
-          currentSearchQuery: searchQuery,
-        ));
       } catch (err) {
         emit(ProductOperationFailure(err.toString()));
       }
@@ -159,14 +190,16 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
             searchQuery: currentState.currentSearchQuery,
           );
 
-          emit(ProductLoadSuccess(
-            products: result.products,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalProducts: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: currentState.currentSearchQuery,
-          ));
+          emit(
+            ProductLoadSuccess(
+              products: result.products,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalProducts: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
         } catch (e) {
           emit(ProductOperationFailure(e.toString()));
         }
@@ -181,7 +214,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           await repo.deleteProduct(event.productId);
 
           int targetPage = currentState.currentPage;
-          if (currentState.products.length == 1 && currentState.currentPage > 1) {
+          if (currentState.products.length == 1 &&
+              currentState.currentPage > 1) {
             targetPage = currentState.currentPage - 1;
           }
 
@@ -191,14 +225,16 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
             searchQuery: currentState.currentSearchQuery,
           );
 
-          emit(ProductLoadSuccess(
-            products: result.products,
-            currentPage: result.currentPage,
-            totalPages: result.totalPages,
-            totalProducts: result.totalCount,
-            pageSize: currentState.pageSize,
-            currentSearchQuery: currentState.currentSearchQuery,
-          ));
+          emit(
+            ProductLoadSuccess(
+              products: result.products,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalProducts: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
         } catch (err) {
           emit(ProductOperationFailure(err.toString()));
         }

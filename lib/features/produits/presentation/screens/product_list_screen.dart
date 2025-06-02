@@ -432,6 +432,11 @@ class _ProductTable extends StatelessWidget {
                 .map((product) {
                   if (product == null) return null;
 
+                  String ownerDisplay =
+                      product.clientDetails?['username']?.toString() ??
+                      product.client ??
+                      '-';
+
                   return DataRow(
                     cells: [
                       DataCell(Text(product.quality?.toString() ?? '')),
@@ -443,7 +448,7 @@ class _ProductTable extends StatelessWidget {
                         ),
                       ),
                       DataCell(Text(product.origine?.toString() ?? '')),
-                      DataCell(Text(product.ownerName?.toString() ?? '')),
+                      DataCell(Text(ownerDisplay)),
                       DataCell(
                         Text(_formatDate(product.createdAt?.toString())),
                       ),
@@ -474,6 +479,9 @@ class _ActionButtons extends StatelessWidget {
   const _ActionButtons({required this.product, this.isMobile = false});
 
   void _confirmDeletion(BuildContext context) {
+    // Don't show dialog if delete is disabled
+    if (product.status == 'pending') return;
+
     showDialog(
       context: context,
       builder:
@@ -494,6 +502,21 @@ class _ActionButtons extends StatelessWidget {
                 },
                 child: const Text('Delete'),
               ),
+
+              IconButton(
+                icon: Image.asset(
+                  'assets/icons/View.png',
+                  width: 16,
+                  height: 16,
+                ),
+                onPressed:
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SizedBox.shrink(),
+                      ),
+                    ),
+              ),
             ],
           ),
     );
@@ -502,14 +525,23 @@ class _ActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconSize = isMobile ? 20.0 : 24.0;
+    final isStatusDone = product.status == 'done';
+    final isStatusDoing = product.status == 'doing';
+    final isPending = product.status == 'pending';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Edit button
         IconButton(
-          icon: Icon(Icons.edit, color: Colors.green, size: iconSize),
-          onPressed:
-              () => showDialog(
+          icon: Icon(
+            Icons.edit,
+            color: isStatusDone ? Colors.grey : Colors.green,
+            size: iconSize,
+          ),
+          onPressed: isStatusDone 
+            ? null 
+            : () => showDialog(
                 context: context,
                 builder: (context) => ProductUpdateDialog(product: product),
               ),
@@ -519,9 +551,32 @@ class _ActionButtons extends StatelessWidget {
           Text('|', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(width: 5),
         ],
+        // Delete button
         IconButton(
-          icon: Icon(Icons.delete, color: AppColors.delete, size: iconSize),
-          onPressed: () => _confirmDeletion(context),
+          icon: Icon(
+            Icons.delete,
+            color: (isStatusDone || isStatusDoing) ? Colors.grey : AppColors.delete,
+            size: iconSize,
+          ),
+          onPressed: (isStatusDone || isStatusDoing) ? null : () => _confirmDeletion(context),
+        ),
+        if (!isMobile) ...[
+          const SizedBox(width: 5),
+          Text('|', style: TextStyle(color: Colors.grey.shade600)),
+          const SizedBox(width: 5),
+        ],
+        // View button
+        IconButton(
+          icon: Image.asset(
+            'assets/icons/View.png',
+            width: 16,
+            height: 16,
+            color: null, // Always enabled
+          ),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SizedBox.shrink()),
+          ),
         ),
       ],
     );

@@ -57,41 +57,6 @@ class Product extends Equatable {
     );
   }
 
-  // Helper methods for safe parsing
-  static int? _parseIntSafely(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value);
-    if (value is double) return value.toInt();
-    return null;
-  }
-
-  static String _parseStringSafely(dynamic value) {
-    if (value == null) return '';
-    return value.toString().trim();
-  }
-
-  static double _parseDoubleSafely(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
-  }
-
-  static DateTime? _parseDateTimeSafely(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is String && value.isNotEmpty) {
-      try {
-        return DateTime.parse(value);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  }
-
   Map<String, dynamic> toJson() => {
     'id': id,
     'quality': quality,
