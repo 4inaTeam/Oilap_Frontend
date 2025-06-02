@@ -87,7 +87,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       emit(ProductLoading());
       try {
         await repo.createProduct(
-          quality: event.name, 
+          quality: event.name,
           quantity: event.quantity.toDouble(),
           origine: event.description,
           price: event.price,

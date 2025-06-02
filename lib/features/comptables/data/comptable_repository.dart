@@ -241,7 +241,7 @@ class ComptableRepository {
     }
 
     final resp = await http.patch(
-      Uri.parse('$baseUrl/api/users/employees-accountants/$id/update/'),
+      Uri.parse('$baseUrl/api/users/update/$id/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

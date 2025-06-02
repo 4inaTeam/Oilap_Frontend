@@ -32,13 +32,22 @@ class ProductRepository {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      final queryParams = <String, String>{
+      // Build query parameters
+      final queryParams = {
         'page': page.toString(),
         'page_size': pageSize.toString(),
       };
 
+      // Add search query if present
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['search'] = searchQuery;
+        // Check if query matches a status
+        final statusQuery = searchQuery.toLowerCase();
+        if (['pending', 'doing', 'done'].contains(statusQuery)) {
+          queryParams['status'] = statusQuery;
+        } else {
+          // If not a status, search by owner
+          queryParams['client'] = searchQuery;
+        }
       }
 
       final uri = Uri.parse(

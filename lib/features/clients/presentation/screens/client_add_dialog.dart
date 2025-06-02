@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/dialogs/success_dialog.dart';
 import '../bloc/client_bloc.dart';
 import '../bloc/client_event.dart';
 import '../bloc/client_state.dart';
 
 class ClientAddDialog extends StatefulWidget {
-  const ClientAddDialog({Key? key}) : super(key: key);
+  final String? initialCin;
+
+  const ClientAddDialog({Key? key, this.initialCin}) : super(key: key);
 
   @override
   State<ClientAddDialog> createState() => _ClientAddDialogState();
@@ -22,6 +25,14 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
   final _confirmPasswordCtr = TextEditingController();
   final String _role = 'CLIENT';
   bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCin != null) {
+      _cinCtr.text = widget.initialCin!;
+    }
+  }
 
   @override
   void dispose() {
@@ -47,8 +58,10 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
       listener: (ctx, state) {
         if (state is ClientAddSuccess && mounted) {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Client ajouté avec succès')),
+          showSuccessDialog(
+            context,
+            title: 'Succès',
+            message: 'Le client ${_usernameCtr.text} a été ajouté avec succès',
           );
         }
 

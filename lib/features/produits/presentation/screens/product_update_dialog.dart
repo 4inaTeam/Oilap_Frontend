@@ -23,8 +23,7 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
   final _priceCtr = TextEditingController();
   final _quantityCtr = TextEditingController();
   final _clientCinCtr = TextEditingController();
-  bool _submitted = false;
-  String? _selectedStatus; // Add this field
+  String? _selectedStatus;
   bool _isDisposed = false;
 
   @override
@@ -292,7 +291,6 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
 
   void _handleUpdate() {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _submitted = true);
 
     final price = double.tryParse(_priceCtr.text.trim());
     final quantityDouble = double.tryParse(_quantityCtr.text.trim());

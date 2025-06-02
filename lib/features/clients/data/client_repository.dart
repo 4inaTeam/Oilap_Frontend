@@ -26,7 +26,7 @@ class ClientRepository {
 
   Future<ClientPaginationResult> fetchClients({
     int page = 1,
-    int pageSize = 6, 
+    int pageSize = 6,
     String? searchQuery,
   }) async {
     try {
@@ -35,7 +35,7 @@ class ClientRepository {
 
       final queryParams = <String, String>{
         'page': page.toString(),
-        'page_size': '6', 
+        'page_size': '6',
       };
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -80,7 +80,7 @@ class ClientRepository {
           }
 
           totalCount = allClients.length;
-          final startIndex = (page - 1) * 6; 
+          final startIndex = (page - 1) * 6;
 
           data =
               allClients
@@ -364,5 +364,25 @@ class ClientRepository {
         })
         .where((product) => product.client == clientCin)
         .toList();
+  }
+
+  Future<dynamic> getClientByCin(String cin) async {
+    final token = await authRepo.getAccessToken();
+    if (token == null) throw Exception('Not authenticated');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/users/search/users/$cin/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+
+    throw Exception('Failed to check client');
   }
 }

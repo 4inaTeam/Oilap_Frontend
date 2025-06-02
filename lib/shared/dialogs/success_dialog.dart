@@ -133,7 +133,6 @@ Future<void> showGenericSuccess(BuildContext context, String message) {
   return showSuccessDialog(context, title: 'Succès', message: message);
 }
 
-// Product specific success messages
 Future<void> showProductCreatedSuccess(BuildContext context) {
   return showSuccessDialog(
     context,

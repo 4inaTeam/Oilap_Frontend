@@ -6,6 +6,8 @@ import '../bloc/product_state.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/dialogs/error_dialog.dart';
 import '../../../../shared/dialogs/success_dialog.dart';
+import 'package:oilab_frontend/features/clients/presentation/screens/client_add_dialog.dart';
+import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 
 class ProductAddDialog extends StatefulWidget {
   const ProductAddDialog({Key? key}) : super(key: key);
@@ -21,6 +23,9 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   final _priceController = TextEditingController();
   final _clientCinController = TextEditingController();
 
+  bool _isCheckingClient = false;
+  bool _clientExists = false;
+
   @override
   void dispose() {
     _quantityController.dispose();
@@ -29,6 +34,51 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     _priceController.dispose();
     _clientCinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkClientExists(String cin) async {
+    if (cin.isEmpty) return;
+
+    setState(() => _isCheckingClient = true);
+
+    try {
+      final exists = await context.read<ClientBloc>().checkClientExists(cin);
+      setState(() => _clientExists = exists);
+
+      if (!exists) {
+        final shouldCreateClient = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Client non trouvé'),
+                content: Text(
+                  'Aucun client trouvé avec le CIN: $cin. Voulez-vous créer un nouveau client?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Non'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Oui'),
+                  ),
+                ],
+              ),
+        );
+
+        if (shouldCreateClient == true) {
+          await showDialog(
+            context: context,
+            builder: (context) => ClientAddDialog(initialCin: cin),
+          );
+          _checkClientExists(cin);
+        }
+      }
+    } finally {
+      setState(() => _isCheckingClient = false);
+    }
   }
 
   @override
@@ -91,6 +141,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   label: 'CIN Client',
                   controller: _clientCinController,
                   keyboardType: TextInputType.number,
+                  onBlur: _checkClientExists, // Add this line
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -98,7 +149,17 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Annuler'),
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppColors.accentGreen,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Text(
+                        'Annuler',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -110,7 +171,10 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                           vertical: 8,
                         ),
                       ),
-                      child: const Text('Ajouter'),
+                      child: const Text(
+                        'Ajouter',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -126,6 +190,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     required String label,
     required TextEditingController controller,
     TextInputType? keyboardType,
+    void Function(String)? onBlur,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,25 +204,43 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
           ),
         ),
         const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+        FocusScope(
+          onFocusChange: (hasFocus) {
+            if (!hasFocus && onBlur != null) {
+              onBlur(controller.text);
+            }
+          },
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              suffixIcon:
+                  label == 'CIN Client' && _isCheckingClient
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                      : null,
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
+            style: const TextStyle(fontSize: 14),
           ),
-          style: const TextStyle(fontSize: 14),
         ),
       ],
     );
@@ -191,6 +274,11 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
           price == null ||
           quantity == null) {
         _showError('Veuillez remplir tous les champs correctement');
+        return;
+      }
+
+      if (!_clientExists) {
+        _showError('Client non trouvé. Veuillez créer le client d\'abord.');
         return;
       }
 

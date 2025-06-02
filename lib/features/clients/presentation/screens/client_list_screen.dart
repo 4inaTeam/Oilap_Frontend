@@ -47,17 +47,19 @@ class __ClientListViewState extends State<_ClientListView> {
   void _performSearch(String query) {
     if (!mounted) return;
     setState(() => _currentSearchQuery = query);
-    
-    final event = query.isEmpty 
-        ? LoadClients() 
-        : SearchClients(query: query);
+
+    final event = query.isEmpty ? LoadClients() : SearchClients(query: query);
     context.read<ClientBloc>().add(event);
   }
 
   void _changePage(int page) {
     if (!mounted) return;
     context.read<ClientBloc>().add(
-      ChangePage(page, currentSearchQuery: _currentSearchQuery.isEmpty ? null : _currentSearchQuery),
+      ChangePage(
+        page,
+        currentSearchQuery:
+            _currentSearchQuery.isEmpty ? null : _currentSearchQuery,
+      ),
     );
   }
 
@@ -67,7 +69,7 @@ class __ClientListViewState extends State<_ClientListView> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
-          
+
           return Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Column(
@@ -97,7 +99,7 @@ class __ClientListViewState extends State<_ClientListView> {
 
 class _AppBar extends StatelessWidget {
   final bool isMobile;
-  
+
   const _AppBar({required this.isMobile});
 
   @override
@@ -107,9 +109,10 @@ class _AppBar extends StatelessWidget {
         if (!isMobile) ...[
           IconButton(
             icon: const Icon(Icons.arrow_back, size: 28),
-            onPressed: () => Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
-            ),
+            onPressed:
+                () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                ),
           ),
           const SizedBox(width: 8),
         ],
@@ -158,61 +161,101 @@ class _SearchSection extends StatelessWidget {
         isDense: true,
         hintText: 'Rechercher par CIN',
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: currentQuery.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  controller.clear();
-                  onSearch('');
-                },
-              )
-            : null,
+        suffixIcon:
+            currentQuery.isNotEmpty
+                ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    controller.clear();
+                    onSearch('');
+                  },
+                )
+                : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
 
     final addButton = SizedBox(
-      width: isMobile ? double.infinity : null,
+      height: 36,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           iconColor: Colors.white,
           backgroundColor: AppColors.accentGreen,
-          padding: EdgeInsets.symmetric(
-            vertical: isMobile ? 14 : 12,
-            horizontal: 16,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        onPressed: () => showDialog(
-          context: context,
-          builder: (context) => const ClientAddDialog(),
+        onPressed:
+            () => showDialog(
+              context: context,
+              builder: (context) => const ClientAddDialog(),
+            ),
+        icon: Image.asset('assets/icons/Vector.png', width: 14, height: 14),
+        label: const Text(
+          'Ajouter un nouveau',
+          style: TextStyle(color: Colors.white, fontSize: 13),
         ),
-        icon: Image.asset('assets/icons/Vector.png', width: 16, height: 16),
-        label: const Text('Ajouter un nouveau', style: TextStyle(color: Colors.white)),
       ),
+    );
+
+    final statusIndicators = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Text('Actif', style: TextStyle(fontSize: 12)),
+        const SizedBox(width: 16),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.red,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Text('Inactif', style: TextStyle(fontSize: 12)),
+      ],
     );
 
     return isMobile
         ? Column(
-            children: [
-              searchField,
-              const SizedBox(height: 12),
-              addButton,
-            ],
-          )
+          children: [
+            searchField,
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [statusIndicators, addButton],
+            ),
+          ],
+        )
         : Row(
-            children: [
-              Expanded(flex: 3, child: searchField),
-              const SizedBox(width: 16),
-              addButton,
-            ],
-          );
+          children: [
+            Expanded(flex: 3, child: searchField),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                addButton,
+                const SizedBox(height: 8),
+                statusIndicators,
+              ],
+            ),
+          ],
+        );
   }
 }
 
 class _ClientContent extends StatelessWidget {
   final bool isMobile;
-  
+
   const _ClientContent({required this.isMobile});
 
   @override
@@ -222,19 +265,17 @@ class _ClientContent extends StatelessWidget {
         if (state is ClientInitial || state is ClientLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (state is ClientLoadSuccess) {
           return state.clients.isEmpty
               ? const _EmptyState()
-              : isMobile
-                  ? _MobileClientList(clients: state.clients)
-                  : _ClientTable(clients: state.clients);
+              : _ClientTable(clients: state.clients, isMobile: isMobile);
         }
-        
+
         if (state is ClientOperationFailure) {
           return _ErrorState(message: state.message);
         }
-        
+
         return const SizedBox.shrink();
       },
     );
@@ -264,7 +305,7 @@ class _EmptyState extends StatelessWidget {
 
 class _ErrorState extends StatelessWidget {
   final String message;
-  
+
   const _ErrorState({required this.message});
 
   @override
@@ -291,141 +332,67 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-class _MobileClientList extends StatelessWidget {
-  final List<dynamic> clients;
-  
-  const _MobileClientList({required this.clients});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: clients.length,
-      itemBuilder: (context, index) {
-        final client = clients[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        client.name,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    _buildClientStatus(client.isActive),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(Icons.email, 'Email', client.email),
-                _InfoRow(Icons.phone, 'Téléphone', client.tel ?? 'N/A'),
-                _InfoRow(Icons.badge, 'CIN', client.cin),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _ActionButtons(client: client, isMobile: true),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildClientStatus(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        isActive ? 'Actif' : 'Inactif',
-        style: TextStyle(
-          color: isActive ? Colors.green.shade700 : Colors.red.shade700,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  
-  const _InfoRow(this.icon, this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey.shade600),
-          const SizedBox(width: 8),
-          Text('$label: ', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
-          Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
-        ],
-      ),
-    );
-  }
-}
-
 class _ClientTable extends StatelessWidget {
   final List<dynamic> clients;
-  
-  const _ClientTable({required this.clients});
+  final bool isMobile;
+
+  const _ClientTable({required this.clients, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Nom du client')),
-          DataColumn(label: Text('Numéro de téléphone')),
-          DataColumn(label: Text('Email')),
-          DataColumn(label: Text('CIN')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Action')),
-        ],
-        rows: clients
-            .map((client) => DataRow(cells: [
-                  DataCell(Text(client.name)),
-                  DataCell(Text(client.tel ?? '')),
-                  DataCell(Text(client.email)),
-                  DataCell(Text(client.cin)),
-                  DataCell(_buildClientStatus(client.isActive)),
-                  DataCell(_ActionButtons(client: client)),
-                ]))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildClientStatus(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        isActive ? 'Actif' : 'Inactif',
-        style: TextStyle(
-          color: isActive ? Colors.green.shade700 : Colors.red.shade700,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+      child: SingleChildScrollView(
+        child: DataTable(
+          columnSpacing: isMobile ? 10 : 56.0,
+          horizontalMargin: isMobile ? 8 : 24,
+          columns: [
+            const DataColumn(label: Text('Nom')),
+            const DataColumn(label: Text('Tél')),
+            if (!isMobile) const DataColumn(label: Text('Email')),
+            const DataColumn(label: Text('CIN')),
+            const DataColumn(label: Text('Statut')),
+            const DataColumn(label: Text('Action')),
+          ],
+          rows:
+              clients
+                  .map(
+                    (client) => DataRow(
+                      cells: [
+                        DataCell(
+                          Text(client.name, overflow: TextOverflow.ellipsis),
+                        ),
+                        DataCell(
+                          Text(
+                            client.tel ?? '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (!isMobile)
+                          DataCell(
+                            Text(client.email, overflow: TextOverflow.ellipsis),
+                          ),
+                        DataCell(
+                          Text(client.cin, overflow: TextOverflow.ellipsis),
+                        ),
+                        DataCell(
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  client.isActive ? Colors.green : Colors.red,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          _ActionButtons(client: client, isMobile: isMobile),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
         ),
       ),
     );
@@ -435,45 +402,49 @@ class _ClientTable extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
   final dynamic client;
   final bool isMobile;
-  
+
   const _ActionButtons({required this.client, this.isMobile = false});
 
   void _confirmDisactivation(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmer la disactivation de comptes'),
-        content: const Text('Êtes-vous sûr de vouloir disactiver ce client?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirmer la disactivation de comptes'),
+            content: const Text(
+              'Êtes-vous sûr de vouloir disactiver ce client?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: () {
+                  context.read<ClientBloc>().add(DisactivateClient(client.id));
+                  Navigator.pop(context);
+                },
+                child: const Text('Disactiver'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              context.read<ClientBloc>().add(DisactivateClient(client.id));
-              Navigator.pop(context);
-            },
-            child: const Text('Disactiver'),
-          ),
-        ],
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final iconSize = isMobile ? 20.0 : 24.0;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: Icon(Icons.edit, color: Colors.green, size: iconSize),
-          onPressed: () => showDialog(
-            context: context,
-            builder: (context) => ClientUpdateDialog(clientId: client.id),
-          ),
+          onPressed:
+              () => showDialog(
+                context: context,
+                builder: (context) => ClientUpdateDialog(clientId: client.id),
+              ),
         ),
         if (!isMobile) ...[
           const SizedBox(width: 5),
@@ -495,12 +466,14 @@ class _ActionButtons extends StatelessWidget {
         ],
         IconButton(
           icon: Image.asset('assets/icons/View.png', width: 16, height: 16),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ClientProfileScreen(clientId: client.id),
-            ),
-          ),
+          onPressed:
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => ClientProfileScreen(clientId: client.id),
+                ),
+              ),
         ),
       ],
     );
@@ -510,7 +483,7 @@ class _ActionButtons extends StatelessWidget {
 class _PaginationFooter extends StatelessWidget {
   final bool isMobile;
   final Function(int) onPageChange;
-  
+
   const _PaginationFooter({required this.isMobile, required this.onPageChange});
 
   @override
@@ -522,32 +495,45 @@ class _PaginationFooter extends StatelessWidget {
         }
 
         final startItem = (state.currentPage - 1) * state.pageSize + 1;
-        final endItem = (state.currentPage * state.pageSize).clamp(0, state.totalClients);
+        final endItem = (state.currentPage * state.pageSize).clamp(
+          0,
+          state.totalClients,
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: isMobile
-              ? Column(
-                  children: [
-                    Text(
-                      'Page ${state.currentPage} sur ${state.totalPages}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    _PaginationControls(state: state, onPageChange: onPageChange),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Affichage $startItem à $endItem sur ${state.totalClients} clients',
-                        style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
+          child:
+              isMobile
+                  ? Column(
+                    children: [
+                      Text(
+                        'Page ${state.currentPage} sur ${state.totalPages}',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                    ),
-                    _PaginationControls(state: state, onPageChange: onPageChange),
-                  ],
-                ),
+                      const SizedBox(height: 8),
+                      _PaginationControls(
+                        state: state,
+                        onPageChange: onPageChange,
+                      ),
+                    ],
+                  )
+                  : Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Affichage $startItem à $endItem sur ${state.totalClients} clients',
+                          style: TextStyle(
+                            color: AppColors.parametereColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      _PaginationControls(
+                        state: state,
+                        onPageChange: onPageChange,
+                      ),
+                    ],
+                  ),
         );
       },
     );
@@ -557,7 +543,7 @@ class _PaginationFooter extends StatelessWidget {
 class _PaginationControls extends StatelessWidget {
   final ClientLoadSuccess state;
   final Function(int) onPageChange;
-  
+
   const _PaginationControls({required this.state, required this.onPageChange});
 
   @override
@@ -566,40 +552,44 @@ class _PaginationControls extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          onPressed: state.currentPage > 1 ? () => onPageChange(state.currentPage - 1) : null,
+          onPressed:
+              state.currentPage > 1
+                  ? () => onPageChange(state.currentPage - 1)
+                  : null,
           icon: const Icon(Icons.chevron_left),
         ),
-        ...List.generate(
-          (state.totalPages).clamp(0, 5),
-          (index) {
-            final pageNum = index + 1;
-            final isActive = pageNum == state.currentPage;
-            
-            return GestureDetector(
-              onTap: () => onPageChange(pageNum),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isActive ? AppColors.mainColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  border: !isActive ? Border.all(color: Colors.grey.shade300) : null,
-                ),
-                child: Text(
-                  '$pageNum',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.textColor,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  ),
+        ...List.generate((state.totalPages).clamp(0, 5), (index) {
+          final pageNum = index + 1;
+          final isActive = pageNum == state.currentPage;
+
+          return GestureDetector(
+            onTap: () => onPageChange(pageNum),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.mainColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border:
+                    !isActive ? Border.all(color: Colors.grey.shade300) : null,
+              ),
+              child: Text(
+                '$pageNum',
+                style: TextStyle(
+                  color: isActive ? Colors.white : AppColors.textColor,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
         IconButton(
-          onPressed: state.currentPage < state.totalPages ? () => onPageChange(state.currentPage + 1) : null,
+          onPressed:
+              state.currentPage < state.totalPages
+                  ? () => onPageChange(state.currentPage + 1)
+                  : null,
           icon: const Icon(Icons.chevron_right),
         ),
       ],

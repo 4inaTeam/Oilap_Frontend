@@ -75,7 +75,7 @@ class EmployeeRepository {
           }
 
           totalCount = allEmployees.length;
-          final startIndex = (page - 1) * 6; // Use fixed page size
+          final startIndex = (page - 1) * 6; 
 
           data =
               allEmployees
@@ -208,7 +208,7 @@ class EmployeeRepository {
     }
 
     final resp = await http.patch(
-      Uri.parse('$baseUrl/api/users/employees-accountants/$id/update/'),
+      Uri.parse('$baseUrl/api/users/update/$id/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -223,7 +223,6 @@ class EmployeeRepository {
       try {
         final errorData = json.decode(responseBody);
         if (errorData is Map<String, dynamic>) {
-          // Extract specific field errors
           final errors = <String>[];
           errorData.forEach((key, value) {
             if (value is List) {
@@ -237,7 +236,6 @@ class EmployeeRepository {
           }
         }
       } catch (e) {
-        // If we can't parse the error, use the raw response
         errorMessage = 'Update failed: $responseBody';
       }
 

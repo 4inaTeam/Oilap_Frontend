@@ -50,8 +50,11 @@ class _ProductListViewState extends State<_ProductListView> {
     if (!mounted) return;
     setState(() => _currentSearchQuery = query);
 
-    final event = query.isEmpty ? LoadProducts() : SearchProducts(query: query);
-    context.read<ProductBloc>().add(event);
+    if (query.isEmpty) {
+      context.read<ProductBloc>().add(LoadProducts());
+    } else {
+      context.read<ProductBloc>().add(SearchProducts(query: query));
+    }
   }
 
   void _changePage(int page) {
@@ -154,14 +157,17 @@ class _SearchSection extends StatelessWidget {
     final searchField = TextField(
       controller: controller,
       onChanged: (value) {
+        if (value.isEmpty) {
+          onSearch('');
+          return;
+        }
         Future.delayed(const Duration(milliseconds: 500), () {
           if (controller.text == value) onSearch(value.trim());
         });
       },
-      onSubmitted: (value) => onSearch(value.trim()),
       decoration: InputDecoration(
         isDense: true,
-        hintText: 'Rechercher par CIN',
+        hintText: 'Rechercher',
         prefixIcon: const Icon(Icons.search),
         suffixIcon:
             currentQuery.isNotEmpty
@@ -527,24 +533,23 @@ class _ActionButtons extends StatelessWidget {
     final iconSize = isMobile ? 20.0 : 24.0;
     final isStatusDone = product.status == 'done';
     final isStatusDoing = product.status == 'doing';
-    final isPending = product.status == 'pending';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Edit button
         IconButton(
           icon: Icon(
             Icons.edit,
             color: isStatusDone ? Colors.grey : Colors.green,
             size: iconSize,
           ),
-          onPressed: isStatusDone 
-            ? null 
-            : () => showDialog(
-                context: context,
-                builder: (context) => ProductUpdateDialog(product: product),
-              ),
+          onPressed:
+              isStatusDone
+                  ? null
+                  : () => showDialog(
+                    context: context,
+                    builder: (context) => ProductUpdateDialog(product: product),
+                  ),
         ),
         if (!isMobile) ...[
           const SizedBox(width: 5),
@@ -555,10 +560,16 @@ class _ActionButtons extends StatelessWidget {
         IconButton(
           icon: Icon(
             Icons.delete,
-            color: (isStatusDone || isStatusDoing) ? Colors.grey : AppColors.delete,
+            color:
+                (isStatusDone || isStatusDoing)
+                    ? Colors.grey
+                    : AppColors.delete,
             size: iconSize,
           ),
-          onPressed: (isStatusDone || isStatusDoing) ? null : () => _confirmDeletion(context),
+          onPressed:
+              (isStatusDone || isStatusDoing)
+                  ? null
+                  : () => _confirmDeletion(context),
         ),
         if (!isMobile) ...[
           const SizedBox(width: 5),
@@ -573,10 +584,13 @@ class _ActionButtons extends StatelessWidget {
             height: 16,
             color: null, // Always enabled
           ),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SizedBox.shrink()),
-          ),
+          onPressed:
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SizedBox.shrink(),
+                ),
+              ),
         ),
       ],
     );

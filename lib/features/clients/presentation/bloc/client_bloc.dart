@@ -214,7 +214,6 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
       try {
         emit(ClientLoading());
 
-        // Use clientCin for fetching products
         final products = await repo.getClientProducts(event.clientCin);
 
         emit(ClientProductsLoaded(products));
@@ -262,5 +261,14 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
         }
       }
     });
+  }
+
+  Future<bool> checkClientExists(String cin) async {
+    try {
+      final client = await repo.getClientByCin(cin);
+      return client != null;
+    } catch (e) {
+      return false;
+    }
   }
 }

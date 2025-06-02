@@ -119,7 +119,6 @@ class DashboardScreen extends StatelessWidget {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Summary cards (2x2 grid)
                                     Expanded(
                                       flex: 3,
                                       child: Column(
