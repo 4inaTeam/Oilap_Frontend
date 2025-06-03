@@ -39,9 +39,7 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
     _quantityCtr.text = widget.product.quantity?.toString() ?? '';
     _clientCinCtr.text = widget.product.client;
     _selectedStatus =
-        widget.product.status == 'pending'
-            ? 'doing'
-            : widget.product.status; // Initialize with valid value
+        widget.product.status == 'pending' ? 'doing' : widget.product.status;
   }
 
   @override
@@ -72,7 +70,6 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
         if (state is ProductUpdateSuccess) {
           Navigator.of(context).pop();
 
-
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Le produit a été mis à jour avec succès'),
@@ -90,9 +87,7 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
         }
 
         if (state is ProductOperationFailure) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Erreur: ${state.message}')));
+          _handleErrorMessage(context, state.message);
         }
       },
       child: Dialog(
@@ -121,31 +116,35 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
                         _buildInputField(
                           label: 'Qualité',
                           controller: _qualityCtr,
+                          enabled: _canEditField(),
                         ),
                         const SizedBox(height: 12),
                         _buildInputField(
                           label: 'Origine',
                           controller: _origineCtr,
+                          enabled: _canEditField(),
                         ),
                         const SizedBox(height: 12),
                         _buildInputField(
                           label: 'Prix (DT)',
                           controller: _priceCtr,
                           keyboardType: TextInputType.number,
+                          enabled: _canEditField(),
                         ),
                         const SizedBox(height: 12),
                         _buildInputField(
                           label: 'Quantité',
                           controller: _quantityCtr,
                           keyboardType: TextInputType.number,
+                          enabled: _canEditField(),
                         ),
                         const SizedBox(height: 12),
                         _buildInputField(
                           label: 'CIN Client',
                           controller: _clientCinCtr,
+                          enabled: _canEditField(),
                         ),
                         const SizedBox(height: 12),
-                        // Add Status Dropdown
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -183,20 +182,39 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
                                   (value) =>
                                       value == null ? 'Champ requis' : null,
                               items:
-                                  ['doing', 'done'].map((status) {
+                                  _getAvailableStatuses().map((status) {
                                     return DropdownMenuItem(
                                       value: status,
-                                      enabled: _canChangeStatus(status),
-                                      child: Text(status.toUpperCase()),
+                                      child: Text(
+                                        _getStatusDisplayName(status),
+                                        style: TextStyle(
+                                          color:
+                                              _canChangeToStatus(status)
+                                                  ? Colors.black
+                                                  : Colors.grey,
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                               onChanged: (String? newValue) {
                                 if (newValue != null &&
-                                    _canChangeStatus(newValue)) {
+                                    _canChangeToStatus(newValue)) {
                                   setState(() => _selectedStatus = newValue);
                                 }
                               },
                             ),
+                            if (_getStatusHelpText().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  _getStatusHelpText(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ],
@@ -208,6 +226,13 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textColor,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 16 : 24,
+                        vertical: isMobile ? 12 : 16,
+                      ),
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Annuler'),
                   ),
@@ -234,7 +259,10 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                                : const Text('Mettre à jour'),
+                                : const Text(
+                                  'Mettre à jour',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                       );
                     },
                   ),
@@ -251,22 +279,24 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
     required String label,
     required TextEditingController controller,
     TextInputType? keyboardType,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppColors.textColor,
+            color: enabled ? AppColors.textColor : Colors.grey,
           ),
         ),
         const SizedBox(height: 4),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          enabled: enabled,
           decoration: InputDecoration(
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(
@@ -281,9 +311,15 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
               borderRadius: BorderRadius.circular(6),
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
           ),
           validator:
-              (v) => v == null || v.isEmpty ? 'Ce champ est requis' : null,
+              enabled
+                  ? (v) => v == null || v.isEmpty ? 'Ce champ est requis' : null
+                  : null,
         ),
       ],
     );
@@ -318,9 +354,115 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
     );
   }
 
-  bool _canChangeStatus(String status) {
-    if (widget.product.status == 'done') return false;
-    if (widget.product.status == 'doing' && status != 'done') return false;
-    return true;
+  // Check if fields can be edited (not for done products)
+  bool _canEditField() {
+    return widget.product.status != 'done';
+  }
+
+  // Get available statuses based on current status
+  List<String> _getAvailableStatuses() {
+    switch (widget.product.status) {
+      case 'pending':
+        return ['doing', 'canceled'];
+      case 'doing':
+        return ['doing', 'done', 'canceled'];
+      case 'done':
+        return ['done']; // Cannot change done status
+      case 'canceled':
+        return ['canceled']; // Cannot change canceled status
+      default:
+        return ['doing', 'done', 'canceled'];
+    }
+  }
+
+  // Check if status can be changed to specific status
+  bool _canChangeToStatus(String status) {
+    final currentStatus = widget.product.status;
+
+    // Cannot update products with 'done' status
+    if (currentStatus == 'done') return false;
+
+    // Cannot update products with 'canceled' status
+    if (currentStatus == 'canceled') return false;
+
+    switch (currentStatus) {
+      case 'pending':
+        return status == 'doing' || status == 'canceled';
+      case 'doing':
+        return status == 'doing' || status == 'done' || status == 'canceled';
+      default:
+        return true;
+    }
+  }
+
+  // Get display name for status
+  String _getStatusDisplayName(String status) {
+    switch (status) {
+      case 'pending':
+        return 'EN ATTENTE';
+      case 'doing':
+        return 'EN COURS';
+      case 'done':
+        return 'TERMINÉ';
+      case 'canceled':
+        return 'ANNULÉ';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  // Get help text for current status restrictions
+  String _getStatusHelpText() {
+    switch (widget.product.status) {
+      case 'done':
+        return 'Les produits terminés ne peuvent pas être modifiés';
+      case 'canceled':
+        return 'Les produits annulés ne peuvent pas être modifiés';
+      case 'doing':
+        return 'Peut être marqué comme terminé ou annulé';
+      case 'pending':
+        return 'Peut être mis en cours ou annulé';
+      default:
+        return '';
+    }
+  }
+
+  // Handle specific error messages
+  void _handleErrorMessage(BuildContext context, String message) {
+    String userFriendlyMessage;
+
+    if (message.contains("Cannot update a product with 'done' status")) {
+      userFriendlyMessage = 'Impossible de modifier un produit déjà terminé.';
+    } else if (message.contains(
+      "Can only cancel products in 'pending' status",
+    )) {
+      userFriendlyMessage =
+          'Seuls les produits en attente peuvent être annulés.';
+    } else if (message.contains(
+      "Only employees or admins can cancel products",
+    )) {
+      userFriendlyMessage =
+          'Seuls les employés ou administrateurs peuvent annuler des produits.';
+    } else if (message.contains(
+      "Only employees or admins can update the status of a product",
+    )) {
+      userFriendlyMessage =
+          'Seuls les employés ou administrateurs peuvent modifier le statut d\'un produit.';
+    } else if (message.contains(
+      "Products in 'doing' status can only be marked as 'done' or 'canceled'",
+    )) {
+      userFriendlyMessage =
+          'Les produits en cours peuvent seulement être marqués comme terminés ou annulés.';
+    } else {
+      userFriendlyMessage = 'Erreur: $message';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(userFriendlyMessage),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 }

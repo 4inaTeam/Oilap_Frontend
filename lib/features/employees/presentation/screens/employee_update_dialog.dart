@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/dialogs/success_dialog.dart';
+import '../../../../shared/dialogs/error_dialog.dart';
 import '../bloc/employee_bloc.dart';
 import '../bloc/employee_event.dart';
 import '../bloc/employee_state.dart';
 
 class EmployeeUpdateDialog extends StatefulWidget {
-  // *** UPDATED: Accept employee data as parameter ***
   final dynamic employee;
   
   const EmployeeUpdateDialog({Key? key, required this.employee}) : super(key: key);
@@ -28,18 +29,15 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
   @override
   void initState() {
     super.initState();
-    // *** UPDATED: Populate fields with existing employee data ***
     _populateFields();
   }
 
-  // *** NEW: Method to populate form fields with existing data ***
   void _populateFields() {
     if (widget.employee != null) {
       _usernameCtr.text = widget.employee.name ?? '';
       _emailCtr.text = widget.employee.email ?? '';
       _cinCtr.text = widget.employee.cin ?? '';
       _phoneCtr.text = widget.employee.tel ?? '';
-      // Note: Password field is left empty for security reasons
     }
   }
 
@@ -57,17 +55,28 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
   Widget build(BuildContext context) {
     return BlocListener<EmployeeBloc, EmployeeState>(
       listener: (ctx, state) {
-        // *** UPDATED: Listen for update success instead of add success ***
         if (state is EmployeeUpdateSuccess && mounted) {
+          final employeeName = _usernameCtr.text.trim();
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Employé mis à jour avec succès')),
+          showSuccessDialog(
+            context,
+            title: 'Succès',
+            message: '$employeeName a été mis à jour avec succès',
           );
         }
 
-        if (state is EmployeeOperationFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur: ${state.message}'))
+        if (state is EmployeeOperationFailure && mounted) {
+          setState(() => _submitted = false); // Reset submitted state on error
+          
+          // Use your custom error dialog instead of SnackBar
+          showCustomErrorDialog(
+            context,
+            message: state.message,
+            onRetry: () {
+              Navigator.of(context).pop(); // Close error dialog
+              // Optionally retry the operation
+              _onSubmit();
+            },
           );
         }
       },
@@ -118,25 +127,7 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
             builder: (ctx, state) {
               final loading = state is EmployeeLoading;
               return ElevatedButton(
-                onPressed: loading
-                    ? null
-                    : () {
-                        if (!_formKey.currentState!.validate()) return;
-                        setState(() => _submitted = true);
-                        
-                        // *** UPDATED: Dispatch UpdateEmployee event instead of AddEmployee ***
-                        ctx.read<EmployeeBloc>().add(
-                              UpdateEmployee(
-                                id: widget.employee.id,
-                                username: _usernameCtr.text.trim(),
-                                email: _emailCtr.text.trim(),
-                                password: _passwordCtr.text.isNotEmpty ? _passwordCtr.text : null,
-                                cin: _cinCtr.text.trim(),
-                                tel: _phoneCtr.text.trim(),
-                                role: _role,
-                              ),
-                            );
-                      },
+                onPressed: loading ? null : _onSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentGreen,
                 ),
@@ -157,6 +148,32 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _onSubmit() {
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      // Show validation error using your custom error dialog
+      showValidationError(
+        context, 
+        'Veuillez corriger les erreurs dans le formulaire.',
+      );
+      return;
+    }
+
+    setState(() => _submitted = true);
+
+    context.read<EmployeeBloc>().add(
+      UpdateEmployee(
+        id: widget.employee.id,
+        username: _usernameCtr.text.trim(),
+        email: _emailCtr.text.trim(),
+        password: _passwordCtr.text.isNotEmpty ? _passwordCtr.text : null,
+        cin: _cinCtr.text.trim(),
+        tel: _phoneCtr.text.trim(),
+        role: _role,
       ),
     );
   }
@@ -185,7 +202,6 @@ class _EmployeeUpdateDialogState extends State<EmployeeUpdateDialog> {
               hintText: 'Laissez vide pour garder l\'ancien'
             ),
             obscureText: true,
-            // *** UPDATED: Password is optional for updates ***
             validator: (v) => v != null && v.isNotEmpty && v.length < 6 ? 'Au moins 6 caractères' : null,
           ),
         ],

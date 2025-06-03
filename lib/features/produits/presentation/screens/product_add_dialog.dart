@@ -4,7 +4,7 @@ import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../shared/dialogs/error_dialog.dart';
+
 import '../../../../shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/features/clients/presentation/screens/client_add_dialog.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
@@ -22,9 +22,11 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   final _qualityController = TextEditingController();
   final _priceController = TextEditingController();
   final _clientCinController = TextEditingController();
+  final _estimationTimeController = TextEditingController();
 
   bool _isCheckingClient = false;
   bool _clientExists = false;
+  final Map<String, String> _errors = {};
 
   @override
   void dispose() {
@@ -33,6 +35,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     _qualityController.dispose();
     _priceController.dispose();
     _clientCinController.dispose();
+    _estimationTimeController.dispose();
     super.dispose();
   }
 
@@ -79,6 +82,37 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     } finally {
       setState(() => _isCheckingClient = false);
     }
+  }
+
+  String? _validateField(String field, String value) {
+    if (value.isEmpty) {
+      return 'Ce champ est obligatoire';
+    }
+    switch (field) {
+      case 'cin':
+        if (value.length != 8) {
+          return 'Le CIN doit contenir 8 chiffres';
+        }
+        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+          return 'Le CIN ne doit contenir que des chiffres';
+        }
+        break;
+      case 'price':
+      case 'quantity':
+        if (double.tryParse(value) == null) {
+          return 'Veuillez entrer un nombre valide';
+        }
+        break;
+      case 'estimation_time':
+        if (int.tryParse(value) == null) {
+          return 'Veuillez entrer un nombre entier valide';
+        }
+        if (int.parse(value) <= 0) {
+          return 'Le temps estimé doit être supérieur à 0';
+        }
+        break;
+    }
+    return null;
   }
 
   @override
@@ -141,7 +175,13 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   label: 'CIN Client',
                   controller: _clientCinController,
                   keyboardType: TextInputType.number,
-                  onBlur: _checkClientExists, // Add this line
+                  onBlur: _checkClientExists,
+                ),
+                const SizedBox(height: 12),
+                _buildInputField(
+                  label: 'Temps estimé (minutes)',
+                  controller: _estimationTimeController,
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -192,6 +232,9 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     TextInputType? keyboardType,
     void Function(String)? onBlur,
   }) {
+    final fieldName = label.toLowerCase().replaceAll(' ', '_');
+    final error = _errors[fieldName];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -206,8 +249,19 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
         const SizedBox(height: 4),
         FocusScope(
           onFocusChange: (hasFocus) {
-            if (!hasFocus && onBlur != null) {
-              onBlur(controller.text);
+            if (!hasFocus) {
+              setState(() {
+                final error = _validateField(
+                  label == 'CIN Client' ? 'cin' : fieldName,
+                  controller.text.trim(),
+                );
+                if (error != null) {
+                  _errors[fieldName] = error;
+                } else {
+                  _errors.remove(fieldName);
+                }
+                if (onBlur != null) onBlur(controller.text);
+              });
             }
           },
           child: TextField(
@@ -221,12 +275,17 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: error != null ? Colors.red : Colors.grey.shade300,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: error != null ? Colors.red : Colors.grey.shade300,
+                ),
               ),
+              errorText: error,
               suffixIcon:
                   label == 'CIN Client' && _isCheckingClient
                       ? const SizedBox(
@@ -246,60 +305,53 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
     );
   }
 
-  void _showError(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => Dialog(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: CustomErrorWidget(message: message, showRetry: false),
-            ),
-          ),
-    );
-  }
-
   void _handleAddProduct() {
-    try {
-      // Validate inputs
-      final quality = _qualityController.text.trim();
-      final origin = _originController.text.trim();
-      final clientCin = _clientCinController.text.trim();
-      final price = double.tryParse(_priceController.text.trim());
-      final quantity = double.tryParse(_quantityController.text.trim());
+    final fields = {
+      'quality': _qualityController.text.trim(),
+      'origine': _originController.text.trim(),
+      'price': _priceController.text.trim(),
+      'quantity': _quantityController.text.trim(),
+      'cin': _clientCinController.text.trim(),
+      'estimation_time': _estimationTimeController.text.trim(),
+    };
 
-      if (quality.isEmpty ||
-          origin.isEmpty ||
-          clientCin.isEmpty ||
-          price == null ||
-          quantity == null) {
-        _showError('Veuillez remplir tous les champs correctement');
-        return;
-      }
+    setState(() {
+      _errors.clear();
+      fields.forEach((key, value) {
+        final error = _validateField(key, value);
+        if (error != null) {
+          _errors[key] = error;
+        }
+      });
+    });
 
-      if (!_clientExists) {
-        _showError('Client non trouvé. Veuillez créer le client d\'abord.');
-        return;
-      }
+    if (_errors.isNotEmpty) {
+      return;
+    }
 
-      // Create product through bloc
-      context.read<ProductBloc>().add(
-        CreateProduct(
-          quality: quality,
-          origine: origin,
-          price: price,
-          quantity: quantity,
-          clientCin: clientCin,
+    if (!_clientExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez vérifier le CIN du client'),
+          backgroundColor: Colors.red,
         ),
       );
-    } catch (e) {
-      _showError('Erreur: ${e.toString()}');
+      return;
     }
+
+    context.read<ProductBloc>().add(
+      CreateProduct(
+        quality: fields['quality']!,
+        origine: fields['origine']!,
+        price: double.parse(fields['price']!),
+        quantity: double.parse(fields['quantity']!),
+        clientCin: fields['cin']!,
+        estimationTime: int.parse(fields['estimation_time']!),
+      ),
+    );
   }
 }
 
-// Usage example:
-// To show the dialog, use this function:
 Future<Map<String, String>?> showProductAddDialog(BuildContext context) {
   return showDialog<Map<String, String>>(
     context: context,

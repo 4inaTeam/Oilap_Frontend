@@ -10,6 +10,38 @@ import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
+String _translateStatus(String? status) {
+  if (status == null) return 'N/A';
+  switch (status.toLowerCase()) {
+    case 'pending':
+      return 'En attente';
+    case 'doing':
+      return 'En cours';
+    case 'done':
+      return 'Fini';
+    case 'canceled':
+      return 'Annulé';
+    default:
+      return status;
+  }
+}
+
+Color _getStatusColor(String? status) {
+  if (status == null) return Colors.grey;
+  switch (status.toLowerCase()) {
+    case 'pending':
+      return Colors.orange;
+    case 'doing':
+      return Colors.blue;
+    case 'done':
+      return Colors.green;
+    case 'canceled':
+      return Colors.red;
+    default:
+      return Colors.grey;
+  }
+}
+
 class ProductListScreen extends StatelessWidget {
   const ProductListScreen({Key? key}) : super(key: key);
 
@@ -167,12 +199,33 @@ class _SearchSection extends StatelessWidget {
       },
       decoration: InputDecoration(
         isDense: true,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : 12,
+          vertical: isMobile ? 8 : 12,
+        ),
         hintText: 'Rechercher',
-        prefixIcon: const Icon(Icons.search),
+        hintStyle: TextStyle(
+          fontSize: isMobile ? 13 : 14,
+          color: Colors.grey[500],
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          size: isMobile ? 20 : 24,
+          color: Colors.grey[500],
+        ),
         suffixIcon:
             currentQuery.isNotEmpty
                 ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  padding: EdgeInsets.all(isMobile ? 4 : 8),
+                  constraints: BoxConstraints(
+                    minWidth: isMobile ? 32 : 40,
+                    minHeight: isMobile ? 32 : 40,
+                  ),
+                  icon: Icon(
+                    Icons.clear,
+                    size: isMobile ? 18 : 20,
+                    color: Colors.grey[600],
+                  ),
                   onPressed: () {
                     controller.clear();
                     onSearch('');
@@ -350,18 +403,13 @@ class _MobileProductList extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 _InfoRow(
-                  Icons.scale,
-                  'Quantité',
-                  product.quantity != null ? '${product.quantity} Kg' : '',
-                ),
-                _InfoRow(Icons.place, 'Origine', product.origine ?? ''),
-                _InfoRow(
                   Icons.person,
                   'Propriétaire',
                   product.clientDetails?['username']?.toString() ??
                       product.client ??
                       '-',
                 ),
+
                 _InfoRow(
                   Icons.access_time,
                   'Temps d\'entrée',
@@ -370,11 +418,22 @@ class _MobileProductList extends StatelessWidget {
                 _InfoRow(
                   Icons.schedule,
                   'Date d\'sortire',
-                  product.estimationDate != null
-                      ? _formatDate(product.estimationDate.toString())
+                  product.end_time != null
+                      ? _formatDate(product.end_time.toString())
                       : '-',
                 ),
-                _InfoRow(Icons.info, 'Statut', product.status ?? ''),
+                _InfoRow(
+                  Icons.scale,
+                  'Quantité',
+                  product.quantity != null ? '${product.quantity} Kg' : '',
+                ),
+                _InfoRow(Icons.place, 'Origine', product.origine ?? ''),
+                _InfoRow(
+                  Icons.info,
+                  'Statut',
+                  _translateStatus(product.status),
+                  textColor: _getStatusColor(product.status),
+                ),
               ],
             ),
           ),
@@ -388,8 +447,9 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color? textColor;
 
-  const _InfoRow(this.icon, this.label, this.value);
+  const _InfoRow(this.icon, this.label, this.value, {this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -406,7 +466,13 @@ class _InfoRow extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
-          Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: textColor),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -424,12 +490,11 @@ class _ProductTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Qualité')),
-          DataColumn(label: Text('Quantité')),
-          DataColumn(label: Text('Origine')),
           DataColumn(label: Text('Propriétaire')),
           DataColumn(label: Text('Temps d\'entrée')),
           DataColumn(label: Text('Temps d\'sortie')),
+          DataColumn(label: Text('Quantité')),
+          DataColumn(label: Text('Origine')),
           DataColumn(label: Text('Statut')),
           DataColumn(label: Text('Actions')),
         ],
@@ -445,7 +510,17 @@ class _ProductTable extends StatelessWidget {
 
                   return DataRow(
                     cells: [
-                      DataCell(Text(product.quality?.toString() ?? '')),
+                      DataCell(Text(ownerDisplay)),
+                      DataCell(
+                        Text(_formatDate(product.createdAt?.toString())),
+                      ),
+                      DataCell(
+                        Text(
+                          product.end_time != null
+                              ? _formatDate(product.end_time.toString())
+                              : '-',
+                        ),
+                      ),
                       DataCell(
                         Text(
                           product.quantity != null
@@ -454,18 +529,15 @@ class _ProductTable extends StatelessWidget {
                         ),
                       ),
                       DataCell(Text(product.origine?.toString() ?? '')),
-                      DataCell(Text(ownerDisplay)),
-                      DataCell(
-                        Text(_formatDate(product.createdAt?.toString())),
-                      ),
                       DataCell(
                         Text(
-                          product.estimationDate != null
-                              ? _formatDate(product.estimationDate.toString())
-                              : '-',
+                          _translateStatus(product.status),
+                          style: TextStyle(
+                            color: _getStatusColor(product.status),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      DataCell(Text(product.status?.toString() ?? '')),
                       DataCell(_ActionButtons(product: product)),
                     ],
                   );
@@ -485,7 +557,6 @@ class _ActionButtons extends StatelessWidget {
   const _ActionButtons({required this.product, this.isMobile = false});
 
   void _confirmDeletion(BuildContext context) {
-    // Don't show dialog if delete is disabled
     if (product.status == 'pending') return;
 
     showDialog(
@@ -531,7 +602,7 @@ class _ActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconSize = isMobile ? 20.0 : 24.0;
-    final isStatusDone = product.status == 'done';
+    final isStatusDone = product.status == 'done' || product.status == 'canceled';
     final isStatusDoing = product.status == 'doing';
 
     return Row(
@@ -576,13 +647,12 @@ class _ActionButtons extends StatelessWidget {
           Text('|', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(width: 5),
         ],
-        // View button
         IconButton(
           icon: Image.asset(
             'assets/icons/View.png',
             width: 16,
             height: 16,
-            color: null, // Always enabled
+            color: null,
           ),
           onPressed:
               () => Navigator.push(

@@ -26,13 +26,18 @@ class _ClientListView extends StatefulWidget {
   __ClientListViewState createState() => __ClientListViewState();
 }
 
-class __ClientListViewState extends State<_ClientListView> {
+class __ClientListViewState extends State<_ClientListView>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   String _currentSearchQuery = '';
+  late FocusNode _focusNode;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<ClientBloc>().add(LoadClients());
     });
@@ -40,8 +45,30 @@ class __ClientListViewState extends State<_ClientListView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _focusNode.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Remove automatic refresh
+  }
+
+  // Add this method to handle refreshing data
+  void _refreshData() {
+    if (!mounted || _isRefreshing) return;
+    _isRefreshing = true;
+
+    Future.microtask(() {
+      final event =
+          _currentSearchQuery.isEmpty
+              ? LoadClients()
+              : SearchClients(query: _currentSearchQuery);
+      context.read<ClientBloc>().add(event);
+      _isRefreshing = false;
+    });
   }
 
   void _performSearch(String query) {
@@ -83,7 +110,12 @@ class __ClientListViewState extends State<_ClientListView> {
                   isMobile: isMobile,
                 ),
                 SizedBox(height: isMobile ? 16 : 24),
-                Expanded(child: _ClientContent(isMobile: isMobile)),
+                Expanded(
+                  child: _ClientContent(
+                    isMobile: isMobile,
+                    onRefresh: _refreshData, // Pass the refresh callback
+                  ),
+                ),
                 _PaginationFooter(
                   isMobile: isMobile,
                   onPageChange: _changePage,
@@ -255,8 +287,9 @@ class _SearchSection extends StatelessWidget {
 
 class _ClientContent extends StatelessWidget {
   final bool isMobile;
+  final VoidCallback onRefresh; // Add refresh callback
 
-  const _ClientContent({required this.isMobile});
+  const _ClientContent({required this.isMobile, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +302,11 @@ class _ClientContent extends StatelessWidget {
         if (state is ClientLoadSuccess) {
           return state.clients.isEmpty
               ? const _EmptyState()
-              : _ClientTable(clients: state.clients, isMobile: isMobile);
+              : _ClientTable(
+                clients: state.clients,
+                isMobile: isMobile,
+                onRefresh: onRefresh, // Pass refresh callback to table
+              );
         }
 
         if (state is ClientOperationFailure) {
@@ -335,8 +372,13 @@ class _ErrorState extends StatelessWidget {
 class _ClientTable extends StatelessWidget {
   final List<dynamic> clients;
   final bool isMobile;
+  final VoidCallback onRefresh; // Add refresh callback
 
-  const _ClientTable({required this.clients, required this.isMobile});
+  const _ClientTable({
+    required this.clients,
+    required this.isMobile,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -347,52 +389,55 @@ class _ClientTable extends StatelessWidget {
           columnSpacing: isMobile ? 10 : 56.0,
           horizontalMargin: isMobile ? 8 : 24,
           columns: [
-            const DataColumn(label: Text('Nom')),
-            const DataColumn(label: Text('Tél')),
-            if (!isMobile) const DataColumn(label: Text('Email')),
-            const DataColumn(label: Text('CIN')),
-            const DataColumn(label: Text('Statut')),
-            const DataColumn(label: Text('Action')),
+            const DataColumn(label: Text('Nom', style: TextStyle(fontWeight: FontWeight.bold))),
+            const DataColumn(label: Text('Tél', style: TextStyle(fontWeight: FontWeight.bold))),
+            if (!isMobile) const DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
+            const DataColumn(label: Text('CIN', style: TextStyle(fontWeight: FontWeight.bold))),
+            const DataColumn(label: Text('Statut', style: TextStyle(fontWeight: FontWeight.bold))),
+            const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
-          rows:
-              clients
-                  .map(
-                    (client) => DataRow(
-                      cells: [
-                        DataCell(
-                          Text(client.name, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          Text(
-                            client.tel ?? '',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (!isMobile)
-                          DataCell(
-                            Text(client.email, overflow: TextOverflow.ellipsis),
-                          ),
-                        DataCell(
-                          Text(client.cin, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color:
-                                  client.isActive ? Colors.green : Colors.red,
-                            ),
-                          ),
-                        ),
-                        DataCell(
-                          _ActionButtons(client: client, isMobile: isMobile),
-                        ),
-                      ],
+          rows: clients
+              .map(
+                (client) => DataRow(
+                  cells: [
+                    DataCell(
+                      Text(client.name, overflow: TextOverflow.ellipsis),
                     ),
-                  )
-                  .toList(),
+                    DataCell(
+                      Text(
+                        client.tel ?? '',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (!isMobile)
+                      DataCell(
+                        Text(client.email, overflow: TextOverflow.ellipsis),
+                      ),
+                    DataCell(
+                      Text(client.cin, overflow: TextOverflow.ellipsis),
+                    ),
+                    DataCell(
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              client.isActive ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      _ActionButtons(
+                        client: client,
+                        isMobile: isMobile,
+                        onRefresh: onRefresh, // Pass refresh callback
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              .toList(),
         ),
       ),
     );
@@ -402,8 +447,13 @@ class _ClientTable extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
   final dynamic client;
   final bool isMobile;
+  final VoidCallback onRefresh; // Add refresh callback
 
-  const _ActionButtons({required this.client, this.isMobile = false});
+  const _ActionButtons({
+    required this.client,
+    this.isMobile = false,
+    required this.onRefresh,
+  });
 
   void _confirmDisactivation(BuildContext context) {
     showDialog(
@@ -444,7 +494,9 @@ class _ActionButtons extends StatelessWidget {
               () => showDialog(
                 context: context,
                 builder: (context) => ClientUpdateDialog(clientId: client.id),
-              ),
+              ).then((_) {
+                onRefresh();
+              }),
         ),
         if (!isMobile) ...[
           const SizedBox(width: 5),
@@ -466,14 +518,18 @@ class _ActionButtons extends StatelessWidget {
         ],
         IconButton(
           icon: Image.asset('assets/icons/View.png', width: 16, height: 16),
-          onPressed:
-              () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => ClientProfileScreen(clientId: client.id),
-                ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClientProfileScreen(clientId: client.id),
+                maintainState: false,
               ),
+            ).then(
+              (_) =>
+                  Future.delayed(const Duration(milliseconds: 100), onRefresh),
+            );
+          },
         ),
       ],
     );

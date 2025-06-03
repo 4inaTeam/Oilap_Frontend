@@ -26,14 +26,36 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     context.read<ClientBloc>().add(ViewClientProfile(widget.clientId));
   }
 
-  @override
+  // Enhanced breakpoint definitions
+  bool _isMobile(double width) => width < 768;
+  bool _isTablet(double width) => width >= 768 && width < 1024;
+  bool _isDesktop(double width) => width >= 1024;
+
+  // Responsive padding helper
+  EdgeInsets _getResponsivePadding(double screenWidth) {
+    if (_isMobile(screenWidth)) {
+      return const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+    } else if (_isTablet(screenWidth)) {
+      return const EdgeInsets.symmetric(horizontal: 24, vertical: 16);
+    } else {
+      return const EdgeInsets.symmetric(horizontal: 32, vertical: 20);
+    }
+  }
+
+  // Responsive font size helper
+  double _getResponsiveFontSize(
+    double screenWidth, {
+    double mobile = 14,
+    double tablet = 16,
+    double desktop = 18,
+  }) {
+    if (_isMobile(screenWidth)) return mobile;
+    if (_isTablet(screenWidth)) return tablet;
+    return desktop;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth <= 600;
-    final isTablet = screenWidth > 600 && screenWidth <= 1200;
-    final isDesktop = screenWidth > 1200;
-
     return BlocConsumer<ClientBloc, ClientState>(
       listener: (context, state) {
         if (state is ClientOperationFailure) {
@@ -43,131 +65,144 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         }
       },
       builder: (context, state) {
-        // Show loading state
-        if (state is ClientLoading) {
-          return AppLayout(child: Center(child: CircularProgressIndicator()));
-        }
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = constraints.maxWidth;
 
-        // Show the actual profile content
-        if (state is ClientProfileLoaded) {
-          print('Building profile screen for client: ${state.client.name}');
-          print('Products available: ${state.products?.length ?? 0}');
+            // Show loading state
+            if (state is ClientLoading) {
+              return AppLayout(
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-          final clientProducts = state.products ?? [];
+            // Show the actual profile content
+            if (state is ClientProfileLoaded) {
+              final clientProducts = state.products ?? [];
+              return _buildContent(
+                state.client,
+                clientProducts,
+                screenWidth,
+                constraints,
+              );
+            }
 
-          // Debug logging with null safety
-          clientProducts.forEach((product) {
-            print(
-              'Product ${product.id}: client=${product.client}, details=${product.clientDetails}',
-            );
-          });
+            // Show error state
+            if (state is ClientOperationFailure) {
+              return AppLayout(
+                child: _buildErrorState(state.message, screenWidth),
+              );
+            }
 
-          return _buildContent(
-            state.client,
-            clientProducts,
-            isMobile,
-            isTablet,
-            isDesktop,
-          );
-        }
+            return AppLayout(child: Center(child: CircularProgressIndicator()));
+          },
+        );
+      },
+    );
+  }
 
-        // Show error state
-        if (state is ClientOperationFailure) {
-          return AppLayout(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red.shade400,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Error Loading Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<ClientBloc>().add(
-                        ViewClientProfile(widget.clientId),
-                      );
-                    },
-                    child: Text('Retry'),
-                  ),
-                ],
+  Widget _buildErrorState(String message, double screenWidth) {
+    return Center(
+      child: Padding(
+        padding: _getResponsivePadding(screenWidth),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: _isMobile(screenWidth) ? 48 : 64,
+              color: Colors.red.shade400,
+            ),
+            SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
+            Text(
+              'Error Loading Profile',
+              style: TextStyle(
+                fontSize: _getResponsiveFontSize(
+                  screenWidth,
+                  mobile: 16,
+                  tablet: 18,
+                  desktop: 20,
+                ),
+                fontWeight: FontWeight.bold,
               ),
             ),
-          );
-        }
-
-        return AppLayout(child: Center(child: CircularProgressIndicator()));
-      },
+            SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: _getResponsiveFontSize(
+                  screenWidth,
+                  mobile: 14,
+                  tablet: 15,
+                  desktop: 16,
+                ),
+              ),
+            ),
+            SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
+            ElevatedButton(
+              onPressed: () {
+                context.read<ClientBloc>().add(
+                  ViewClientProfile(widget.clientId),
+                );
+              },
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildContent(
     User user,
     List<Product> products,
-    bool isMobile,
-    bool isTablet,
-    bool isDesktop,
+    double screenWidth,
+    BoxConstraints constraints,
   ) {
     final stats = _calculateStatsFromProducts(products);
 
     return AppLayout(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isDesktop ? 32 : (isTablet ? 24 : 16),
-                vertical: 16,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: _getResponsivePadding(screenWidth),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(context, screenWidth),
+              SizedBox(height: _isMobile(screenWidth) ? 16 : 24),
+              _buildProfileSection(user, screenWidth),
+              SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
+              _buildStatsSection(stats, screenWidth),
+              SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
+              _buildProductsSection(
+                context,
+                products,
+                screenWidth,
+                constraints,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context, isMobile, isTablet),
-                  SizedBox(height: isMobile ? 20 : (isTablet ? 28 : 32)),
-                  _buildProfileSection(user, isMobile, isTablet, isDesktop),
-                  SizedBox(height: isMobile ? 24 : (isTablet ? 32 : 40)),
-                  _buildStatsSection(stats, isMobile, isTablet, isDesktop),
-                  SizedBox(height: isMobile ? 24 : (isTablet ? 32 : 40)),
-                  _buildProductsSection(
-                    context,
-                    products,
-                    isMobile,
-                    isTablet,
-                    isDesktop,
-                    constraints,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isMobile, bool isTablet) {
+  Widget _buildHeader(BuildContext context, double screenWidth) {
     return Row(
       children: [
         IconButton(
           icon: Icon(
             Icons.arrow_back,
-            size: isMobile ? 24 : (isTablet ? 28 : 32),
+            size: _getResponsiveFontSize(
+              screenWidth,
+              mobile: 24,
+              tablet: 28,
+              desktop: 32,
+            ),
           ),
           onPressed: () {
-            // Ensure data is reloaded when returning
             context.read<ClientBloc>()
               ..add(LoadClients())
               ..add(ViewClientProfile(widget.clientId));
@@ -182,7 +217,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
           child: Text(
             'Profil Client',
             style: TextStyle(
-              fontSize: isMobile ? 18 : (isTablet ? 22 : 28),
+              fontSize: _getResponsiveFontSize(
+                screenWidth,
+                mobile: 18,
+                tablet: 22,
+                desktop: 28,
+              ),
               fontWeight: FontWeight.bold,
             ),
             overflow: TextOverflow.ellipsis,
@@ -191,7 +231,12 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         IconButton(
           icon: Icon(
             Icons.notifications_none,
-            size: isMobile ? 20 : (isTablet ? 24 : 28),
+            size: _getResponsiveFontSize(
+              screenWidth,
+              mobile: 20,
+              tablet: 24,
+              desktop: 28,
+            ),
           ),
           onPressed: () {},
         ),
@@ -243,10 +288,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     };
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(double screenWidth) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(40),
+      padding: EdgeInsets.all(_isMobile(screenWidth) ? 24 : 40),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(8),
@@ -256,22 +301,35 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         children: [
           Icon(
             Icons.inventory_2_outlined,
-            size: 64,
+            size: _isMobile(screenWidth) ? 48 : 64,
             color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
           Text(
             'Aucun produit trouvé',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: _getResponsiveFontSize(
+                screenWidth,
+                mobile: 16,
+                tablet: 18,
+                desktop: 18,
+              ),
               fontWeight: FontWeight.bold,
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Ce client n\'a pas encore de produits dans le système.',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+            style: TextStyle(
+              fontSize: _getResponsiveFontSize(
+                screenWidth,
+                mobile: 12,
+                tablet: 14,
+                desktop: 14,
+              ),
+              color: Colors.grey.shade500,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -279,128 +337,29 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
-  Widget _buildProfileSection(
-    User user,
-    bool isMobile,
-    bool isTablet,
-    bool isDesktop,
-  ) {
+  Widget _buildProfileSection(User user, double screenWidth) {
     return Column(
       children: [
-        // Factures button positioned at top right
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            ElevatedButton.icon(
-              icon: Icon(
-                Icons.folder,
-                size: isMobile ? 16 : 18,
-                color: Colors.white,
-              ),
-              label: Text(
-                'Factures',
-                style: TextStyle(
-                  fontSize: isMobile ? 12 : 14,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentGreen,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 12 : (isTablet ? 20 : 24),
-                  vertical: isMobile ? 8 : (isTablet ? 12 : 14),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                // TODO: navigate to invoices
-              },
-            ),
-          ],
-        ),
-        SizedBox(height: 16),
+        // Factures button - responsive positioning
+        if (_isDesktop(screenWidth))
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [_buildFacturesButton(screenWidth)],
+          )
+        else
+          Center(child: _buildFacturesButton(screenWidth)),
 
-        // Profile avatar and info centered
+        SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
+
+        // Profile avatar and info
         Center(
           child: Column(
             children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: isDesktop ? 50 : (isTablet ? 45 : 40),
-                    backgroundColor: Colors.grey.shade300,
-                    backgroundImage:
-                        user.profilePhotoUrl != null
-                            ? NetworkImage(user.profilePhotoUrl!)
-                            : null,
-                    child:
-                        user.profilePhotoUrl == null
-                            ? Icon(
-                              Icons.person,
-                              size: isDesktop ? 60 : (isTablet ? 54 : 48),
-                              color: Colors.grey.shade600,
-                            )
-                            : null,
-                  ),
-                  // Yellow border ring
-                  Positioned.fill(
-                    child: CircleAvatar(
-                      radius: isDesktop ? 50 : (isTablet ? 45 : 40),
-                      backgroundColor: Colors.transparent,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.accentYellow,
-                            width: 3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              Text(
-                user.name,
-                style: TextStyle(
-                  fontSize: isDesktop ? 24 : (isTablet ? 20 : 18),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 12),
-
-              // Contact info in a row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    user.tel ?? 'N/A',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 14 : 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  SizedBox(width: 24),
-                  Text(
-                    user.email,
-                    style: TextStyle(
-                      fontSize: isDesktop ? 14 : 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  SizedBox(width: 24),
-                  Text(
-                    user.role,
-                    style: TextStyle(
-                      fontSize: isDesktop ? 14 : 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
+              _buildProfileAvatar(user, screenWidth),
+              SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
+              _buildUserName(user, screenWidth),
+              SizedBox(height: _isMobile(screenWidth) ? 8 : 12),
+              _buildContactInfo(user, screenWidth),
             ],
           ),
         ),
@@ -408,20 +367,194 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
-  Widget _buildStatsSection(
-    Map<String, String> stats,
-    bool isMobile,
-    bool isTablet,
-    bool isDesktop,
-  ) {
+  Widget _buildFacturesButton(double screenWidth) {
+    return ElevatedButton.icon(
+      icon: Icon(
+        Icons.folder,
+        size: _isMobile(screenWidth) ? 16 : 18,
+        color: Colors.white,
+      ),
+      label: Text(
+        'Factures',
+        style: TextStyle(
+          fontSize: _getResponsiveFontSize(
+            screenWidth,
+            mobile: 12,
+            tablet: 14,
+            desktop: 14,
+          ),
+          color: Colors.white,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accentGreen,
+        padding: EdgeInsets.symmetric(
+          horizontal: _isMobile(screenWidth) ? 12 : 20,
+          vertical: _isMobile(screenWidth) ? 8 : 12,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: () {
+        // TODO: navigate to invoices
+      },
+    );
+  }
+
+  Widget _buildProfileAvatar(User user, double screenWidth) {
+    final avatarSize =
+        _isMobile(screenWidth)
+            ? 70.0
+            : _isTablet(screenWidth)
+            ? 85.0
+            : 100.0;
+
+    return Container(
+      width: avatarSize,
+      height: avatarSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.accentGreen, AppColors.accentYellow],
+        ),
+        border: Border.all(color: Colors.transparent, width: 3),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Container(
+        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+        child: ClipOval(
+          child:
+              user.profilePhotoUrl != null
+                  ? Image.network(
+                    'http://127.0.0.1:8000${user.profilePhotoUrl}',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.person,
+                        size: avatarSize * 0.6,
+                        color: Colors.grey.shade600,
+                      );
+                    },
+                  )
+                  : Icon(
+                    Icons.person,
+                    size: avatarSize * 0.6,
+                    color: Colors.grey.shade600,
+                  ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserName(User user, double screenWidth) {
+    return Text(
+      user.name,
+      style: TextStyle(
+        fontSize: _getResponsiveFontSize(
+          screenWidth,
+          mobile: 18,
+          tablet: 22,
+          desktop: 24,
+        ),
+        fontWeight: FontWeight.w900,
+        color: AppColors.textColor,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildContactInfo(User user, double screenWidth) {
+    final contactInfoStyle = TextStyle(
+      fontSize: _getResponsiveFontSize(
+        screenWidth,
+        mobile: 11,
+        tablet: 12,
+        desktop: 14,
+      ),
+      color: Colors.grey.shade600,
+    );
+
+    // Stack contact info vertically on mobile for better readability
+    if (_isMobile(screenWidth)) {
+      return Column(
+        children: [
+          Text(user.tel ?? 'N/A', style: contactInfoStyle),
+          SizedBox(height: 4),
+          Text(user.email, style: contactInfoStyle),
+          SizedBox(height: 4),
+          Text(user.role, style: contactInfoStyle),
+        ],
+      );
+    }
+
+    // Horizontal layout for tablet and desktop
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: _isTablet(screenWidth) ? 16 : 24,
+      runSpacing: 8,
+      children: [
+        Text(user.tel ?? 'N/A', style: contactInfoStyle),
+        Text(user.email, style: contactInfoStyle),
+        Text(user.role, style: contactInfoStyle),
+      ],
+    );
+  }
+
+  Widget _buildStatsSection(Map<String, String> stats, double screenWidth) {
+    // On mobile, use 2x2 grid instead of single row
+    if (_isMobile(screenWidth)) {
+      final statEntries = stats.entries.toList();
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _buildStatCard(statEntries[0], screenWidth),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: _buildStatCard(statEntries[1], screenWidth),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _buildStatCard(statEntries[2], screenWidth),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: _buildStatCard(statEntries[3], screenWidth),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Single row for tablet and desktop
     return Row(
       children:
           stats.entries
               .map(
                 (e) => Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: _buildStatCard(e, isMobile, isTablet, isDesktop),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _buildStatCard(e, screenWidth),
                   ),
                 ),
               )
@@ -429,14 +562,9 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    MapEntry<String, String> stat,
-    bool isMobile,
-    bool isTablet,
-    bool isDesktop,
-  ) {
+  Widget _buildStatCard(MapEntry<String, String> stat, double screenWidth) {
     return Container(
-      padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 16 : 20)),
+      padding: EdgeInsets.all(_isMobile(screenWidth) ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -453,19 +581,32 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            stat.value,
-            style: TextStyle(
-              fontSize: isMobile ? 16 : (isTablet ? 18 : 20),
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              stat.value,
+              style: TextStyle(
+                fontSize: _getResponsiveFontSize(
+                  screenWidth,
+                  mobile: 14,
+                  tablet: 16,
+                  desktop: 18,
+                ),
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 6),
           Text(
             stat.key,
             style: TextStyle(
-              fontSize: isMobile ? 11 : (isTablet ? 12 : 13),
+              fontSize: _getResponsiveFontSize(
+                screenWidth,
+                mobile: 10,
+                tablet: 11,
+                desktop: 12,
+              ),
               color: Colors.grey.shade600,
             ),
             textAlign: TextAlign.center,
@@ -480,9 +621,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   Widget _buildProductsSection(
     BuildContext context,
     List<Product> products,
-    bool isMobile,
-    bool isTablet,
-    bool isDesktop,
+    double screenWidth,
     BoxConstraints constraints,
   ) {
     return Column(
@@ -491,20 +630,25 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         Text(
           'Historique des produits',
           style: TextStyle(
-            fontSize: isMobile ? 18 : 22,
+            fontSize: _getResponsiveFontSize(
+              screenWidth,
+              mobile: 16,
+              tablet: 20,
+              desktop: 22,
+            ),
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
         if (products.isEmpty)
-          _buildEmptyState()
+          _buildEmptyState(screenWidth)
         else
           ClientHistoryWidget(
             products: products,
             constraints: constraints,
-            isMobile: isMobile,
-            isTablet: isTablet,
-            isDesktop: isDesktop,
+            isMobile: _isMobile(screenWidth),
+            isTablet: _isTablet(screenWidth),
+            isDesktop: _isDesktop(screenWidth),
           ),
       ],
     );

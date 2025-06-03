@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/dialogs/success_dialog.dart';
+import '../../../../shared/dialogs/error_dialog.dart';
 import '../bloc/employee_bloc.dart';
 import '../bloc/employee_event.dart';
 import '../bloc/employee_state.dart';
@@ -56,10 +57,19 @@ class _EmployeeAddDialogState extends State<EmployeeAddDialog> {
           );
         }
 
-        if (state is EmployeeOperationFailure) {
-          ScaffoldMessenger.of(
+        if (state is EmployeeOperationFailure && mounted) {
+          setState(() => _submitted = false); // Reset submitted state on error
+          
+          // Use your custom error dialog instead of SnackBar
+          showCustomErrorDialog(
             context,
-          ).showSnackBar(SnackBar(content: Text('Erreur: ${state.message}')));
+            message: state.message,
+            onRetry: () {
+              Navigator.of(context).pop(); // Close error dialog
+              // Optionally retry the operation
+              _onSubmit();
+            },
+          );
         }
       },
       child: Dialog(
@@ -169,7 +179,16 @@ class _EmployeeAddDialogState extends State<EmployeeAddDialog> {
   }
 
   void _onSubmit() {
-    if (!_formKey.currentState!.validate()) return;
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      // Show validation error using your custom error dialog
+      showValidationError(
+        context, 
+        'Veuillez corriger les erreurs dans le formulaire.',
+      );
+      return;
+    }
+
     setState(() => _submitted = true);
     context.read<EmployeeBloc>().add(
       AddEmployee(

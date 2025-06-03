@@ -38,14 +38,15 @@ class ProductRepository {
         'page_size': pageSize.toString(),
       };
 
-      // Add search query if present
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        // Check if query matches a status
         final statusQuery = searchQuery.toLowerCase();
         if (['pending', 'doing', 'done'].contains(statusQuery)) {
           queryParams['status'] = statusQuery;
+        } else if (searchQuery.contains('/')) {
+          // If query contains /, treat as date search
+          queryParams['end_time'] = searchQuery;
         } else {
-          // If not a status, search by owner
+          // Default to client search
           queryParams['client'] = searchQuery;
         }
       }
@@ -139,7 +140,9 @@ class ProductRepository {
     required double price,
     required double quantity,
     required String clientCin,
+    required int estimationTime,
     String? status,
+    DateTime? end_time,
   }) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
@@ -150,7 +153,9 @@ class ProductRepository {
       'price': price,
       'quantity': quantity,
       'client': clientCin,
+      'estimation_time': estimationTime,
       if (status != null) 'status': status,
+      if (end_time != null) 'end_time': end_time.toIso8601String(),
     };
 
     final resp = await http.post(
@@ -174,12 +179,13 @@ class ProductRepository {
     double? price,
     double? quantity,
     String? clientCin,
+    int? estimationTime,
     String? status,
+    DateTime? end_time,
   }) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
 
-    // Build request body with only provided fields
     final Map<String, dynamic> body = {};
 
     if (quality != null) body['quality'] = quality;
@@ -187,7 +193,9 @@ class ProductRepository {
     if (price != null) body['price'] = price;
     if (quantity != null) body['quantity'] = quantity;
     if (clientCin != null) body['client'] = clientCin;
+    if (estimationTime != null) body['estimation_time'] = estimationTime;
     if (status != null) body['status'] = status;
+    if (end_time != null) body['end_time'] = end_time.toIso8601String();
 
     final resp = await http.patch(
       Uri.parse('$baseUrl/api/products/$id/update/'),

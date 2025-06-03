@@ -7,6 +7,8 @@ import 'package:oilab_frontend/features/employees/presentation/bloc/employee_eve
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_state.dart';
 import 'package:oilab_frontend/features/employees/presentation/screens/employee_add_dialog.dart';
 import 'package:oilab_frontend/features/employees/presentation/screens/employee_update_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
 class EmployeeListScreen extends StatelessWidget {
@@ -306,11 +308,11 @@ class _EmployeeTable extends StatelessWidget {
           columnSpacing: isMobile ? 10 : 56.0,
           horizontalMargin: isMobile ? 8 : 24,
           columns: const [
-            DataColumn(label: Text('Nom')),
-            DataColumn(label: Text('Tél')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('CIN')),
-            DataColumn(label: Text('Action')),
+            DataColumn(label: Text('Nom', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Tél', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('CIN', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
           ],
           rows:
               employees
@@ -358,24 +360,21 @@ class _ActionButtons extends StatelessWidget {
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
-            title: const Text('Confirm Delete'),
-            content: const Text(
-              'Are you sure you want to delete this employee?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  context.read<EmployeeBloc>().add(DeleteEmployee(employee.id));
-                  Navigator.pop(context);
-                },
-                child: const Text('Delete'),
-              ),
-            ],
+          (context) => ErrorDialog(
+            title: 'Confirmation de suppression',
+            message: 'Êtes-vous sûr de vouloir supprimer cet employé ?',
+            onConfirm: () {
+              context.read<EmployeeBloc>().add(DeleteEmployee(employee.id));
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder:
+                    (context) => const SuccessDialog(
+                      title: 'Succès',
+                      message: 'L\'employé a été supprimé avec succès',
+                    ),
+              );
+            },
           ),
     );
   }

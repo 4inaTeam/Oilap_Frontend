@@ -43,6 +43,7 @@ class AddProduct extends ProductEvent {
   final String name, description, category, sku, barcode;
   final double price;
   final int quantity;
+  final int? estimationTime;
 
   AddProduct({
     required this.name,
@@ -52,6 +53,7 @@ class AddProduct extends ProductEvent {
     required this.barcode,
     required this.price,
     required this.quantity,
+    this.estimationTime,
   });
 
   @override
@@ -63,6 +65,7 @@ class AddProduct extends ProductEvent {
     barcode,
     price,
     quantity,
+    estimationTime,
   ];
 }
 
@@ -74,6 +77,7 @@ class UpdateProduct extends ProductEvent {
   final int? quantity;
   final String? clientCin;
   final String? status;
+  final int? estimationTime;
 
   const UpdateProduct({
     required this.id,
@@ -83,6 +87,7 @@ class UpdateProduct extends ProductEvent {
     this.quantity,
     this.clientCin,
     this.status,
+    this.estimationTime,
   });
 
   @override
@@ -94,6 +99,7 @@ class UpdateProduct extends ProductEvent {
     quantity,
     clientCin,
     status,
+    estimationTime,
   ];
 }
 
@@ -122,6 +128,7 @@ class CreateProduct extends ProductEvent {
   final double price;
   final double quantity;
   final String clientCin;
+  final int estimationTime;
 
   const CreateProduct({
     required this.quality,
@@ -129,8 +136,16 @@ class CreateProduct extends ProductEvent {
     required this.price,
     required this.quantity,
     required this.clientCin,
+    required this.estimationTime,
   });
 
   @override
-  List<Object> get props => [quality, origine, price, quantity, clientCin];
+  List<Object> get props => [
+    quality,
+    origine,
+    price,
+    quantity,
+    clientCin,
+    estimationTime,
+  ];
 }

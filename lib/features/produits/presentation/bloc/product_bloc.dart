@@ -93,6 +93,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           price: event.price,
           status: 'pending',
           clientCin: event.sku,
+          estimationTime: event.estimationTime ?? 15, // Default 15 minutes
         );
         emit(ProductAddSuccess());
 
@@ -121,6 +122,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           quantity: event.quantity,
           clientCin: event.clientCin,
           status: 'pending',
+          estimationTime: event.estimationTime, 
         );
 
         final result = await repo.fetchProducts(page: 1, pageSize: 6);

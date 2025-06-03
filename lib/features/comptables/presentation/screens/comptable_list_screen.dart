@@ -310,11 +310,27 @@ class _ComptableTable extends StatelessWidget {
           columnSpacing: isMobile ? 10 : 56.0,
           horizontalMargin: isMobile ? 8 : 24,
           columns: const [
-            DataColumn(label: Text('Nom')),
-            DataColumn(label: Text('Tél')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('CIN')),
-            DataColumn(label: Text('Action')),
+            DataColumn(
+              label: Text('Nom', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            DataColumn(
+              label: Text('Tél', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            DataColumn(
+              label: Text(
+                'Email',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text('CIN', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            DataColumn(
+              label: Text(
+                'Action',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
           rows:
               comptables
