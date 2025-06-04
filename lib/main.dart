@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
+import 'package:oilab_frontend/features/factures/data/facture_repository.dart';
+import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.dart';
 import 'package:oilab_frontend/features/produits/data/product_repository.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 
 import 'package:oilab_frontend/app.dart';
-
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:oilab_frontend/features/auth/presentation/bloc/password_reset_bloc.dart';
@@ -74,6 +75,13 @@ void main() async {
                 authRepo: context.read(),
               ),
         ),
+        RepositoryProvider(
+          create:
+              (context) => FactureRepository(
+                baseUrl: backendUrl,
+                authRepo: context.read(),
+              ),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -84,6 +92,7 @@ void main() async {
           BlocProvider(create: (ctx) => ComptableBloc(ctx.read())),
           BlocProvider(create: (ctx) => ClientBloc(ctx.read())),
           BlocProvider(create: (ctx) => ProductBloc(ctx.read())),
+          BlocProvider(create: (ctx) => FactureBloc(repository: ctx.read())),
         ],
         child: const MyApp(),
       ),

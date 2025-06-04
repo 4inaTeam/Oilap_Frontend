@@ -25,7 +25,7 @@ class EmployeeRepository {
 
   Future<EmployeePaginationResult> fetchEmployees({
     int page = 1,
-    int pageSize = 6, // Keep default but ignore passed value
+    int pageSize = 6, 
     String? searchQuery,
   }) async {
     try {
@@ -34,7 +34,7 @@ class EmployeeRepository {
 
       final queryParams = <String, String>{
         'page': page.toString(),
-        'page_size': '6', // Force 6 items per page
+        'page_size': '6',
       };
 
       final uri = Uri.parse(
@@ -107,7 +107,7 @@ class EmployeeRepository {
                 .where((user) => user.role == 'EMPLOYEE')
                 .toList();
 
-        final totalPages = (totalCount / 6).ceil(); // Use fixed page size
+        final totalPages = (totalCount / 6).ceil(); 
 
         return EmployeePaginationResult(
           employees: employees,

@@ -643,12 +643,25 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         if (products.isEmpty)
           _buildEmptyState(screenWidth)
         else
-          ClientHistoryWidget(
-            products: products,
-            constraints: constraints,
-            isMobile: _isMobile(screenWidth),
-            isTablet: _isTablet(screenWidth),
-            isDesktop: _isDesktop(screenWidth),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade200),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(_isMobile(screenWidth) ? 8 : 16),
+              child: ClientHistoryWidget(
+                products: products,
+                constraints: BoxConstraints(
+                  maxWidth:
+                      constraints.maxWidth - (_isMobile(screenWidth) ? 48 : 64),
+                ),
+                isMobile: _isMobile(screenWidth),
+                isTablet: _isTablet(screenWidth),
+                isDesktop: _isDesktop(screenWidth),
+              ),
+            ),
           ),
       ],
     );

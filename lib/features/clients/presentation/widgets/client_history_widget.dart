@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/core/models/product_model.dart';
 import '../../../produits/presentation/screens/product_update_dialog.dart';
@@ -56,313 +57,395 @@ class ClientHistoryWidget extends StatelessWidget {
     }
   }
 
-  void _confirmDeletion(BuildContext context, Product product) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirmer la suppression'),
-          content: const Text(
-            'Êtes-vous sûr de vouloir supprimer ce produit ?',
+  // Helper method to determine if it's a large desktop
+  bool get isLargeDesktop => isDesktop && constraints.maxWidth > 1400;
+
+  List<DataColumn> _buildColumns() {
+    final double fontSize =
+        isMobile ? 10 : (isTablet ? 11 : (isLargeDesktop ? 14 : 13));
+
+    List<DataColumn> columns = [
+      // Entry Time
+      DataColumn(
+        label: SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            isMobile ? 'Entrée' : 'Temps d\'entrée',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuler'),
+        ),
+      ),
+      // Estimated Time
+      DataColumn(
+        label: SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            isMobile ? 'Estimé' : 'Temps estimé',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    ];
+
+    // Exit Time (not on mobile)
+    if (!isMobile) {
+      columns.add(
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 100 : (isLargeDesktop ? 150 : 120),
+            child: Text(
+              'Temps de sortie',
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
             ),
-            TextButton(
-              onPressed: () {
-                // Add your delete logic here
-                Navigator.of(context).pop();
-                // Call delete function
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Supprimer'),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      );
+    }
+
+    // Origin
+    columns.add(
+      DataColumn(
+        label: SizedBox(
+          width: isMobile ? 60 : (isTablet ? 80 : (isLargeDesktop ? 120 : 100)),
+          child: Text(
+            'Origine',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     );
+
+    // Status
+    columns.add(
+      DataColumn(
+        label: SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            'Statut',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+
+    // Quality (not on mobile)
+    if (!isMobile) {
+      columns.add(
+        DataColumn(
+          label: SizedBox(
+            width: isTablet ? 80 : (isLargeDesktop ? 120 : 100),
+            child: Text(
+              'Qualité',
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Price
+    columns.add(
+      DataColumn(
+        label: SizedBox(
+          width: isMobile ? 70 : (isTablet ? 90 : (isLargeDesktop ? 120 : 100)),
+          child: Text(
+            'Prix',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+
+    columns.add(
+      DataColumn(
+        label: SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            'Actions',
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+
+    return columns;
+  }
+
+  List<DataCell> _buildCells(Product product, BuildContext context) {
+    final double dataFontSize =
+        isMobile ? 9 : (isTablet ? 10 : (isLargeDesktop ? 13 : 12));
+    final double iconSize =
+        isMobile ? 16 : (isTablet ? 18 : (isLargeDesktop ? 24 : 20));
+
+    List<DataCell> cells = [
+      DataCell(
+        SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            product.formattedCreatedAt,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: dataFontSize),
+          ),
+        ),
+      ),
+      DataCell(
+        SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Text(
+            product.formattedEstimationDate,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: dataFontSize),
+          ),
+        ),
+      ),
+    ];
+
+    if (!isMobile) {
+      cells.add(
+        DataCell(
+          SizedBox(
+            width: isTablet ? 100 : (isLargeDesktop ? 150 : 120),
+            child: Text(
+              product.formattedEndTime,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: dataFontSize),
+            ),
+          ),
+        ),
+      );
+    }
+
+    cells.add(
+      DataCell(
+        SizedBox(
+          width: isMobile ? 60 : (isTablet ? 80 : (isLargeDesktop ? 120 : 100)),
+          child: Text(
+            product.origine ?? 'N/A',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: dataFontSize),
+          ),
+        ),
+      ),
+    );
+
+    cells.add(
+      DataCell(
+        SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 4 : (isLargeDesktop ? 12 : 8),
+              vertical: isMobile ? 2 : (isLargeDesktop ? 6 : 4),
+            ),
+            decoration: BoxDecoration(
+              color: _getStatusColor(product.status).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(
+                isMobile ? 8 : (isLargeDesktop ? 16 : 12),
+              ),
+            ),
+            child: Text(
+              _mapStatusToFrench(product.status),
+              style: TextStyle(
+                color: _getStatusColor(product.status),
+                fontWeight: FontWeight.w600,
+                fontSize: dataFontSize,
+              ),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (!isMobile) {
+      cells.add(
+        DataCell(
+          SizedBox(
+            width: isTablet ? 80 : (isLargeDesktop ? 120 : 100),
+            child: Text(
+              product.quality ?? 'N/A',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: dataFontSize),
+            ),
+          ),
+        ),
+      );
+    }
+
+    cells.add(
+      DataCell(
+        SizedBox(
+          width: isMobile ? 70 : (isTablet ? 90 : (isLargeDesktop ? 120 : 100)),
+          child: Text(
+            product.price != null
+                ? '${product.price!.toStringAsFixed(2)} DT'
+                : 'N/A',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: dataFontSize),
+          ),
+        ),
+      ),
+    );
+
+    cells.add(
+      DataCell(
+        SizedBox(
+          width:
+              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Edit icon first
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap:
+                      (product.status?.toLowerCase() == 'done' ||
+                              product.status?.toLowerCase() == 'canceled')
+                          ? null
+                          : () => showDialog(
+                            context: context,
+                            builder:
+                                (context) =>
+                                    ProductUpdateDialog(product: product),
+                          ),
+                  child: Container(
+                    padding: EdgeInsets.all(
+                      isMobile ? 4 : (isLargeDesktop ? 8 : 6),
+                    ),
+                    child: Icon(
+                      Icons.edit,
+                      color:
+                          (product.status?.toLowerCase() == 'done' ||
+                                  product.status?.toLowerCase() == 'canceled')
+                              ? Colors.grey
+                              : Colors.green,
+                      size: iconSize,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: isLargeDesktop ? 8 : 4),
+              // View icon second
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () {
+                    // Handle view action
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(
+                      isMobile ? 4 : (isLargeDesktop ? 8 : 6),
+                    ),
+                    child: Icon(
+                      Icons.visibility,
+                      color: Colors.blue,
+                      size: iconSize,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return cells;
   }
 
   @override
   Widget build(BuildContext context) {
-    final double iconSize = isMobile ? 16 : (isTablet ? 18 : 20);
-    final double fontSize = isMobile ? 10 : (isTablet ? 11 : 13);
-    final double dataFontSize = isMobile ? 9 : (isTablet ? 10 : 12);
-    final double columnSpacing = isMobile ? 8 : (isTablet ? 12 : 20);
-    final double horizontalMargin = isMobile ? 8 : (isTablet ? 12 : 16);
-    final double rowHeight = isMobile ? 40 : (isTablet ? 48 : 52);
-    final double headerHeight = isMobile ? 36 : (isTablet ? 44 : 48);
+    // Enhanced responsive spacing and sizing
+    final double columnSpacing =
+        isMobile ? 2 : (isTablet ? 6 : (isLargeDesktop ? 12 : 8));
+    final double horizontalMargin =
+        isMobile ? 4 : (isTablet ? 8 : (isLargeDesktop ? 16 : 12));
+    final double rowHeight =
+        isMobile ? 44 : (isTablet ? 52 : (isLargeDesktop ? 64 : 56));
+    final double headerHeight =
+        isMobile ? 40 : (isTablet ? 48 : (isLargeDesktop ? 60 : 52));
+
+    // Calculate minimum width needed for all columns with enhanced desktop support
+    double minRequiredWidth = 0;
+    if (isMobile) {
+      minRequiredWidth = 80 + 80 + 80 + 60 + 80 + 70 + 80;
+      minRequiredWidth += columnSpacing * 6;
+      minRequiredWidth += horizontalMargin * 2;
+    } else if (isTablet) {
+      double baseWidth = 100 + 100 + 100 + 80 + 100 + 80 + 90 + 100;
+      baseWidth += columnSpacing * 7;
+      baseWidth += horizontalMargin * 2;
+      minRequiredWidth = baseWidth;
+    } else if (isLargeDesktop) {
+      double baseWidth = 150 + 150 + 150 + 120 + 150 + 120 + 120 + 150;
+      baseWidth += columnSpacing * 7;
+      baseWidth += horizontalMargin * 2;
+      minRequiredWidth = baseWidth;
+    } else {
+      double baseWidth = 120 + 120 + 120 + 100 + 120 + 100 + 100 + 120;
+      baseWidth += columnSpacing * 7;
+      baseWidth += horizontalMargin * 2;
+      minRequiredWidth = baseWidth;
+    }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Container(
         constraints: BoxConstraints(
-          minWidth: isMobile ? 320 : (constraints.maxWidth - 32),
-          maxWidth: isDesktop ? double.infinity : constraints.maxWidth + 200,
+          minWidth: minRequiredWidth,
+          maxWidth: math.max(
+            minRequiredWidth,
+            constraints.maxWidth + (isLargeDesktop ? 400 : 200),
+          ),
         ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(isLargeDesktop ? 12 : 8),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              blurRadius: isLargeDesktop ? 6 : 4,
+              offset: Offset(0, isLargeDesktop ? 3 : 2),
             ),
           ],
         ),
         child: Theme(
           data: Theme.of(context).copyWith(
             dataTableTheme: DataTableThemeData(
-              headingTextStyle: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: fontSize,
-              ),
-              dataTextStyle: TextStyle(fontSize: dataFontSize),
               headingRowHeight: headerHeight,
               dataRowHeight: rowHeight,
               horizontalMargin: horizontalMargin,
               columnSpacing: columnSpacing,
+              dividerThickness: 0.5,
             ),
           ),
           child: DataTable(
-            columns: [
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    isMobile ? 'Entrée' : 'Temps d\'entrée',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    isMobile ? 'Estimé' : 'Temps estimé',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (!isMobile)
-                DataColumn(
-                  label: Flexible(
-                    child: Text(
-                      'Temps de sortie',
-                      style: TextStyle(fontSize: fontSize),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    'Origine',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    'Statut',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (!isMobile)
-                DataColumn(
-                  label: Flexible(
-                    child: Text(
-                      'Qualité',
-                      style: TextStyle(fontSize: fontSize),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    'Prix',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              DataColumn(
-                label: Flexible(
-                  child: Text(
-                    'Actions',
-                    style: TextStyle(fontSize: fontSize),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ],
+            showCheckboxColumn: false,
+            columns: _buildColumns(),
             rows:
                 products.map((product) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isMobile ? 60 : (isTablet ? 80 : 120),
-                          ),
-                          child: Text(
-                            product.formattedCreatedAt,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: dataFontSize),
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isMobile ? 60 : (isTablet ? 80 : 120),
-                          ),
-                          child: Text(
-                            product.formattedEstimationDate,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: dataFontSize),
-                          ),
-                        ),
-                      ),
-                      if (!isMobile)
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isTablet ? 80 : 120,
-                            ),
-                            child: Text(
-                              product.formattedEndTime,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: dataFontSize),
-                            ),
-                          ),
-                        ),
-                      DataCell(
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isMobile ? 40 : (isTablet ? 60 : 100),
-                          ),
-                          child: Text(
-                            product.origine ?? 'N/A',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: dataFontSize),
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isMobile ? 4 : 8,
-                            vertical: isMobile ? 2 : 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(
-                              product.status,
-                            ).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(
-                              isMobile ? 8 : 12,
-                            ),
-                          ),
-                          child: Text(
-                            _mapStatusToFrench(product.status),
-                            style: TextStyle(
-                              color: _getStatusColor(product.status),
-                              fontWeight: FontWeight.w600,
-                              fontSize: dataFontSize,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      if (!isMobile)
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isTablet ? 60 : 80,
-                            ),
-                            child: Text(
-                              product.quality ?? 'N/A',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: dataFontSize),
-                            ),
-                          ),
-                        ),
-                      DataCell(
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isMobile ? 50 : (isTablet ? 70 : 90),
-                          ),
-                          child: Text(
-                            product.price != null
-                                ? '${product.price!.toStringAsFixed(2)} DT'
-                                : 'N/A',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: dataFontSize),
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.edit,
-                                color: Colors.green,
-                                size: iconSize,
-                              ),
-                              onPressed:
-                                  () => showDialog(
-                                    context: context,
-                                    builder:
-                                        (context) => ProductUpdateDialog(
-                                          product: product,
-                                        ),
-                                  ),
-                              constraints: BoxConstraints(
-                                minWidth: isMobile ? 24 : 32,
-                                minHeight: isMobile ? 24 : 32,
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                            if (!isMobile && !isTablet) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '|',
-                                style: TextStyle(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 10,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            IconButton(
-                              icon: Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                                size: iconSize,
-                              ),
-                              onPressed:
-                                  () => _confirmDeletion(context, product),
-                              constraints: BoxConstraints(
-                                minWidth: isMobile ? 24 : 32,
-                                minHeight: isMobile ? 24 : 32,
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
+                  return DataRow(cells: _buildCells(product, context));
                 }).toList(),
           ),
         ),

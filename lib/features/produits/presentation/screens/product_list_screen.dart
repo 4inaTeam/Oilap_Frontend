@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_add_dialog.dart';
+import 'package:oilab_frontend/features/produits/presentation/screens/product_detail_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_update_dialog.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
@@ -490,13 +491,48 @@ class _ProductTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Propriétaire')),
-          DataColumn(label: Text('Temps d\'entrée')),
-          DataColumn(label: Text('Temps d\'sortie')),
-          DataColumn(label: Text('Quantité')),
-          DataColumn(label: Text('Origine')),
-          DataColumn(label: Text('Statut')),
-          DataColumn(label: Text('Actions')),
+          DataColumn(
+            label: Text(
+              'Propriétaire',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Temps d\'entrée',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Temps d\'sortie',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Quantité',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Origine',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Statut',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              'Actions',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
         rows:
             products
@@ -556,54 +592,11 @@ class _ActionButtons extends StatelessWidget {
 
   const _ActionButtons({required this.product, this.isMobile = false});
 
-  void _confirmDeletion(BuildContext context) {
-    if (product.status == 'pending') return;
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Confirm Delete'),
-            content: const Text(
-              'Are you sure you want to delete this Product?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  context.read<ProductBloc>().add(DeleteProduct(product.id));
-                  Navigator.pop(context);
-                },
-                child: const Text('Delete'),
-              ),
-
-              IconButton(
-                icon: Image.asset(
-                  'assets/icons/View.png',
-                  width: 16,
-                  height: 16,
-                ),
-                onPressed:
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SizedBox.shrink(),
-                      ),
-                    ),
-              ),
-            ],
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final iconSize = isMobile ? 20.0 : 24.0;
-    final isStatusDone = product.status == 'done' || product.status == 'canceled';
-    final isStatusDoing = product.status == 'doing';
+    final isStatusDone =
+        product.status == 'done' || product.status == 'canceled';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -627,26 +620,6 @@ class _ActionButtons extends StatelessWidget {
           Text('|', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(width: 5),
         ],
-        // Delete button
-        IconButton(
-          icon: Icon(
-            Icons.delete,
-            color:
-                (isStatusDone || isStatusDoing)
-                    ? Colors.grey
-                    : AppColors.delete,
-            size: iconSize,
-          ),
-          onPressed:
-              (isStatusDone || isStatusDoing)
-                  ? null
-                  : () => _confirmDeletion(context),
-        ),
-        if (!isMobile) ...[
-          const SizedBox(width: 5),
-          Text('|', style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(width: 5),
-        ],
         IconButton(
           icon: Image.asset(
             'assets/icons/View.png',
@@ -658,7 +631,7 @@ class _ActionButtons extends StatelessWidget {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const SizedBox.shrink(),
+                  builder: (context) => ProductDetailScreen(product: product),
                 ),
               ),
         ),

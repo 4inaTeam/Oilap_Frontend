@@ -188,14 +188,23 @@ class ProductRepository {
 
     final Map<String, dynamic> body = {};
 
-    if (quality != null) body['quality'] = quality;
-    if (origine != null) body['origine'] = origine;
-    if (price != null) body['price'] = price;
-    if (quantity != null) body['quantity'] = quantity;
-    if (clientCin != null) body['client'] = clientCin;
-    if (estimationTime != null) body['estimation_time'] = estimationTime;
-    if (status != null) body['status'] = status;
-    if (end_time != null) body['end_time'] = end_time.toIso8601String();
+    // Get current product status first
+    final currentStatus = status;
+
+    // If status is 'doing', only allow status update
+    if (currentStatus == 'doing') {
+      if (status != null) body['status'] = status;
+    } else {
+
+      if (quality != null) body['quality'] = quality;
+      if (origine != null) body['origine'] = origine;
+      if (price != null) body['price'] = price;
+      if (quantity != null) body['quantity'] = quantity;
+      if (clientCin != null) body['client'] = clientCin;
+      if (estimationTime != null) body['estimation_time'] = estimationTime;
+      if (status != null) body['status'] = status;
+      if (end_time != null) body['end_time'] = end_time.toIso8601String();
+    }
 
     final resp = await http.patch(
       Uri.parse('$baseUrl/api/products/$id/update/'),
@@ -208,7 +217,11 @@ class ProductRepository {
 
     if (resp.statusCode != 200) {
       final errorData = json.decode(resp.body);
-      throw Exception(errorData['detail'] ?? errorData.toString());
+      if (errorData is Map && errorData.containsKey('detail')) {
+        throw Exception(errorData['detail'].toString());
+      } else {
+        throw Exception(errorData.toString());
+      }
     }
   }
 

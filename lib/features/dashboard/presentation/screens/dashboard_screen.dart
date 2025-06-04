@@ -286,7 +286,6 @@ class DashboardScreen extends StatelessWidget {
                         ],
                       );
                     } else {
-                      // Mobile layout: everything stacked
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -297,7 +296,7 @@ class DashboardScreen extends StatelessWidget {
                             color: AppColors.greenLight,
                             width: constraints.maxWidth,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           SummaryCard(
                             title: 'Quantité',
                             value: '1219 T',
@@ -305,7 +304,7 @@ class DashboardScreen extends StatelessWidget {
                             color: AppColors.yellowDark,
                             width: constraints.maxWidth,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           SummaryCard(
                             title: 'Revenu',
                             value: '695 DT',
@@ -313,7 +312,7 @@ class DashboardScreen extends StatelessWidget {
                             color: AppColors.yellowLight,
                             width: constraints.maxWidth,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           SummaryCard(
                             title: 'Dépenses',
                             value: '305 DT',
@@ -321,11 +320,11 @@ class DashboardScreen extends StatelessWidget {
                             color: AppColors.greenDark,
                             width: constraints.maxWidth,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           QuantityDetailsCard(width: constraints.maxWidth),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           SizedBox(height: 250, child: LineChartCard()),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 10),
                           SizedBox(height: 350, child: PieChartCard()),
                         ],
                       );

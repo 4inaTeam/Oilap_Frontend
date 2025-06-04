@@ -426,8 +426,6 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
         return '';
     }
   }
-
-  // Handle specific error messages
   void _handleErrorMessage(BuildContext context, String message) {
     String userFriendlyMessage;
 

@@ -301,18 +301,63 @@ class _EmployeeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDesktop = screenWidth > 1200;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          columnSpacing: isMobile ? 10 : 56.0,
-          horizontalMargin: isMobile ? 8 : 24,
-          columns: const [
-            DataColumn(label: Text('Nom', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Tél', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('CIN', style: TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+          columnSpacing: isMobile ? 10 : (isLargeDesktop ? 100.0 : 80.0),
+          horizontalMargin: isMobile ? 8 : (isLargeDesktop ? 40 : 32),
+          headingRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
+          dataRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
+          columns: [
+            DataColumn(
+              label: Text(
+                'Nom',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Tél',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Email',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'CIN',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Action',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
+            ),
           ],
           rows:
               employees

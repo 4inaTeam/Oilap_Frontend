@@ -1,210 +1,401 @@
 import 'package:flutter/material.dart';
-import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:intl/intl.dart';
+import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
 class ProductDetailScreen extends StatelessWidget {
-  const ProductDetailScreen({Key? key}) : super(key: key);
+  final dynamic product; // Changed to dynamic temporarily
+
+  const ProductDetailScreen({Key? key, required this.product})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Field controllers
-    final clientController = TextEditingController();
-    final deliveryModeController = TextEditingController();
-    final entryTimeController = TextEditingController();
-    final deliveryPriceController = TextEditingController();
-    final cityController = TextEditingController();
-    final quantityController = TextEditingController();
-    final exitTimeController = TextEditingController();
-    final totalPriceController = TextEditingController();
-
     return AppLayout(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ───────────────────────────────────────────────
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+                // Header with back button and download
+                Row(
+                  children: [
+                    if (!isMobile) ...[
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    const Expanded(
+                      child: Text(
+                        'Détails de produit',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Téléchargement en cours...'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.download,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'Télécharger',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Détails de produit',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Télécharger'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                SizedBox(height: isMobile ? 16 : 24),
+
+                // Form-like layout matching the screenshot
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        // First row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFormField(
+                                'Nom de Client',
+                                product.clientName ?? product.client ?? '-',
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: _buildFormField(
+                                'Ville',
+                                product.origine ?? '-',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Second row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFormField(
+                                'Mode de livraison',
+                                product.quality ?? '-',
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: _buildFormField(
+                                'Quantité',
+                                product.quantity != null
+                                    ? '${product.quantity} Kg'
+                                    : '-',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Third row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFormField(
+                                'Temps d\'entrée',
+                                product.formattedCreatedAt ?? '-',
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: _buildFormField(
+                                'Sortie',
+                                product.status?.toLowerCase() == 'done'
+                                    ? 'Oui'
+                                    : 'Non',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Fourth row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFormField(
+                                'Prix unitaire',
+                                product.price != null
+                                    ? '${product.price} DT'
+                                    : '-',
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            // Add an empty Expanded to maintain layout
+                            const Expanded(child: SizedBox()),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  onPressed: () {
-                    // TODO: implement download
-                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Status tracking section matching the screenshot
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Suivi de commande',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildStatusTracker(),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // ── Input grid ─────────────────────────────────────────
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 700;
-                if (isWide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _buildLeftColumn(
-                          clientController,
-                          deliveryModeController,
-                          entryTimeController,
-                          deliveryPriceController,
-                        ),
-                      ),
-                      const SizedBox(width: 32),
-                      Expanded(
-                        child: _buildRightColumn(
-                          cityController,
-                          quantityController,
-                          exitTimeController,
-                          totalPriceController,
-                        ),
-                      ),
-                    ],
-                  );
-                } else {
-                  return Column(
-                    children: [
-                      _buildLeftColumn(
-                        clientController,
-                        deliveryModeController,
-                        entryTimeController,
-                        deliveryPriceController,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRightColumn(
-                        cityController,
-                        quantityController,
-                        exitTimeController,
-                        totalPriceController,
-                      ),
-                    ],
-                  );
-                }
-              },
-            ),
-            const SizedBox(height: 32),
-
-            // ── Status legends ─────────────────────────────────────
-            Column(
-              children: List.generate(3, (_) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: const [
-                      _StatusLegend(
-                        dotColor: AppColors.error,
-                        label: 'En attente',
-                      ),
-                      SizedBox(width: 24),
-                      _StatusLegend(
-                        dotColor: AppColors.success,
-                        label: 'En cours',
-                      ),
-                      SizedBox(width: 24),
-                      _StatusLegend(dotColor: Colors.grey, label: 'Fini'),
-                      SizedBox(width: 24),
-                      _StatusLegend(dotColor: Colors.black, label: 'Livré'),
-                    ],
-                  ),
-                );
-              }),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildLeftColumn(
-    TextEditingController client,
-    TextEditingController mode,
-    TextEditingController entry,
-    TextEditingController price,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _buildField('Nom de client', client),
-      const SizedBox(height: 16),
-      _buildField('Mode de livraison', mode),
-      const SizedBox(height: 16),
-      _buildField('Temps d\'entrée', entry),
-      const SizedBox(height: 16),
-      _buildField('Prix de livraison', price),
-    ],
-  );
-
-  Widget _buildRightColumn(
-    TextEditingController city,
-    TextEditingController qty,
-    TextEditingController exit,
-    TextEditingController total,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _buildField('Ville', city),
-      const SizedBox(height: 16),
-      _buildField('Quantité', qty),
-      const SizedBox(height: 16),
-      _buildField('Sortie', exit),
-      const SizedBox(height: 16),
-      _buildField('Prix total', total),
-    ],
-  );
-
-  Widget _buildField(String label, TextEditingController controller) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: const TextStyle(fontSize: 14)),
-      const SizedBox(height: 4),
-      TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 12,
+  Widget _buildFormField(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
           ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-      ),
-    ],
-  );
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(4),
+            color: Colors.grey.shade50,
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.textColor,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusTracker() {
+    final statuses = [
+      {'status': 'pending', 'label': 'En attente', 'color': Colors.grey},
+      {'status': 'doing', 'label': 'En cours', 'color': Colors.green},
+      {'status': 'done', 'label': 'Fini', 'color': Colors.blue},
+    ];
+
+    final currentStatus = product.status?.toLowerCase() ?? 'pending';
+    int currentIndex = statuses.indexWhere((s) => s['status'] == currentStatus);
+
+    if (currentIndex == -1) {
+      currentIndex = 0; // Default to pending if status not found
+    }
+
+    return Column(
+      children:
+          statuses.asMap().entries.map((entry) {
+            final index = entry.key;
+            final statusInfo = entry.value;
+            final isCompleted = index <= currentIndex;
+            final isActive = index == currentIndex;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                children: [
+                  // Status indicator circle
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color:
+                          isCompleted
+                              ? statusInfo['color'] as Color
+                              : Colors.grey.shade300,
+                    ),
+                    child:
+                        isCompleted
+                            ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 14,
+                            )
+                            : null,
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Progress line
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color:
+                            isCompleted
+                                ? statusInfo['color'] as Color
+                                : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Status label
+                  Text(
+                    statusInfo['label'] as String,
+                    style: TextStyle(
+                      color: isCompleted ? AppColors.textColor : Colors.grey,
+                      fontWeight:
+                          isActive ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Status indicator circle (right side)
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color:
+                          isCompleted
+                              ? statusInfo['color'] as Color
+                              : Colors.grey.shade300,
+                    ),
+                    child:
+                        isCompleted
+                            ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 14,
+                            )
+                            : null,
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+    );
+  }
 }
 
-class _StatusLegend extends StatelessWidget {
-  final Color dotColor;
-  final String label;
-  const _StatusLegend({required this.dotColor, required this.label});
+// Product model remains the same
+class Product {
+  final String? client;
+  final String? clientName;
+  final String? clientCin;
+  final String? quality;
+  final double? quantity;
+  final String? origine;
+  final double? price;
+  final DateTime? createdAt;
+  final DateTime? estimationDate;
+  final int? estimationTime;
+  final DateTime? end_time;
+  final String? createdBy;
+  final String? status;
+  final String? photo;
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(radius: 8, backgroundColor: dotColor),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 14)),
-        const SizedBox(width: 8),
-        Container(height: 2, width: 50, color: dotColor),
-      ],
+  Product({
+    this.client,
+    this.clientName,
+    this.clientCin,
+    this.quality,
+    this.quantity,
+    this.origine,
+    this.price,
+    this.createdAt,
+    this.estimationDate,
+    this.estimationTime,
+    this.end_time,
+    this.createdBy,
+    this.status,
+    this.photo,
+  });
+
+  String get formattedCreatedAt => _formatDateTime(createdAt);
+  String get formattedEstimationDate => _formatDateTime(estimationDate);
+  String get formattedEndTime => _formatDateTime(end_time);
+
+  String _formatDateTime(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd/MM/yyyy HH:mm').format(date);
+  }
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      client: json['client']?.toString(),
+      clientName: json['clientName']?.toString(),
+      clientCin: json['clientCin']?.toString(),
+      quality: json['quality']?.toString(),
+      quantity: double.tryParse(json['quantity']?.toString() ?? ''),
+      origine: json['origine']?.toString(),
+      price: double.tryParse(json['price']?.toString() ?? ''),
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      estimationDate:
+          json['estimationDate'] != null
+              ? DateTime.parse(json['estimationDate'])
+              : null,
+      estimationTime: int.tryParse(json['estimationTime']?.toString() ?? ''),
+      end_time:
+          json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
+      createdBy: json['createdBy']?.toString(),
+      status: json['status']?.toString(),
+      photo: json['photo']?.toString(),
     );
   }
 }
