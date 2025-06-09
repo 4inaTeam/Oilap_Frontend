@@ -597,6 +597,8 @@ class _ActionButtons extends StatelessWidget {
     final iconSize = isMobile ? 20.0 : 24.0;
     final isStatusDone =
         product.status == 'done' || product.status == 'canceled';
+    final canCancel =
+        product.status == 'pending'; // Only pending can be canceled
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -614,6 +616,20 @@ class _ActionButtons extends StatelessWidget {
                     context: context,
                     builder: (context) => ProductUpdateDialog(product: product),
                   ),
+        ),
+        if (!isMobile) ...[
+          const SizedBox(width: 5),
+          Text('|', style: TextStyle(color: Colors.grey.shade600)),
+          const SizedBox(width: 5),
+        ],
+        IconButton(
+          icon: Image.asset(
+            'assets/icons/Disactivate.png',
+            width: 16,
+            height: 16,
+            color: canCancel ? null : Colors.grey,
+          ),
+          onPressed: canCancel ? () => _confirmCancle(context, product) : null,
         ),
         if (!isMobile) ...[
           const SizedBox(width: 5),
@@ -755,4 +771,35 @@ class _PaginationControls extends StatelessWidget {
       ],
     );
   }
+}
+
+void _confirmCancle(BuildContext context, dynamic product) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Confirmer l\'annulation'),
+        content: const Text('Voulez-vous vraiment annuler ce produit ?'),
+        actions: [
+          TextButton(
+            child: const Text('Non'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          TextButton(
+            child: const Text('Oui', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              context.read<ProductBloc>().add(CancelProduct(product: product));
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Produit annulé avec succès'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
 }

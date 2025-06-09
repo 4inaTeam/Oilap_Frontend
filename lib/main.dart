@@ -92,7 +92,7 @@ void main() async {
           BlocProvider(create: (ctx) => ComptableBloc(ctx.read())),
           BlocProvider(create: (ctx) => ClientBloc(ctx.read())),
           BlocProvider(create: (ctx) => ProductBloc(ctx.read())),
-          BlocProvider(create: (ctx) => FactureBloc(repository: ctx.read())),
+          BlocProvider(create: (ctx) => FactureBloc(factureRepository: ctx.read())),
         ],
         child: const MyApp(),
       ),

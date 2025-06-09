@@ -1,39 +1,21 @@
-import 'package:equatable/equatable.dart';
-
-abstract class FactureEvent extends Equatable {
-  const FactureEvent();
-
-  @override
-  List<Object?> get props => [];
-}
+abstract class FactureEvent {}
 
 class LoadFactures extends FactureEvent {}
 
 class SearchFactures extends FactureEvent {
   final String query;
-
-  const SearchFactures(this.query);
-
-  @override
-  List<Object?> get props => [query];
+  SearchFactures(this.query);
 }
 
 class FilterFacturesByStatus extends FactureEvent {
-  final String? status; 
-
-  const FilterFacturesByStatus(this.status);
-
-  @override
-  List<Object?> get props => [status];
-}
-
-class DeleteFacture extends FactureEvent {
-  final int factureId;
-
-  const DeleteFacture(this.factureId);
-
-  @override
-  List<Object?> get props => [factureId];
+  final String? status;
+  FilterFacturesByStatus(this.status);
 }
 
 class RefreshFactures extends FactureEvent {}
+
+class LoadFactureDetail extends FactureEvent {
+  final int factureId;
+  LoadFactureDetail(this.factureId);
+}
+

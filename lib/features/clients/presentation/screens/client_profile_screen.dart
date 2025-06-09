@@ -6,7 +6,6 @@ import 'package:oilab_frontend/core/models/product_model.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
-import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/widgets/client_history_widget.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
@@ -202,15 +201,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
               desktop: 32,
             ),
           ),
-          onPressed: () {
-            context.read<ClientBloc>()
-              ..add(LoadClients())
-              ..add(ViewClientProfile(widget.clientId));
-
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const ClientListScreen()),
-            );
-          },
+          onPressed: () => Navigator.of(context).pop(),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -574,7 +565,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 3,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -597,7 +588,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
               textAlign: TextAlign.center,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
             stat.key,
             style: TextStyle(

@@ -1,12 +1,6 @@
-import 'package:equatable/equatable.dart';
-import '../../../../core/models/facture_model.dart';
+import 'package:oilab_frontend/core/models/facture_model.dart';
 
-abstract class FactureState extends Equatable {
-  const FactureState();
-
-  @override
-  List<Object?> get props => [];
-}
+abstract class FactureState {}
 
 class FactureInitial extends FactureState {}
 
@@ -16,56 +10,41 @@ class FactureLoaded extends FactureState {
   final List<Facture> factures;
   final List<Facture> filteredFactures;
   final String? currentFilter;
-  final String? searchQuery;
+  final String? currentSearch;
 
-  const FactureLoaded({
+  FactureLoaded({
     required this.factures,
     required this.filteredFactures,
     this.currentFilter,
-    this.searchQuery,
+    this.currentSearch,
   });
-
-  @override
-  List<Object?> get props => [factures, filteredFactures, currentFilter, searchQuery];
 
   FactureLoaded copyWith({
     List<Facture>? factures,
     List<Facture>? filteredFactures,
     String? currentFilter,
-    String? searchQuery,
+    String? currentSearch,
   }) {
     return FactureLoaded(
       factures: factures ?? this.factures,
       filteredFactures: filteredFactures ?? this.filteredFactures,
       currentFilter: currentFilter ?? this.currentFilter,
-      searchQuery: searchQuery ?? this.searchQuery,
+      currentSearch: currentSearch ?? this.currentSearch,
     );
   }
 }
 
+class FactureDetailLoaded extends FactureState {
+  final Facture facture;
+  FactureDetailLoaded(this.facture);
+}
+
 class FactureError extends FactureState {
   final String message;
-
-  const FactureError(this.message);
-
-  @override
-  List<Object?> get props => [message];
+  FactureError(this.message);
 }
 
-class FactureDeleting extends FactureState {
-  final int factureId;
+class FactureDeleting extends FactureState {}
 
-  const FactureDeleting(this.factureId);
+class FactureDeleted extends FactureState {}
 
-  @override
-  List<Object?> get props => [factureId];
-}
-
-class FactureDeleted extends FactureState {
-  final int deletedFactureId;
-
-  const FactureDeleted(this.deletedFactureId);
-
-  @override
-  List<Object?> get props => [deletedFactureId];
-}

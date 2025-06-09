@@ -1,10 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:oilab_frontend/core/models/product_model.dart';
+import 'package:oilab_frontend/core/models/product_model.dart' as product_model;
+import 'package:oilab_frontend/features/produits/presentation/screens/product_detail_screen.dart';
 import '../../../produits/presentation/screens/product_update_dialog.dart';
 
 class ClientHistoryWidget extends StatelessWidget {
-  final List<Product> products;
+  final List<product_model.Product> products;
   final bool isMobile;
   final bool isTablet;
   final bool isDesktop;
@@ -184,7 +185,10 @@ class ClientHistoryWidget extends StatelessWidget {
     return columns;
   }
 
-  List<DataCell> _buildCells(Product product, BuildContext context) {
+  List<DataCell> _buildCells(
+    product_model.Product product,
+    BuildContext context,
+  ) {
     final double dataFontSize =
         isMobile ? 9 : (isTablet ? 10 : (isLargeDesktop ? 13 : 12));
     final double iconSize =
@@ -352,6 +356,13 @@ class ClientHistoryWidget extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   onTap: () {
                     // Handle view action
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => ProductDetailScreen(product: product),
+                      ),
+                    );
                   },
                   child: Container(
                     padding: EdgeInsets.all(

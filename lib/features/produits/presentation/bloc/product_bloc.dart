@@ -122,7 +122,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           quantity: event.quantity,
           clientCin: event.clientCin,
           status: 'pending',
-          estimationTime: event.estimationTime, 
+          estimationTime: event.estimationTime,
         );
 
         final result = await repo.fetchProducts(page: 1, pageSize: 6);
@@ -239,6 +239,41 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           );
         } catch (err) {
           emit(ProductOperationFailure(err.toString()));
+        }
+      }
+    });
+
+    on<CancelProduct>((event, emit) async {
+      if (state is ProductLoadSuccess) {
+        final currentState = state as ProductLoadSuccess;
+        emit(ProductLoading());
+
+        try {
+          await repo.cancelProduct(event.product);
+
+          // Fetch updated products list
+          final result = await repo.fetchProducts(
+            page: currentState.currentPage,
+            pageSize: currentState.pageSize,
+            searchQuery: currentState.currentSearchQuery,
+          );
+
+          emit(
+            ProductLoadSuccess(
+              products: result.products,
+              currentPage: result.currentPage,
+              totalPages: result.totalPages,
+              totalProducts: result.totalCount,
+              pageSize: currentState.pageSize,
+              currentSearchQuery: currentState.currentSearchQuery,
+            ),
+          );
+        } catch (error) {
+          emit(
+            ProductOperationFailure(
+              error.toString().replaceAll('Exception:', ''),
+            ),
+          );
         }
       }
     });

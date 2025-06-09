@@ -188,14 +188,11 @@ class ProductRepository {
 
     final Map<String, dynamic> body = {};
 
-    // Get current product status first
     final currentStatus = status;
 
-    // If status is 'doing', only allow status update
     if (currentStatus == 'doing') {
       if (status != null) body['status'] = status;
     } else {
-
       if (quality != null) body['quality'] = quality;
       if (origine != null) body['origine'] = origine;
       if (price != null) body['price'] = price;
@@ -277,6 +274,37 @@ class ProductRepository {
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> cancelProduct(dynamic product) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/products/${product.id}/cancel/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'status': 'canceled',
+          'price': product.price.toString(),
+          'client': product.client,
+          'quantity': product.quantity,
+          'quality': product.quality,
+          'origine': product.origine,
+          'estimation_time': 30,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['detail'] ?? 'Failed to cancel product');
+      }
+    } catch (e) {
+      throw Exception('Cancel failed: ${e.toString()}');
     }
   }
 }

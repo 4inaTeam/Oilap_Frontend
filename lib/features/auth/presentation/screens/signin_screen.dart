@@ -104,7 +104,6 @@ class _SignInViewState extends State<_SignInView> {
                           key: _formKey,
                           child: Column(
                             children: [
-                              // Identifier (email or CIN)
                               TextFormField(
                                 controller: _identifierCtrl,
                                 decoration: InputDecoration(
@@ -121,7 +120,6 @@ class _SignInViewState extends State<_SignInView> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              // Password
                               TextFormField(
                                 controller: _passwordCtrl,
                                 obscureText: _obscure,

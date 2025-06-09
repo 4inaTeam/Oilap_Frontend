@@ -1,131 +1,139 @@
-import 'package:bloc/bloc.dart';
-import '../../data/facture_repository.dart';
-import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart' show FactureEvent, FilterFacturesByStatus, LoadFactureDetail, LoadFactures, RefreshFactures, SearchFactures;
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
+import '../../../../core/models/facture_model.dart';
+import '../../data/facture_repository.dart';
 
 class FactureBloc extends Bloc<FactureEvent, FactureState> {
-  final FactureRepository repository;
-  
-  // Pagination state
-  int _currentPage = 1;
-  static const int _pageSize = 10;
-  String? _currentSearchQuery;
-  String? _currentStatusFilter;
+  final FactureRepository factureRepository;
 
-  FactureBloc({required this.repository}) : super(FactureInitial()) {
+  FactureBloc({required this.factureRepository}) : super(FactureInitial()) {
     on<LoadFactures>(_onLoadFactures);
     on<SearchFactures>(_onSearchFactures);
     on<FilterFacturesByStatus>(_onFilterFacturesByStatus);
-    on<DeleteFacture>(_onDeleteFacture);
     on<RefreshFactures>(_onRefreshFactures);
+    on<LoadFactureDetail>(_onLoadFactureDetail);
   }
 
-  Future<void> _onLoadFactures(LoadFactures event, Emitter<FactureState> emit) async {
+  Future<void> _onLoadFactures(
+    LoadFactures event,
+    Emitter<FactureState> emit,
+  ) async {
     emit(FactureLoading());
     try {
-      _currentPage = 1;
-      _currentSearchQuery = null;
-      _currentStatusFilter = null;
-      
-      final result = await repository.fetchFactures(
-        page: _currentPage,
-        pageSize: _pageSize,
-      );
-      
+      final factures = await factureRepository.fetchFactures();
       emit(FactureLoaded(
-        factures: result.factures,
-        filteredFactures: result.factures,
+        factures: factures,
+        filteredFactures: factures,
       ));
     } catch (e) {
-      emit(FactureError('Failed to load factures: ${e.toString()}'));
+      emit(FactureError('Erreur lors du chargement des factures: ${e.toString()}'));
     }
   }
 
-  Future<void> _onSearchFactures(SearchFactures event, Emitter<FactureState> emit) async {
-    emit(FactureLoading());
+  Future<void> _onRefreshFactures(
+    RefreshFactures event,
+    Emitter<FactureState> emit,
+  ) async {
     try {
-      _currentPage = 1;
-      _currentSearchQuery = event.query.isEmpty ? null : event.query;
-      
-      final result = await repository.fetchFactures(
-        page: _currentPage,
-        pageSize: _pageSize,
-        searchQuery: _currentSearchQuery,
-        statusFilter: _currentStatusFilter,
-      );
-      
-      emit(FactureLoaded(
-        factures: result.factures,
-        filteredFactures: result.factures,
-        searchQuery: event.query,
-        currentFilter: _currentStatusFilter,
-      ));
+      final factures = await factureRepository.fetchFactures();
+      if (state is FactureLoaded) {
+        final currentState = state as FactureLoaded;
+        final filteredFactures = _applyFilters(
+          factures,
+          currentState.currentSearch,
+          currentState.currentFilter,
+        );
+        emit(currentState.copyWith(
+          factures: factures,
+          filteredFactures: filteredFactures,
+        ));
+      } else {
+        emit(FactureLoaded(
+          factures: factures,
+          filteredFactures: factures,
+        ));
+      }
     } catch (e) {
-      emit(FactureError('Failed to search factures: ${e.toString()}'));
+      emit(FactureError('Erreur lors du rafraîchissement: ${e.toString()}'));
     }
   }
 
-  Future<void> _onFilterFacturesByStatus(FilterFacturesByStatus event, Emitter<FactureState> emit) async {
-    emit(FactureLoading());
-    try {
-      _currentPage = 1;
-      _currentStatusFilter = event.status;
-      
-      final result = await repository.fetchFactures(
-        page: _currentPage,
-        pageSize: _pageSize,
-        searchQuery: _currentSearchQuery,
-        statusFilter: _currentStatusFilter,
-      );
-      
-      emit(FactureLoaded(
-        factures: result.factures,
-        filteredFactures: result.factures,
-        searchQuery: _currentSearchQuery,
-        currentFilter: event.status,
-      ));
-    } catch (e) {
-      emit(FactureError('Failed to filter factures: ${e.toString()}'));
-    }
-  }
-
-
-  Future<void> _onDeleteFacture(DeleteFacture event, Emitter<FactureState> emit) async {
+  void _onSearchFactures(
+    SearchFactures event,
+    Emitter<FactureState> emit,
+  ) {
     if (state is FactureLoaded) {
       final currentState = state as FactureLoaded;
-      emit(FactureDeleting(event.factureId));
-      
-      try {
-        await repository.deleteFacture(event.factureId);
-        
-        // Remove the deleted facture from the list
-        final updatedFactures = currentState.factures
-            .where((facture) => facture.id != event.factureId)
-            .toList();
-        
-        // Update filtered factures as well
-        final updatedFilteredFactures = currentState.filteredFactures
-            .where((facture) => facture.id != event.factureId)
-            .toList();
-
-        emit(FactureLoaded(
-          factures: updatedFactures,
-          filteredFactures: updatedFilteredFactures,
-          searchQuery: currentState.searchQuery,
-          currentFilter: currentState.currentFilter,
-        ));
-        
-        // Emit deleted state for showing success message
-        emit(FactureDeleted(event.factureId));
-      } catch (e) {
-        emit(FactureError('Failed to delete facture: ${e.toString()}'));
-      }
+      final filteredFactures = _applyFilters(
+        currentState.factures,
+        event.query,
+        currentState.currentFilter,
+      );
+      emit(currentState.copyWith(
+        filteredFactures: filteredFactures,
+        currentSearch: event.query,
+      ));
     }
   }
 
-  Future<void> _onRefreshFactures(RefreshFactures event, Emitter<FactureState> emit) async {
-    // Reset pagination and reload
-    _currentPage = 1;
-    add(LoadFactures());
+  void _onFilterFacturesByStatus(
+    FilterFacturesByStatus event,
+    Emitter<FactureState> emit,
+  ) {
+    if (state is FactureLoaded) {
+      final currentState = state as FactureLoaded;
+      final filteredFactures = _applyFilters(
+        currentState.factures,
+        currentState.currentSearch,
+        event.status,
+      );
+      emit(currentState.copyWith(
+        filteredFactures: filteredFactures,
+        currentFilter: event.status,
+      ));
+    }
+  }
+
+  Future<void> _onLoadFactureDetail(
+    LoadFactureDetail event,
+    Emitter<FactureState> emit,
+  ) async {
+    emit(FactureLoading());
+    try {
+      final facture = await factureRepository.getFactureDetail(event.factureId);
+      emit(FactureDetailLoaded(facture));
+    } catch (e) {
+      emit(FactureError('Erreur lors du chargement de la facture: ${e.toString()}'));
+    }
+  }
+
+  List<Facture> _applyFilters(
+    List<Facture> factures,
+    String? searchQuery,
+    String? statusFilter,
+  ) {
+    List<Facture> filtered = List.from(factures);
+
+    // Apply status filter
+    if (statusFilter != null && statusFilter.isNotEmpty) {
+      filtered = filtered.where((facture) {
+        return facture.paymentStatus.toLowerCase() == statusFilter.toLowerCase();
+      }).toList();
+    }
+
+    // Apply search filter
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      final query = searchQuery.toLowerCase();
+      filtered = filtered.where((facture) {
+        return facture.id.toString().contains(query) ||
+            facture.factureNumber.toLowerCase().contains(query) ||
+            facture.clientName.toLowerCase().contains(query) ||
+            facture.finalTotal.toString().contains(query) ||
+            facture.paymentStatus.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    return filtered;
   }
 }

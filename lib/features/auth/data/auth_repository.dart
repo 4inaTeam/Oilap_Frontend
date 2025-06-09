@@ -11,17 +11,18 @@ class AuthRepository {
   AuthRepository({required this.baseUrl, SharedPreferences? sharedPreferences})
       : _ts = TokenStorage(sharedPreferences: sharedPreferences);
 
+  // Add this static field to hold the current JWT token
+  static String? currentToken;
+
   Future<String?> getAccessToken() => _ts.accessToken;
   Future<String?> getRefreshToken() => _ts.refreshToken;
 
-  /// Check if we have valid tokens
   Future<bool> hasValidTokens() async {
     final accessToken = await _ts.accessToken;
     final refreshToken = await _ts.refreshToken;
     return accessToken != null && refreshToken != null;
   }
 
-  /// Validate current access token by making a test request
   Future<bool> validateAccessToken() async {
     try {
       final token = await _ts.accessToken;
@@ -52,13 +53,10 @@ class AuthRepository {
 
     var res = await fn(token);
     if (res.statusCode == 401) {
-      // Token expired, try to refresh
       final newToken = await refreshAccessToken();
       if (newToken != null) {
-        // Retry the original request with new token
         res = await fn(newToken);
       } else {
-        // Refresh failed, clear tokens and throw exception
         await _ts.clear();
         throw Exception('Authentication failed - please login again');
       }
@@ -80,23 +78,27 @@ class AuthRepository {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       await _ts.saveTokens(data['access'] as String, data['refresh'] as String);
+      // Example: When you authenticate, set AuthRepository.currentToken = token;
+      currentToken = data['access'] as String;
     } else {
       throw Exception('Auth failed (${res.statusCode}): ${res.body}');
     }
   }
 
-  Future<void> logout() => _ts.clear();
+  Future<void> logout() {
+    // Example: When you logout, set AuthRepository.currentToken = null;
+    currentToken = null;
+    return _ts.clear();
+  }
 
   Future<String?> refreshAccessToken() async {
     try {
       final refresh = await _ts.refreshToken;
       if (refresh == null || refresh.isEmpty) {
-        print('No refresh token available');
         return null;
       }
 
       final uri = Uri.parse('$baseUrl/api/auth/refresh/');
-      print('Attempting to refresh token...');
 
       final res = await http.post(
         uri,
@@ -104,30 +106,24 @@ class AuthRepository {
         body: jsonEncode({'refresh': refresh}),
       );
 
-      print('Refresh response status: ${res.statusCode}');
-      print('Refresh response body: ${res.body}');
-
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final newAccess = data['access'] as String;
 
-        // Some APIs return a new refresh token, others keep the same one
         final newRefresh = data['refresh'] as String? ?? refresh;
 
         await _ts.saveTokens(newAccess, newRefresh);
-        print('Tokens refreshed successfully');
         return newAccess;
       } else if (res.statusCode == 401 || res.statusCode == 403) {
-        // Refresh token is invalid/expired
-        print('Refresh token expired or invalid');
+
+
         await _ts.clear();
         return null;
       } else {
-        print('Unexpected refresh response: ${res.statusCode}');
+       
         return null;
       }
     } catch (e) {
-      print('Error refreshing token: $e');
       return null;
     }
   }
@@ -152,7 +148,6 @@ class AuthRepository {
 
       throw Exception('Failed to fetch user (${res.statusCode}): ${res.body}');
     } catch (e) {
-      print('Error fetching current user: $e');
       rethrow;
     }
   }

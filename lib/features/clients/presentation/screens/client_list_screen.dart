@@ -53,10 +53,8 @@ class __ClientListViewState extends State<_ClientListView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Remove automatic refresh
   }
 
-  // Add this method to handle refreshing data
   void _refreshData() {
     if (!mounted || _isRefreshing) return;
     _isRefreshing = true;

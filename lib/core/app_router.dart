@@ -11,45 +11,115 @@ import 'package:oilab_frontend/features/factures/presentation/screens/facture_de
 import 'package:oilab_frontend/features/parametres/presentation/screens/parametre_screen.dart';
 import 'package:oilab_frontend/features/factures/presentation/screens/facture_upload_screen.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:oilab_frontend/core/models/facture_model.dart';
+import 'dart:convert';
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 
 class AppRouter {
+  static String? getCurrentToken() {
+    // Use a static variable for the token, not instance
+    return AuthRepository.currentToken;
+  }
+
+  static String? getRoleFromToken(String? token) {
+    if (token == null) return null;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final payloadMap = json.decode(payload);
+      return payloadMap['role'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
+    final token = getCurrentToken();
+    final role = getRoleFromToken(token);
+
+    bool isAdmin = role == 'ADMIN';
+    bool isEmployee = role == 'EMPLOYEE';
+    bool isAccountant = role == 'ACCOUNTANT';
+    bool isClient = role == 'CLIENT';
+
     switch (settings.name) {
       case '/':
         return MaterialPageRoute(builder: (_) => const SplashScreen());
       case '/signin':
         return MaterialPageRoute(builder: (_) => const SignInScreen());
-
       case '/dashboard':
-        return MaterialPageRoute(builder: (_) => const DashboardScreen());
-
+        if (isAdmin) {
+          return MaterialPageRoute(builder: (_) => const DashboardScreen());
+        }
+        break;
       case '/clients':
-        return MaterialPageRoute(builder: (_) => const ClientListScreen());
-
+        if (isAdmin || isEmployee) {
+          return MaterialPageRoute(builder: (_) => const ClientListScreen());
+        }
+        break;
       case '/comptables':
-        return MaterialPageRoute(builder: (_) => const ComptableListScreen());
-
+        if (isAdmin) {
+          return MaterialPageRoute(builder: (_) => const ComptableListScreen());
+        }
+        break;
       case '/employees':
-        return MaterialPageRoute(builder: (_) => const EmployeeListScreen());
-
+        if (isAdmin) {
+          return MaterialPageRoute(builder: (_) => const EmployeeListScreen());
+        }
+        break;
       case '/produits':
-        return MaterialPageRoute(builder: (_) => const ProductListScreen());
-
+        if (isAdmin || isEmployee || isClient) {
+          return MaterialPageRoute(builder: (_) => const ProductListScreen());
+        }
+        break;
       case '/factures':
-        return MaterialPageRoute(builder: (_) => const FactureListScreen());
-      case '/factures/detail':
-        return MaterialPageRoute(builder: (_) => const FactureDetailScreen());
+        if (isAdmin || isAccountant) {
+          return MaterialPageRoute(builder: (_) => const FactureListScreen());
+        }
+        break;
+      /*case '/factures/detail':
+        if (isAdmin || isAccountant) {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder:
+                (_) => FactureDetailScreen(
+                  factureId: args['factureId'] as int,
+                  facture: args['facture'] as Facture,
+                ),
+          );
+        }
+        break;*/
       case '/factures/upload':
-        return MaterialPageRoute(builder: (_) => FactureUploadScreen());
-
+        if (isAdmin || isAccountant) {
+          return MaterialPageRoute(builder: (_) => FactureUploadScreen());
+        }
+        break;
       case '/parametres':
-        return MaterialPageRoute(builder: (_) => const ParametresScreen());
-      
+        if (isAdmin || isEmployee || isAccountant || isClient) {
+          return MaterialPageRoute(builder: (_) => const ParametresScreen());
+        }
+        break;
       case '/energie':
-        return MaterialPageRoute(builder: (_) => const EnergieScrren()); 
-
+        if (isAdmin) {
+          return MaterialPageRoute(builder: (_) => const EnergieScrren());
+        }
+        break;
       default:
-        throw Exception('Route not found: ${settings.name}');
+        break;
     }
+    // If not allowed, show a simple error page or redirect to sign-in
+    return MaterialPageRoute(
+      builder:
+          (_) => Scaffold(
+            body: Center(
+              child: Text(
+                'Accès refusé. Vous n\'avez pas la permission pour cette page.',
+              ),
+            ),
+          ),
+    );
   }
 }

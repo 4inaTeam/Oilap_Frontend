@@ -16,6 +16,7 @@ class Product extends Equatable {
   final String? createdBy;
   final int? clientId;
   final int? estimationTime;
+  final int? estimation_time;
 
   const Product({
     required this.id,
@@ -33,6 +34,7 @@ class Product extends Equatable {
     this.createdBy,
     this.clientId,
     this.estimationTime,
+    this.estimation_time,
   });
 
   // Use client field instead of clientCin
@@ -57,6 +59,7 @@ class Product extends Equatable {
       createdBy: json['created_by'] as String?,
       clientId: json['client_id'] as int?,
       estimationTime: json['estimation_time'] as int?,
+      estimation_time: json['estimation_time'] as int?, // Parse estimation_time
     );
   }
 
@@ -70,29 +73,29 @@ class Product extends Equatable {
     'client': client,
     'photo': photo,
     'created_at': createdAt,
-    'end_time': end_time?.toIso8601String(), // Changed from exit_date
+    'end_time': end_time?.toIso8601String(), 
     'estimation_date': estimationDate,
     'client_details': clientDetails,
     'created_by': createdBy,
     'estimation_time': estimationTime,
   };
 
-  // Update copyWith method parameter types
   Product copyWith({
     int? id,
     String? quality,
-    double? quantity, // Changed from int to double
+    double? quantity, 
     String? origine,
     double? price,
     String? status,
     String? clientCin,
     int? clientId,
     String? photo,
-    String? createdAt, // Changed from DateTime to String
-    DateTime? end_time, // Changed from exitDate
-    String? estimationDate, // Changed from DateTime to String
+    String? createdAt, 
+    DateTime? end_time, 
+    String? estimationDate, 
     String? createdBy,
     int? estimationTime,
+    int? estimation_time, 
   }) {
     return Product(
       id: id ?? this.id,
@@ -106,14 +109,15 @@ class Product extends Equatable {
       clientId: clientId ?? this.clientId,
       photo: photo ?? this.photo,
       createdAt: createdAt ?? this.createdAt,
-      end_time: end_time ?? this.end_time, // Changed from exitDate
+      end_time: end_time ?? this.end_time, 
       estimationDate: estimationDate ?? this.estimationDate,
       createdBy: createdBy ?? this.createdBy,
       estimationTime: estimationTime ?? this.estimationTime,
+      estimation_time:
+          estimation_time ?? this.estimation_time, 
     );
   }
 
-  // Fix date formatting methods
   String get formattedCreatedAt {
     if (createdAt == null) return '-';
     try {
@@ -135,14 +139,13 @@ class Product extends Equatable {
   }
 
   String get formattedEndTime {
-    // Changed from formattedExitDate
     if (end_time == null) return '-';
     return '${end_time!.day.toString().padLeft(2, '0')}/${end_time!.month.toString().padLeft(2, '0')}/${end_time!.year} ${end_time!.hour.toString().padLeft(2, '0')}:${end_time!.minute.toString().padLeft(2, '0')}';
   }
 
   String get formattedQuantity => '$quantity Kg';
 
-  bool get hasEndTime => end_time != null; // Changed from hasExitDate
+  bool get hasEndTime => end_time != null; 
   bool get hasEstimationDate => estimationDate != null;
 
   @override
@@ -157,10 +160,11 @@ class Product extends Equatable {
     clientId,
     photo,
     createdAt,
-    end_time, // Changed from exitDate
+    end_time,
     estimationDate,
     createdBy,
     estimationTime,
+    estimation_time,
   ];
 
   @override

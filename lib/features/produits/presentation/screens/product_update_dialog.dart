@@ -359,19 +359,18 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
     return widget.product.status != 'done';
   }
 
-  // Get available statuses based on current status
   List<String> _getAvailableStatuses() {
     switch (widget.product.status) {
       case 'pending':
-        return ['doing', 'canceled'];
+        return ['doing'];
       case 'doing':
-        return ['doing', 'done', 'canceled'];
+        return ['doing', 'done'];
       case 'done':
-        return ['done']; // Cannot change done status
+        return ['done']; 
       case 'canceled':
-        return ['canceled']; // Cannot change canceled status
+        return ['canceled']; 
       default:
-        return ['doing', 'done', 'canceled'];
+        return ['doing', 'done'];
     }
   }
 
@@ -387,9 +386,9 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
 
     switch (currentStatus) {
       case 'pending':
-        return status == 'doing' || status == 'canceled';
+        return status == 'doing';
       case 'doing':
-        return status == 'doing' || status == 'done' || status == 'canceled';
+        return status == 'doing' || status == 'done';
       default:
         return true;
     }
@@ -419,13 +418,14 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
       case 'canceled':
         return 'Les produits annulés ne peuvent pas être modifiés';
       case 'doing':
-        return 'Peut être marqué comme terminé ou annulé';
+        return 'Peut être marqué comme terminé';
       case 'pending':
-        return 'Peut être mis en cours ou annulé';
+        return 'Peut être mis en cours';
       default:
         return '';
     }
   }
+
   void _handleErrorMessage(BuildContext context, String message) {
     String userFriendlyMessage;
 

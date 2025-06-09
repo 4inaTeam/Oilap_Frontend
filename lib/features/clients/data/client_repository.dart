@@ -317,7 +317,6 @@ class ClientRepository {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      // Try first with the specific endpoint
       final response = await http.get(
         Uri.parse('$baseUrl/api/products/?client=$clientCin'),
         headers: {
@@ -339,7 +338,6 @@ class ClientRepository {
       }
       return [];
     } catch (e) {
-      print('Error fetching client products: $e');
       return [];
     }
   }

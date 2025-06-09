@@ -3,110 +3,13 @@ import 'package:http/http.dart' as http;
 import '../../../core/models/facture_model.dart';
 import '../../auth/data/auth_repository.dart';
 
-class FacturePaginationResult {
-  final List<Facture> factures;
-  final int totalCount;
-  final int currentPage;
-  final int totalPages;
-
-  FacturePaginationResult({
-    required this.factures,
-    required this.totalCount,
-    required this.currentPage,
-    required this.totalPages,
-  });
-}
-
 class FactureRepository {
   final String baseUrl;
   final AuthRepository authRepo;
 
   FactureRepository({required this.baseUrl, required this.authRepo});
 
-  Future<FacturePaginationResult> fetchFactures({
-    int page = 1,
-    int pageSize = 10,
-    String? searchQuery,
-    String? statusFilter,
-  }) async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'page_size': pageSize.toString(),
-      };
-
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['search'] = searchQuery;
-      }
-
-      if (statusFilter != null && statusFilter.isNotEmpty) {
-        queryParams['status'] = statusFilter;
-      }
-
-      final uri = Uri.parse(
-        '$baseUrl/api/factures/',
-      ).replace(queryParameters: queryParams);
-
-      final resp = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final responseData = json.decode(resp.body);
-
-        List<dynamic> data;
-        int totalCount;
-
-        if (responseData is Map && responseData.containsKey('results')) {
-          data = responseData['results'] as List<dynamic>;
-          totalCount = responseData['count'] as int? ?? data.length;
-        } else {
-          final allData = responseData as List<dynamic>;
-
-          List<dynamic> filteredData = allData;
-          if (searchQuery != null && searchQuery.isNotEmpty) {
-            filteredData = allData.where((item) {
-              final facture = Facture.fromJson(item);
-              return facture.id.toString().contains(searchQuery.toLowerCase()) ||
-                  facture.client.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                  facture.totalAmount.contains(searchQuery) ||
-                  facture.status.toLowerCase().contains(searchQuery.toLowerCase());
-            }).toList();
-          }
-
-          if (statusFilter != null && statusFilter.isNotEmpty) {
-            filteredData = filteredData.where((item) {
-              final facture = Facture.fromJson(item);
-              return facture.status.toLowerCase() == statusFilter.toLowerCase();
-            }).toList();
-          }
-
-          totalCount = filteredData.length;
-          final startIndex = (page - 1) * pageSize;
-          data = filteredData.skip(startIndex).take(pageSize).toList();
-        }
-
-        final factures = data.map((e) => Facture.fromJson(e)).toList();
-        final totalPages = (totalCount / pageSize).ceil();
-
-        return FacturePaginationResult(
-          factures: factures,
-          totalCount: totalCount,
-          currentPage: page,
-          totalPages: totalPages,
-        );
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Facture>> fetchAllFactures() async {
+  Future<List<Facture>> fetchFactures() async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
@@ -122,47 +25,7 @@ class FactureRepository {
       }
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Facture>> searchFactures(String query) async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse('$baseUrl/api/factures/search/?q=$query'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-        return data.map((e) => Facture.fromJson(e)).toList();
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Facture>> getFacturesByStatus(String status) async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse('$baseUrl/api/factures/filter/?status=$status'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-        return data.map((e) => Facture.fromJson(e)).toList();
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
+      throw Exception('Failed to fetch factures: ${e.toString()}');
     }
   }
 
@@ -177,12 +40,59 @@ class FactureRepository {
       );
 
       if (resp.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(resp.body);
-        return Facture.fromJson(data);
+        return Facture.fromJson(json.decode(resp.body));
       }
-      throw Exception('Failed with status ${resp.statusCode}');
+      throw Exception('Failed to fetch facture details');
     } catch (e) {
-      rethrow;
+      throw Exception('Error getting facture details: ${e.toString()}');
+    }
+  }
+
+  // Add this method to get PDF URL for a specific facture
+  Future<String> getFacturePdfUrl(int factureId) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/factures/$factureId/view_pdf/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body);
+        return data['pdf_url'] as String;
+      }
+      throw Exception('Failed to get PDF URL: ${resp.statusCode}');
+    } catch (e) {
+      throw Exception('Error getting PDF URL: ${e.toString()}');
+    }
+  }
+
+  // Add this method to download PDF
+  Future<String> downloadFacturePdf(int factureId) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/factures/$factureId/download_pdf/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (resp.statusCode == 302 || resp.statusCode == 200) {
+        // If it's a redirect, return the location header
+        if (resp.headers.containsKey('location')) {
+          return resp.headers['location']!;
+        }
+        // If it's direct content, you might need to handle this differently
+        // For now, we'll assume it returns a URL in JSON
+        final data = json.decode(resp.body);
+        return data['pdf_url'] as String;
+      }
+      throw Exception('Failed to download PDF: ${resp.statusCode}');
+    } catch (e) {
+      throw Exception('Error downloading PDF: ${e.toString()}');
     }
   }
 
@@ -300,12 +210,16 @@ class FactureRepository {
     }
   }
 
-  Future<void> updateFactureStatus(int factureId, String newStatus, {DateTime? paymentDate}) async {
+  Future<void> updateFactureStatus(
+    int factureId,
+    String newStatus, {
+    DateTime? paymentDate,
+  }) async {
     final token = await authRepo.getAccessToken();
     if (token == null) throw Exception('Not authenticated');
 
     final Map<String, dynamic> requestBody = {'status': newStatus};
-    
+
     if (paymentDate != null) {
       requestBody['payment_date'] = paymentDate.toIso8601String().split('T')[0];
     }
@@ -337,4 +251,7 @@ class FactureRepository {
       throw Exception('Delete failed: ${resp.body}');
     }
   }
+
+  // Helper method to get PDF URL from facture model
+  String getPdfUrl(Facture facture) => facture.pdfUrl;
 }

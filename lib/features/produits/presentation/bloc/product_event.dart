@@ -149,3 +149,12 @@ class CreateProduct extends ProductEvent {
     estimationTime,
   ];
 }
+
+class CancelProduct extends ProductEvent {
+  final dynamic product;
+
+  const CancelProduct({required this.product});
+
+  @override
+  List<Object?> get props => [product];
+}
