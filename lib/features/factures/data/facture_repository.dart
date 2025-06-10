@@ -2,6 +2,21 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/models/facture_model.dart';
 import '../../auth/data/auth_repository.dart';
+import 'package:oilab_frontend/core/config/cloudinary_config.dart';
+
+class FacturePaginationResult {
+  final List<Facture> factures;
+  final int totalCount;
+  final int currentPage;
+  final int totalPages;
+
+  FacturePaginationResult({
+    required this.factures,
+    required this.totalCount,
+    required this.currentPage,
+    required this.totalPages,
+  });
+}
 
 class FactureRepository {
   final String baseUrl;
@@ -9,19 +24,61 @@ class FactureRepository {
 
   FactureRepository({required this.baseUrl, required this.authRepo});
 
-  Future<List<Facture>> fetchFactures() async {
+  Future<FacturePaginationResult> fetchFactures({
+    int page = 1,
+    int pageSize = 6,
+    String? searchQuery,
+    String? statusFilter,
+  }) async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryParams['search'] = searchQuery;
+      }
+      if (statusFilter != null && statusFilter.isNotEmpty) {
+        queryParams['status'] = statusFilter;
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/api/factures/',
+      ).replace(queryParameters: queryParams);
+
       final resp = await http.get(
-        Uri.parse('$baseUrl/api/factures/'),
+        uri,
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-        return data.map((e) => Facture.fromJson(e)).toList();
+        final responseData = json.decode(resp.body);
+
+        List<dynamic> data;
+        int totalCount;
+
+        if (responseData is Map && responseData.containsKey('results')) {
+          data = responseData['results'] as List<dynamic>;
+          totalCount = responseData['count'] as int? ?? data.length;
+        } else {
+          final allData = responseData as List<dynamic>;
+          data = allData;
+          totalCount = data.length;
+        }
+
+        final factures = data.map((e) => Facture.fromJson(e)).toList();
+        final totalPages = (totalCount / pageSize).ceil();
+
+        return FacturePaginationResult(
+          factures: factures,
+          totalCount: totalCount,
+          currentPage: page,
+          totalPages: totalPages,
+        );
       }
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
@@ -49,20 +106,98 @@ class FactureRepository {
   }
 
   Future<String?> fetchFacturePdfUrl(int factureId) async {
-    final token = await authRepo.getAccessToken();
-    if (token == null) throw Exception('Not authenticated');
-    final resp = await http.get(
-      Uri.parse('$baseUrl/api/factures/$factureId/view_pdf/'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (resp.statusCode == 200) {
-      final data = json.decode(resp.body);
-      return data['pdf_url'] as String?;
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/factures/$factureId/view_pdf/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'User-Agent': 'OilabApp/1.0',
+        },
+      );
+
+
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body);
+        String? pdfUrl = data['pdf_url'] as String?;
+
+
+        if (pdfUrl != null) {
+          // If it's already a full Cloudinary URL, return it
+          if (CloudinaryConfig.isCloudinaryUrl(pdfUrl)) {
+            return pdfUrl;
+          }
+
+          // If it's just a public ID, build the Cloudinary URL
+          if (!pdfUrl.startsWith('http')) {
+            final builtUrl = CloudinaryConfig.buildPdfUrl(pdfUrl);
+            print('Built Cloudinary URL: $builtUrl');
+            return builtUrl;
+          }
+
+          // Return as-is if it's already a complete URL
+          return pdfUrl;
+        }
+
+        // Fallback: try to use pdfPublicId if available
+        String? publicId = data['pdf_public_id'] as String?;
+        if (publicId != null && publicId.isNotEmpty) {
+          final builtUrl = CloudinaryConfig.buildPdfUrl(publicId);
+          print('Built URL from public ID: $builtUrl');
+          return builtUrl;
+        }
+      }
+
+      throw Exception('Failed to fetch PDF URL: ${resp.statusCode}');
+    } catch (e) {
+      print('Error fetching PDF URL: $e');
+      throw Exception('Error fetching PDF URL: ${e.toString()}');
     }
-    throw Exception('Failed to fetch PDF URL');
   }
 
-  // Add this method to download PDF
+  Future<String?> fetchFacturePdfUrlWithFallback(int factureId) async {
+    try {
+      // First try the normal method
+      String? pdfUrl = await fetchFacturePdfUrl(factureId);
+
+      if (pdfUrl != null) {
+        // Test if the URL works
+        final testResponse = await http.head(Uri.parse(pdfUrl));
+        if (testResponse.statusCode == 200) {
+          return pdfUrl;
+        }
+
+        // If it doesn't work, try different formats
+        String? publicId = CloudinaryConfig.extractPublicId(pdfUrl);
+        if (publicId != null) {
+          final possibleUrls = CloudinaryConfig.generatePossiblePdfUrls(
+            publicId,
+          );
+
+          for (String url in possibleUrls) {
+            try {
+              final response = await http.head(Uri.parse(url));
+              if (response.statusCode == 200) {
+                print('Found working URL: $url');
+                return url;
+              }
+            } catch (e) {
+              print('URL failed: $url - $e');
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error in fetchFacturePdfUrlWithFallback: $e');
+      return null;
+    }
+  }
+
   Future<String> downloadFacturePdf(int factureId) async {
     try {
       final token = await authRepo.getAccessToken();

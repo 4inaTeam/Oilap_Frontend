@@ -47,6 +47,16 @@ class _FactureListScreenState extends State<FactureListScreen> {
     context.read<FactureBloc>().add(RefreshFactures());
   }
 
+  void _changePage(int page) {
+    final bloc = context.read<FactureBloc>();
+    final currentState = bloc.state;
+    
+    if (currentState is FactureLoaded && page == currentState.currentPage) return;
+    // Prevent multiple rapid taps by disabling the button if already loading
+    if (bloc.state is FactureLoading) return;
+    bloc.add(LoadFacturesPage(page));
+  }
+
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
@@ -135,6 +145,15 @@ class _FactureListScreenState extends State<FactureListScreen> {
     );
   }
 
+  void _clearFilters() {
+    setState(() {
+      _searchController.clear();
+      _selectedStatusFilter = null;
+    });
+    context.read<FactureBloc>().add(SearchFactures(''));
+    context.read<FactureBloc>().add(FilterFacturesByStatus(null));
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -151,12 +170,11 @@ class _FactureListScreenState extends State<FactureListScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed:
-                      () => Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const DashboardScreen(),
-                        ),
-                      ),
+                  onPressed: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const DashboardScreen(),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -188,6 +206,15 @@ class _FactureListScreenState extends State<FactureListScreen> {
                       hintText: 'Recherche par ID, client, montant ou statut',
                       isDense: true,
                       prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearch('');
+                              },
+                            )
+                          : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -197,9 +224,20 @@ class _FactureListScreenState extends State<FactureListScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.filter_list),
+                  icon: Icon(
+                    Icons.filter_list,
+                    color: _selectedStatusFilter != null
+                        ? AppColors.accentGreen
+                        : null,
+                  ),
                   onPressed: _showFilterDialog,
                 ),
+                if (_selectedStatusFilter != null || _searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear_all),
+                    onPressed: _clearFilters,
+                    tooltip: 'Effacer les filtres',
+                  ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -248,10 +286,9 @@ class _FactureListScreenState extends State<FactureListScreen> {
                         backgroundColor: Colors.red,
                         action: SnackBarAction(
                           label: 'Réessayer',
-                          onPressed:
-                              () => context.read<FactureBloc>().add(
-                                LoadFactures(),
-                              ),
+                          onPressed: () => context.read<FactureBloc>().add(
+                            LoadFactures(),
+                          ),
                         ),
                       ),
                     );
@@ -277,7 +314,10 @@ class _FactureListScreenState extends State<FactureListScreen> {
                       ),
                     );
                   } else if (state is FactureLoaded) {
-                    if (state.filteredFactures.isEmpty) {
+                    // Use factures directly since filtering is done server-side
+                    final displayFactures = state.factures;
+                    
+                    if (displayFactures.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -289,27 +329,17 @@ class _FactureListScreenState extends State<FactureListScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              state.factures.isEmpty
-                                  ? 'Aucune facture trouvée'
-                                  : 'Aucun résultat pour votre recherche',
+                              'Aucune facture trouvée',
                               style: const TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey,
                               ),
                             ),
-                            if (state.factures.isNotEmpty) ...[
+                            if (state.currentSearch?.isNotEmpty == true || 
+                                state.currentFilter != null) ...[
                               const SizedBox(height: 8),
                               TextButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _selectedStatusFilter = null;
-                                  context.read<FactureBloc>().add(
-                                    SearchFactures(''),
-                                  );
-                                  context.read<FactureBloc>().add(
-                                    FilterFacturesByStatus(null),
-                                  );
-                                },
+                                onPressed: _clearFilters,
                                 child: const Text('Effacer les filtres'),
                               ),
                             ],
@@ -317,13 +347,57 @@ class _FactureListScreenState extends State<FactureListScreen> {
                         ),
                       );
                     }
-
-                    return RefreshIndicator(
-                      onRefresh: () async => _onRefresh(),
-                      child:
-                          isMobile
-                              ? _buildMobileTable(state.filteredFactures)
-                              : _buildDesktopTable(state.filteredFactures),
+                    
+                    return Column(
+                      children: [
+                        // Results summary
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Affichage de ${displayFactures.length} sur ${state.totalCount} factures',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (state.currentSearch?.isNotEmpty == true) ...[
+                                const SizedBox(width: 8),
+                                Chip(
+                                  label: Text('Recherche: "${state.currentSearch}"'),
+                                  onDeleted: () {
+                                    _searchController.clear();
+                                    _onSearch('');
+                                  },
+                                  deleteIcon: const Icon(Icons.close, size: 18),
+                                ),
+                              ],
+                              if (state.currentFilter != null) ...[
+                                const SizedBox(width: 8),
+                                Chip(
+                                  label: Text('Statut: ${_getStatusText(state.currentFilter!)}'),
+                                  onDeleted: () => _onFilterByStatus(null),
+                                  deleteIcon: const Icon(Icons.close, size: 18),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () async => _onRefresh(),
+                            child: isMobile
+                                ? _buildMobileTable(displayFactures)
+                                : _buildDesktopTable(displayFactures),
+                          ),
+                        ),
+                        _PaginationFooter(
+                          state: state,
+                          onPageChange: _changePage,
+                          isMobile: isMobile,
+                        ),
+                      ],
                     );
                   } else if (state is FactureDeleting) {
                     return const Center(
@@ -363,10 +437,9 @@ class _FactureListScreenState extends State<FactureListScreen> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
-                            onPressed:
-                                () => context.read<FactureBloc>().add(
-                                  LoadFactures(),
-                                ),
+                            onPressed: () => context.read<FactureBloc>().add(
+                              LoadFactures(),
+                            ),
                             icon: const Icon(Icons.refresh),
                             label: const Text('Réessayer'),
                           ),
@@ -500,9 +573,9 @@ class _FactureListScreenState extends State<FactureListScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 1100), // Make table wider
+        constraints: const BoxConstraints(minWidth: 1100),
         child: DataTable(
-          columnSpacing: 48, // Increase spacing between columns
+          columnSpacing: 48,
           headingRowHeight: 48,
           dataRowHeight: 64,
           columns: const [
@@ -515,70 +588,185 @@ class _FactureListScreenState extends State<FactureListScreen> {
             DataColumn(label: Text('Date')),
             DataColumn(label: Text('Actions')),
           ],
-          rows:
-              factures.map((facture) {
-                return DataRow(
-                  cells: [
-                    DataCell(Text(facture.id.toString())),
-                    DataCell(Text(facture.factureNumber)),
-                    DataCell(Text(facture.clientName)),
-                    DataCell(Text(facture.clientEmail)),
-                    DataCell(Text('${facture.finalTotal} DT')),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                            radius: 6,
-                            backgroundColor: _getStatusColor(
-                              facture.paymentStatus,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(_getStatusText(facture.paymentStatus)),
-                        ],
+          rows: factures.map((facture) {
+            return DataRow(
+              cells: [
+                DataCell(Text(facture.id.toString())),
+                DataCell(Text(facture.factureNumber)),
+                DataCell(Text(facture.clientName)),
+                DataCell(Text(facture.clientEmail)),
+                DataCell(Text('${facture.finalTotal} DT')),
+                DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 6,
+                        backgroundColor: _getStatusColor(
+                          facture.paymentStatus,
+                        ),
                       ),
-                    ),
-                    DataCell(
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _formatDate(facture.createdAt),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          Text(
-                            'Échéance: TVA (${facture.tvaRate}%)',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      Text(_getStatusText(facture.paymentStatus)),
+                    ],
+                  ),
+                ),
+                DataCell(
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatDate(facture.createdAt),
+                        style: const TextStyle(fontSize: 12),
                       ),
-                    ),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.remove_red_eye,
-                              color: Colors.blue,
-                              size: 20,
-                            ),
-                            onPressed: () => _viewFacture(facture),
-                            tooltip: 'Voir',
-                          ),
-                        ],
+                      Text(
+                        'Échéance: TVA (${facture.tvaRate}%)',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                    ],
+                  ),
+                ),
+                DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.remove_red_eye,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
+                        onPressed: () => _viewFacture(facture),
+                        tooltip: 'Voir',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
+    );
+  }
+}
+
+class _PaginationFooter extends StatelessWidget {
+  final FactureLoaded state;
+  final Function(int) onPageChange;
+  final bool isMobile;
+
+  const _PaginationFooter({
+    required this.state,
+    required this.onPageChange,
+    required this.isMobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.totalPages <= 1) return const SizedBox.shrink();
+    
+    // Assume pageSize of 10 if not available in state
+    final pageSize = 10; // You might want to get this from state if available
+    final startItem = (state.currentPage - 1) * pageSize + 1;
+    final endItem = (state.currentPage * pageSize).clamp(0, state.totalCount);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      child: isMobile
+          ? Column(
+              children: [
+                Text(
+                  'Page ${state.currentPage} sur ${state.totalPages}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                _PaginationControls(
+                  state: state,
+                  onPageChange: onPageChange,
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Affichage $startItem à $endItem sur ${state.totalCount} factures',
+                    style: TextStyle(
+                      color: AppColors.parametereColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                _PaginationControls(
+                  state: state,
+                  onPageChange: onPageChange,
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _PaginationControls extends StatelessWidget {
+  final FactureLoaded state;
+  final Function(int) onPageChange;
+
+  const _PaginationControls({
+    required this.state,
+    required this.onPageChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: state.currentPage > 1
+              ? () => onPageChange(state.currentPage - 1)
+              : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        ...List.generate((state.totalPages).clamp(0, 5), (index) {
+          final pageNum = index + 1;
+          final isActive = pageNum == state.currentPage;
+
+          return GestureDetector(
+            onTap: () => onPageChange(pageNum),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.mainColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: !isActive
+                    ? Border.all(color: Colors.grey.shade300)
+                    : null,
+              ),
+              child: Text(
+                '$pageNum',
+                style: TextStyle(
+                  color: isActive ? Colors.white : AppColors.textColor,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        }),
+        IconButton(
+          onPressed: state.currentPage < state.totalPages
+              ? () => onPageChange(state.currentPage + 1)
+              : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
     );
   }
 }

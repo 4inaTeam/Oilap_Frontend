@@ -23,3 +23,8 @@ class GetFacturePdf extends FactureEvent {
   final int factureId;
   GetFacturePdf(this.factureId);
 }
+
+class LoadFacturesPage extends FactureEvent {
+  final int page;
+  LoadFacturesPage(this.page);
+}

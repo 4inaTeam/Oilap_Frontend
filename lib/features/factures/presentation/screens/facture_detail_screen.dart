@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
 import '../bloc/facture_bloc.dart';
 import '../bloc/facture_event.dart';
 import '../bloc/facture_state.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FactureDetailScreen extends StatefulWidget {
   final int factureId;
@@ -29,6 +30,26 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     context.read<FactureBloc>().add(GetFacturePdf(widget.factureId));
   }
 
+  Future<void> _downloadPdf(String pdfUrl) async {
+    final uri = Uri.parse(pdfUrl);
+  
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Impossible d\'ouvrir le lien de téléchargement du PDF',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _goBackToList() {
+    Navigator.of(context).pushReplacementNamed('/factures');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppLayout(
@@ -40,7 +61,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _goBackToList,
                 ),
                 const Spacer(),
                 IconButton(
@@ -72,23 +93,32 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download, color: Colors.white),
-                  label: const Text(
-                    'Télécharger',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentGreen,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                BlocBuilder<FactureBloc, FactureState>(
+                  builder: (context, state) {
+                    String? pdfUrl;
+                    if (state is FacturePdfLoaded) {
+                      pdfUrl = state.pdfUrl;
+                    }
+                    return ElevatedButton.icon(
+                      onPressed:
+                          pdfUrl != null ? () => _downloadPdf(pdfUrl!) : null,
+                      icon: const Icon(Icons.download, color: Colors.white),
+                      label: const Text(
+                        'Télécharger',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentGreen,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -123,24 +153,35 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                   );
                 }
                 if (state is FacturePdfLoaded) {
-                  return Container(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: SfPdfViewer.network(
-                      state.pdfUrl,
-                      onDocumentLoadFailed: (details) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Error loading PDF: ${details.error}',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  // Use external browser for Cloudinary PDF to avoid 401 errors
+                  return Column(
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text('Ouvrir le PDF dans le navigateur'),
+                        onPressed: () => _downloadPdf(state.pdfUrl),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SfPdfViewer.network(
+                          state.pdfUrl,
+                          onDocumentLoadFailed: (details) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Error loading PDF: ${details.error}',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   );
                 }
                 return const Center(

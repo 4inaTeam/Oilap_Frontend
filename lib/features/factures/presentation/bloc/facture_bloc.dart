@@ -5,18 +5,26 @@ import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event
         FilterFacturesByStatus,
         LoadFactureDetail,
         LoadFactures,
+        LoadFacturesPage,
         RefreshFactures,
         SearchFactures,
         GetFacturePdf;
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
-import '../../../../core/models/facture_model.dart';
 import '../../data/facture_repository.dart';
 
 class FactureBloc extends Bloc<FactureEvent, FactureState> {
   final FactureRepository factureRepository;
 
+  int _currentPage = 1;
+  static const int _pageSize = 6;
+
+  // Store current filters to maintain them during pagination
+  String? _currentSearchQuery;
+  String? _currentStatusFilter;
+
   FactureBloc({required this.factureRepository}) : super(FactureInitial()) {
     on<LoadFactures>(_onLoadFactures);
+    on<LoadFacturesPage>(_onLoadFacturesPage); // Add this handler
     on<SearchFactures>(_onSearchFactures);
     on<FilterFacturesByStatus>(_onFilterFacturesByStatus);
     on<RefreshFactures>(_onRefreshFactures);
@@ -29,9 +37,41 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     emit(FactureLoading());
+    _currentPage = 1; // Reset to first page
+    await _loadFacturesData(emit);
+  }
+
+  // New handler for loading specific pages
+  Future<void> _onLoadFacturesPage(
+    LoadFacturesPage event,
+    Emitter<FactureState> emit,
+  ) async {
+    emit(FactureLoading());
+    _currentPage = event.page;
+    await _loadFacturesData(emit);
+  }
+
+  // Common method to load factures data
+  Future<void> _loadFacturesData(Emitter<FactureState> emit) async {
     try {
-      final factures = await factureRepository.fetchFactures();
-      emit(FactureLoaded(factures: factures, filteredFactures: factures));
+      final result = await factureRepository.fetchFactures(
+        page: _currentPage,
+        pageSize: _pageSize,
+        searchQuery: _currentSearchQuery,
+        statusFilter: _currentStatusFilter,
+      );
+
+      emit(
+        FactureLoaded(
+          factures: result.factures,
+          filteredFactures: result.factures, // Server-side filtering, so no need for client-side filtering
+          totalCount: result.totalCount,
+          currentPage: result.currentPage,
+          totalPages: result.totalPages,
+          currentSearch: _currentSearchQuery,
+          currentFilter: _currentStatusFilter,
+        ),
+      );
     } catch (e) {
       emit(
         FactureError('Erreur lors du chargement des factures: ${e.toString()}'),
@@ -43,64 +83,23 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     RefreshFactures event,
     Emitter<FactureState> emit,
   ) async {
-    try {
-      final factures = await factureRepository.fetchFactures();
-      if (state is FactureLoaded) {
-        final currentState = state as FactureLoaded;
-        final filteredFactures = _applyFilters(
-          factures,
-          currentState.currentSearch,
-          currentState.currentFilter,
-        );
-        emit(
-          currentState.copyWith(
-            factures: factures,
-            filteredFactures: filteredFactures,
-          ),
-        );
-      } else {
-        emit(FactureLoaded(factures: factures, filteredFactures: factures));
-      }
-    } catch (e) {
-      emit(FactureError('Erreur lors du rafraîchissement: ${e.toString()}'));
-    }
+    // Keep the current page and filters when refreshing
+    await _loadFacturesData(emit);
   }
 
   void _onSearchFactures(SearchFactures event, Emitter<FactureState> emit) {
-    if (state is FactureLoaded) {
-      final currentState = state as FactureLoaded;
-      final filteredFactures = _applyFilters(
-        currentState.factures,
-        event.query,
-        currentState.currentFilter,
-      );
-      emit(
-        currentState.copyWith(
-          filteredFactures: filteredFactures,
-          currentSearch: event.query,
-        ),
-      );
-    }
+    _currentSearchQuery = event.query.isEmpty ? null : event.query;
+    _currentPage = 1; // Reset to first page when searching
+    add(LoadFacturesPage(1)); // Trigger a new load with search
   }
 
   void _onFilterFacturesByStatus(
     FilterFacturesByStatus event,
     Emitter<FactureState> emit,
   ) {
-    if (state is FactureLoaded) {
-      final currentState = state as FactureLoaded;
-      final filteredFactures = _applyFilters(
-        currentState.factures,
-        currentState.currentSearch,
-        event.status,
-      );
-      emit(
-        currentState.copyWith(
-          filteredFactures: filteredFactures,
-          currentFilter: event.status,
-        ),
-      );
-    }
+    _currentStatusFilter = event.status;
+    _currentPage = 1; // Reset to first page when filtering
+    add(LoadFacturesPage(1)); // Trigger a new load with filter
   }
 
   Future<void> _onLoadFactureDetail(
@@ -139,35 +138,5 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     }
   }
 
-  List<Facture> _applyFilters(
-    List<Facture> factures,
-    String? searchQuery,
-    String? statusFilter,
-  ) {
-    List<Facture> filtered = List.from(factures);
-
-    // Apply status filter
-    if (statusFilter != null && statusFilter.isNotEmpty) {
-      filtered =
-          filtered.where((facture) {
-            return facture.paymentStatus.toLowerCase() ==
-                statusFilter.toLowerCase();
-          }).toList();
-    }
-
-    // Apply search filter
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      final query = searchQuery.toLowerCase();
-      filtered =
-          filtered.where((facture) {
-            return facture.id.toString().contains(query) ||
-                facture.factureNumber.toLowerCase().contains(query) ||
-                facture.clientName.toLowerCase().contains(query) ||
-                facture.finalTotal.toString().contains(query) ||
-                facture.paymentStatus.toLowerCase().contains(query);
-          }).toList();
-    }
-
-    return filtered;
-  }
+  
 }
