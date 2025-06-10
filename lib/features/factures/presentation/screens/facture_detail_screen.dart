@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
@@ -49,16 +49,17 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.payment, color: Colors.white),
-                  label: const Text('Payer', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Payer',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentGreen,
                     padding: const EdgeInsets.symmetric(
@@ -74,7 +75,10 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                 ElevatedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.download, color: Colors.white),
-                  label: const Text('Télécharger', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Télécharger',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentGreen,
                     padding: const EdgeInsets.symmetric(
@@ -88,15 +92,12 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             BlocBuilder<FactureBloc, FactureState>(
               builder: (context, state) {
                 if (state is FactureLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
                 if (state is FactureError) {
                   return Center(
                     child: Column(
@@ -121,7 +122,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                     ),
                   );
                 }
-
                 if (state is FacturePdfLoaded) {
                   return Container(
                     height: MediaQuery.of(context).size.height * 0.7,
@@ -143,7 +143,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                     ),
                   );
                 }
-
                 return const Center(
                   child: Text(
                     'Une erreur s\'est produite lors du chargement du PDF',
@@ -157,4 +156,3 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     );
   }
 }
-*/

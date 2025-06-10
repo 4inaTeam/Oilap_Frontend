@@ -19,3 +19,7 @@ class LoadFactureDetail extends FactureEvent {
   LoadFactureDetail(this.factureId);
 }
 
+class GetFacturePdf extends FactureEvent {
+  final int factureId;
+  GetFacturePdf(this.factureId);
+}

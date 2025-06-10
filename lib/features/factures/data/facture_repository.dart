@@ -48,25 +48,18 @@ class FactureRepository {
     }
   }
 
-  // Add this method to get PDF URL for a specific facture
-  Future<String> getFacturePdfUrl(int factureId) async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse('$baseUrl/api/factures/$factureId/view_pdf/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final data = json.decode(resp.body);
-        return data['pdf_url'] as String;
-      }
-      throw Exception('Failed to get PDF URL: ${resp.statusCode}');
-    } catch (e) {
-      throw Exception('Error getting PDF URL: ${e.toString()}');
+  Future<String?> fetchFacturePdfUrl(int factureId) async {
+    final token = await authRepo.getAccessToken();
+    if (token == null) throw Exception('Not authenticated');
+    final resp = await http.get(
+      Uri.parse('$baseUrl/api/factures/$factureId/view_pdf/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (resp.statusCode == 200) {
+      final data = json.decode(resp.body);
+      return data['pdf_url'] as String?;
     }
+    throw Exception('Failed to fetch PDF URL');
   }
 
   // Add this method to download PDF

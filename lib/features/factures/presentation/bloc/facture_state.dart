@@ -48,3 +48,7 @@ class FactureDeleting extends FactureState {}
 
 class FactureDeleted extends FactureState {}
 
+class FacturePdfLoaded extends FactureState {
+  final String pdfUrl;
+  FacturePdfLoaded(this.pdfUrl);
+}

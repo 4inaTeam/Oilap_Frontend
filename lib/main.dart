@@ -34,15 +34,25 @@ void main() async {
     debugPrint('SharedPreferences error: $e');
   }
 
+  // Initialize AuthRepository and load existing tokens
+  final authRepository = AuthRepository(
+    baseUrl: backendUrl,
+    sharedPreferences: sharedPreferences,
+  );
+  
+  // Initialize auth to load stored tokens and extract role
+  try {
+    await authRepository.initializeAuth();
+    debugPrint('Auth initialized. Current role: ${AuthRepository.currentRole}');
+  } catch (e) {
+    debugPrint('Auth initialization error: $e');
+  }
+
   runApp(
     MultiRepositoryProvider(
       providers: [
-        RepositoryProvider(
-          create:
-              (_) => AuthRepository(
-                baseUrl: backendUrl,
-                sharedPreferences: sharedPreferences,
-              ),
+        RepositoryProvider.value(
+          value: authRepository,
         ),
         RepositoryProvider(
           create: (_) => ProfileRepository(baseUrl: backendUrl),
