@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1078417609443",
+    "project_id": "oillab-ce5bd",
+    "storage_bucket": "oillab-ce5bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1078417609443:android:4185f1801ebf8e5525abd6",
+        "android_client_info": {
+          "package_name": "com.example.oilab_frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDnOJ643ZlKNUQGvuWMZGqiGHKfjYbSu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

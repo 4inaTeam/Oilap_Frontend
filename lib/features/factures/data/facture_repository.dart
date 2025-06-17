@@ -134,7 +134,6 @@ class FactureRepository {
           // If it's just a public ID, build the Cloudinary URL
           if (!pdfUrl.startsWith('http')) {
             final builtUrl = CloudinaryConfig.buildPdfUrl(pdfUrl);
-            print('Built Cloudinary URL: $builtUrl');
             return builtUrl;
           }
 
@@ -146,54 +145,33 @@ class FactureRepository {
         String? publicId = data['pdf_public_id'] as String?;
         if (publicId != null && publicId.isNotEmpty) {
           final builtUrl = CloudinaryConfig.buildPdfUrl(publicId);
-          print('Built URL from public ID: $builtUrl');
           return builtUrl;
         }
       }
 
       throw Exception('Failed to fetch PDF URL: ${resp.statusCode}');
     } catch (e) {
-      print('Error fetching PDF URL: $e');
       throw Exception('Error fetching PDF URL: ${e.toString()}');
     }
   }
 
   Future<String?> fetchFacturePdfUrlWithFallback(int factureId) async {
     try {
-      // First try the normal method
+
       String? pdfUrl = await fetchFacturePdfUrl(factureId);
 
       if (pdfUrl != null) {
-        // Test if the URL works
+
         final testResponse = await http.head(Uri.parse(pdfUrl));
         if (testResponse.statusCode == 200) {
           return pdfUrl;
         }
 
-        // If it doesn't work, try different formats
-        String? publicId = CloudinaryConfig.extractPublicId(pdfUrl);
-        if (publicId != null) {
-          final possibleUrls = CloudinaryConfig.generatePossiblePdfUrls(
-            publicId,
-          );
-
-          for (String url in possibleUrls) {
-            try {
-              final response = await http.head(Uri.parse(url));
-              if (response.statusCode == 200) {
-                print('Found working URL: $url');
-                return url;
-              }
-            } catch (e) {
-              print('URL failed: $url - $e');
-            }
-          }
-        }
+        
       }
 
       return null;
     } catch (e) {
-      print('Error in fetchFacturePdfUrlWithFallback: $e');
       return null;
     }
   }

@@ -22,7 +22,6 @@ class _FactureListScreenState extends State<FactureListScreen> {
   @override
   void initState() {
     super.initState();
-    // Load factures when the screen initializes
     context.read<FactureBloc>().add(LoadFactures());
   }
 
@@ -40,7 +39,12 @@ class _FactureListScreenState extends State<FactureListScreen> {
     setState(() {
       _selectedStatusFilter = status;
     });
-    context.read<FactureBloc>().add(FilterFacturesByStatus(status));
+    context.read<FactureBloc>().add(
+      FilterFacturesByStatus(
+        status == null || status.isEmpty ? null : status.toLowerCase(),
+      ),
+    );
+    context.read<FactureBloc>().add(LoadFactures());
   }
 
   void _onRefresh() {
@@ -50,8 +54,10 @@ class _FactureListScreenState extends State<FactureListScreen> {
   void _changePage(int page) {
     final bloc = context.read<FactureBloc>();
     final currentState = bloc.state;
-    
-    if (currentState is FactureLoaded && page == currentState.currentPage) return;
+
+    if (currentState is FactureLoaded && page == currentState.currentPage) {
+      return;
+    }
     // Prevent multiple rapid taps by disabling the button if already loading
     if (bloc.state is FactureLoading) return;
     bloc.add(LoadFacturesPage(page));
@@ -112,7 +118,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
                   groupValue: _selectedStatusFilter,
                   onChanged: (value) {
                     Navigator.of(context).pop();
-                    _onFilterByStatus(value);
+                    _onFilterByStatus(null);
                   },
                 ),
               ),
@@ -123,7 +129,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
                   groupValue: _selectedStatusFilter,
                   onChanged: (value) {
                     Navigator.of(context).pop();
-                    _onFilterByStatus(value);
+                    _onFilterByStatus('paid');
                   },
                 ),
               ),
@@ -134,7 +140,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
                   groupValue: _selectedStatusFilter,
                   onChanged: (value) {
                     Navigator.of(context).pop();
-                    _onFilterByStatus(value);
+                    _onFilterByStatus('unpaid');
                   },
                 ),
               ),
@@ -170,11 +176,12 @@ class _FactureListScreenState extends State<FactureListScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const DashboardScreen(),
-                    ),
-                  ),
+                  onPressed:
+                      () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardScreen(),
+                        ),
+                      ),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -206,15 +213,16 @@ class _FactureListScreenState extends State<FactureListScreen> {
                       hintText: 'Recherche par ID, client, montant ou statut',
                       isDense: true,
                       prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearch('');
-                              },
-                            )
-                          : null,
+                      suffixIcon:
+                          _searchController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearch('');
+                                },
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -226,13 +234,15 @@ class _FactureListScreenState extends State<FactureListScreen> {
                 IconButton(
                   icon: Icon(
                     Icons.filter_list,
-                    color: _selectedStatusFilter != null
-                        ? AppColors.accentGreen
-                        : null,
+                    color:
+                        _selectedStatusFilter != null
+                            ? AppColors.accentGreen
+                            : null,
                   ),
                   onPressed: _showFilterDialog,
                 ),
-                if (_selectedStatusFilter != null || _searchController.text.isNotEmpty)
+                if (_selectedStatusFilter != null ||
+                    _searchController.text.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.clear_all),
                     onPressed: _clearFilters,
@@ -265,8 +275,8 @@ class _FactureListScreenState extends State<FactureListScreen> {
             const SizedBox(height: 16),
 
             // Legend
-            Row(
-              children: const [
+            const Row(
+              children: [
                 LegendDot(color: Colors.green, label: 'Payé'),
                 SizedBox(width: 16),
                 LegendDot(color: Colors.red, label: 'Non payé'),
@@ -286,9 +296,10 @@ class _FactureListScreenState extends State<FactureListScreen> {
                         backgroundColor: Colors.red,
                         action: SnackBarAction(
                           label: 'Réessayer',
-                          onPressed: () => context.read<FactureBloc>().add(
-                            LoadFactures(),
-                          ),
+                          onPressed:
+                              () => context.read<FactureBloc>().add(
+                                LoadFactures(),
+                              ),
                         ),
                       ),
                     );
@@ -316,7 +327,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
                   } else if (state is FactureLoaded) {
                     // Use factures directly since filtering is done server-side
                     final displayFactures = state.factures;
-                    
+
                     if (displayFactures.isEmpty) {
                       return Center(
                         child: Column(
@@ -328,14 +339,14 @@ class _FactureListScreenState extends State<FactureListScreen> {
                               color: Colors.grey[400],
                             ),
                             const SizedBox(height: 16),
-                            Text(
+                            const Text(
                               'Aucune facture trouvée',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey,
                               ),
                             ),
-                            if (state.currentSearch?.isNotEmpty == true || 
+                            if (state.currentSearch?.isNotEmpty == true ||
                                 state.currentFilter != null) ...[
                               const SizedBox(height: 8),
                               TextButton(
@@ -347,49 +358,16 @@ class _FactureListScreenState extends State<FactureListScreen> {
                         ),
                       );
                     }
-                    
+
                     return Column(
                       children: [
-                        // Results summary
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Affichage de ${displayFactures.length} sur ${state.totalCount} factures',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (state.currentSearch?.isNotEmpty == true) ...[
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: Text('Recherche: "${state.currentSearch}"'),
-                                  onDeleted: () {
-                                    _searchController.clear();
-                                    _onSearch('');
-                                  },
-                                  deleteIcon: const Icon(Icons.close, size: 18),
-                                ),
-                              ],
-                              if (state.currentFilter != null) ...[
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: Text('Statut: ${_getStatusText(state.currentFilter!)}'),
-                                  onDeleted: () => _onFilterByStatus(null),
-                                  deleteIcon: const Icon(Icons.close, size: 18),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
                         Expanded(
                           child: RefreshIndicator(
                             onRefresh: () async => _onRefresh(),
-                            child: isMobile
-                                ? _buildMobileTable(displayFactures)
-                                : _buildDesktopTable(displayFactures),
+                            child:
+                                isMobile
+                                    ? _buildMobileTable(displayFactures)
+                                    : _buildDesktopTable(displayFactures),
                           ),
                         ),
                         _PaginationFooter(
@@ -437,9 +415,10 @@ class _FactureListScreenState extends State<FactureListScreen> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
-                            onPressed: () => context.read<FactureBloc>().add(
-                              LoadFactures(),
-                            ),
+                            onPressed:
+                                () => context.read<FactureBloc>().add(
+                                  LoadFactures(),
+                                ),
                             icon: const Icon(Icons.refresh),
                             label: const Text('Réessayer'),
                           ),
@@ -543,9 +522,12 @@ class _FactureListScreenState extends State<FactureListScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          _getStatusText(facture.paymentStatus),
-                          style: const TextStyle(fontSize: 12),
+                        Flexible(
+                          child: Text(
+                            _getStatusText(facture.paymentStatus),
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -563,7 +545,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
                 ),
               ],
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -588,73 +570,75 @@ class _FactureListScreenState extends State<FactureListScreen> {
             DataColumn(label: Text('Date')),
             DataColumn(label: Text('Actions')),
           ],
-          rows: factures.map((facture) {
-            return DataRow(
-              cells: [
-                DataCell(Text(facture.id.toString())),
-                DataCell(Text(facture.factureNumber)),
-                DataCell(Text(facture.clientName)),
-                DataCell(Text(facture.clientEmail)),
-                DataCell(Text('${facture.finalTotal} DT')),
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 6,
-                        backgroundColor: _getStatusColor(
-                          facture.paymentStatus,
-                        ),
+          rows:
+              factures.map((facture) {
+                return DataRow(
+                  cells: [
+                    DataCell(Text(facture.id.toString())),
+                    DataCell(Text(facture.factureNumber)),
+                    DataCell(Text(facture.clientName)),
+                    DataCell(Text(facture.clientEmail)),
+                    DataCell(Text('${facture.finalTotal} DT')),
+                    DataCell(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 6,
+                            backgroundColor: _getStatusColor(
+                              facture.paymentStatus,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(_getStatusText(facture.paymentStatus)),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(_getStatusText(facture.paymentStatus)),
-                    ],
-                  ),
-                ),
-                DataCell(
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _formatDate(facture.createdAt),
-                        style: const TextStyle(fontSize: 12),
+                    ),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _formatDate(facture.createdAt),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          Text(
+                            'Échéance: TVA (${facture.tvaRate}%)',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Échéance: TVA (${facture.tvaRate}%)',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                        ),
+                    ),
+                    DataCell(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.remove_red_eye,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                            onPressed: () => _viewFacture(facture),
+                            tooltip: 'Voir',
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.remove_red_eye,
-                          color: Colors.blue,
-                          size: 20,
-                        ),
-                        onPressed: () => _viewFacture(facture),
-                        tooltip: 'Voir',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
+                    ),
+                  ],
+                );
+              }).toList(),
         ),
       ),
     );
   }
 }
 
+// Fixed PaginationFooter widget - the original code referenced this but it wasn't defined
 class _PaginationFooter extends StatelessWidget {
   final FactureLoaded state;
   final Function(int) onPageChange;
@@ -669,45 +653,33 @@ class _PaginationFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.totalPages <= 1) return const SizedBox.shrink();
-    
-    // Assume pageSize of 10 if not available in state
-    final pageSize = 10; // You might want to get this from state if available
-    final startItem = (state.currentPage - 1) * pageSize + 1;
-    final endItem = (state.currentPage * pageSize).clamp(0, state.totalCount);
-    
+
+    // Calculate the correct page size and range
+    final currentPageFactures = state.factures.length;
+    final totalFactures = state.totalCount;
+    final currentPage = state.currentPage;
+    int startItem;
+    if (currentPage == 1) {
+      startItem = 1;
+    } else {
+      final estimatedPageSize = (totalFactures / state.totalPages).ceil();
+      startItem = (currentPage - 1) * estimatedPageSize + 1;
+    }
+    final endItem = startItem + currentPageFactures - 1;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      child: isMobile
-          ? Column(
-              children: [
-                Text(
-                  'Page ${state.currentPage} sur ${state.totalPages}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                _PaginationControls(
-                  state: state,
-                  onPageChange: onPageChange,
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Affichage $startItem à $endItem sur ${state.totalCount} factures',
-                    style: TextStyle(
-                      color: AppColors.parametereColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                _PaginationControls(
-                  state: state,
-                  onPageChange: onPageChange,
-                ),
-              ],
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Affichage $startItem à $endItem sur $totalFactures factures',
+              style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
             ),
+          ),
+          _PaginationControls(state: state, onPageChange: onPageChange),
+        ],
+      ),
     );
   }
 }
@@ -716,54 +688,75 @@ class _PaginationControls extends StatelessWidget {
   final FactureLoaded state;
   final Function(int) onPageChange;
 
-  const _PaginationControls({
-    required this.state,
-    required this.onPageChange,
-  });
+  const _PaginationControls({required this.state, required this.onPageChange});
 
   @override
   Widget build(BuildContext context) {
+    // Calculate which pages to show
+    int startPage = 1;
+    int endPage = state.totalPages;
+
+    if (state.totalPages > 5) {
+      if (state.currentPage <= 3) {
+        endPage = 5;
+      } else if (state.currentPage >= state.totalPages - 2) {
+        startPage = state.totalPages - 4;
+      } else {
+        startPage = state.currentPage - 2;
+        endPage = state.currentPage + 2;
+      }
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Previous button
         IconButton(
-          onPressed: state.currentPage > 1
-              ? () => onPageChange(state.currentPage - 1)
-              : null,
+          onPressed:
+              state.currentPage > 1
+                  ? () => onPageChange(state.currentPage - 1)
+                  : null,
           icon: const Icon(Icons.chevron_left),
         ),
-        ...List.generate((state.totalPages).clamp(0, 5), (index) {
-          final pageNum = index + 1;
-          final isActive = pageNum == state.currentPage;
 
-          return GestureDetector(
+        // First page button (if not visible in range)
+        if (startPage > 1) ...[
+          _PageButton(
+            pageNumber: 1,
+            isActive: state.currentPage == 1,
+            onTap: () => onPageChange(1),
+          ),
+          if (startPage > 2)
+            const Text('...', style: TextStyle(color: Colors.grey)),
+        ],
+
+        // Page number buttons
+        ...List.generate(endPage - startPage + 1, (index) {
+          final pageNum = startPage + index;
+          return _PageButton(
+            pageNumber: pageNum,
+            isActive: pageNum == state.currentPage,
             onTap: () => onPageChange(pageNum),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isActive ? AppColors.mainColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-                border: !isActive
-                    ? Border.all(color: Colors.grey.shade300)
-                    : null,
-              ),
-              child: Text(
-                '$pageNum',
-                style: TextStyle(
-                  color: isActive ? Colors.white : AppColors.textColor,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
           );
         }),
+
+        // Last page button (if not visible in range)
+        if (endPage < state.totalPages) ...[
+          if (endPage < state.totalPages - 1)
+            const Text('...', style: TextStyle(color: Colors.grey)),
+          _PageButton(
+            pageNumber: state.totalPages,
+            isActive: state.currentPage == state.totalPages,
+            onTap: () => onPageChange(state.totalPages),
+          ),
+        ],
+
+        // Next button
         IconButton(
-          onPressed: state.currentPage < state.totalPages
-              ? () => onPageChange(state.currentPage + 1)
-              : null,
+          onPressed:
+              state.currentPage < state.totalPages
+                  ? () => onPageChange(state.currentPage + 1)
+                  : null,
           icon: const Icon(Icons.chevron_right),
         ),
       ],
@@ -771,14 +764,53 @@ class _PaginationControls extends StatelessWidget {
   }
 }
 
+class _PageButton extends StatelessWidget {
+  final int pageNumber;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _PageButton({
+    required this.pageNumber,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.mainColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: !isActive ? Border.all(color: Colors.grey.shade300) : null,
+        ),
+        child: Text(
+          '$pageNumber',
+          style: TextStyle(
+            color: isActive ? Colors.white : AppColors.textColor,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class LegendDot extends StatelessWidget {
   final Color color;
   final String label;
+
   const LegendDot({required this.color, required this.label, super.key});
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(radius: 6, backgroundColor: color),
         const SizedBox(width: 4),

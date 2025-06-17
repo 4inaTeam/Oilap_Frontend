@@ -346,7 +346,6 @@ class _ProductUpdateDialogState extends State<ProductUpdateDialog> {
         id: widget.product.id,
         quality: _qualityCtr.text.trim(),
         origine: _origineCtr.text.trim(),
-        price: price,
         quantity: quantity,
         clientCin: _clientCinCtr.text.trim(),
         status: _selectedStatus,

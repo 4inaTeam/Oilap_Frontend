@@ -1,14 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart'
-    show
-        FactureEvent,
-        FilterFacturesByStatus,
-        LoadFactureDetail,
-        LoadFactures,
-        LoadFacturesPage,
-        RefreshFactures,
-        SearchFactures,
-        GetFacturePdf;
+import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
 import '../../data/facture_repository.dart';
 
@@ -37,11 +28,10 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     emit(FactureLoading());
-    _currentPage = 1; // Reset to first page
+    _currentPage = 1; 
     await _loadFacturesData(emit);
   }
 
-  // New handler for loading specific pages
   Future<void> _onLoadFacturesPage(
     LoadFacturesPage event,
     Emitter<FactureState> emit,
@@ -64,7 +54,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
       emit(
         FactureLoaded(
           factures: result.factures,
-          filteredFactures: result.factures, // Server-side filtering, so no need for client-side filtering
+          filteredFactures: result.factures,
           totalCount: result.totalCount,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
@@ -137,6 +127,4 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
       emit(FactureError('Erreur lors du chargement du PDF: ${e.toString()}'));
     }
   }
-
-  
 }

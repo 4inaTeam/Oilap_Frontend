@@ -6,6 +6,7 @@ import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard
 import 'package:oilab_frontend/features/produits/presentation/screens/product_add_dialog.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_detail_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_update_dialog.dart';
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
@@ -187,6 +188,8 @@ class _SearchSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isClient = AuthRepository.currentRole == 'CLIENT';
+
     final searchField = TextField(
       controller: controller,
       onChanged: (value) {
@@ -262,15 +265,22 @@ class _SearchSection extends StatelessWidget {
       ),
     );
 
-    return isMobile
-        ? Column(children: [searchField, const SizedBox(height: 12), addButton])
-        : Row(
-          children: [
-            Expanded(flex: 3, child: searchField),
-            const SizedBox(width: 16),
-            addButton,
-          ],
-        );
+    // Only show addButton if not CLIENT
+    if (isMobile) {
+      return Column(
+        children: [
+          searchField,
+          if (!isClient) ...[const SizedBox(height: 12), addButton],
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(flex: 3, child: searchField),
+          if (!isClient) ...[const SizedBox(width: 16), addButton],
+        ],
+      );
+    }
   }
 }
 

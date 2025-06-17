@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -13,6 +12,9 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Add Stripe.js for payment processing -->
+  <script src="https://js.stripe.com/v3/"></script>
 
   <style>
     @font-face {
@@ -39,18 +41,17 @@
 
   <script>
     window.flutterConfiguration = {
-
       canvaskitUrl: 'assets/canvaskit',
-
       fontUrl: 'assets/fonts'
     };
   </script>
 
-  <script src="main.dart.js" defer></script>
+  <!-- Load main.dart.js with type="application/javascript" for clarity -->
+  <script src="main.dart.js" type="application/javascript" defer></script>
 </head>
 
 <body>
-
+  <!-- Add a container for Stripe Elements (optional, can be managed in Flutter) -->
+  <div id="card-element"></div>
 </body>
-
 </html>

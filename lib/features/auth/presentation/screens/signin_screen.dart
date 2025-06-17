@@ -58,6 +58,18 @@ class _SignInViewState extends State<_SignInView> {
               (route) => false,
             );
           }
+          else if (state is AuthLoadFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Email ou mot de passe incorrect',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         },
         child: Center(
           child: SingleChildScrollView(
