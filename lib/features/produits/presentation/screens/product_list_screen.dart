@@ -84,11 +84,8 @@ class _ProductListViewState extends State<_ProductListView> {
     if (!mounted) return;
     setState(() => _currentSearchQuery = query);
 
-    if (query.isEmpty) {
-      context.read<ProductBloc>().add(LoadProducts());
-    } else {
-      context.read<ProductBloc>().add(SearchProducts(query: query));
-    }
+    final event = query.isEmpty ? LoadProducts() : SearchProducts(query: query);
+    context.read<ProductBloc>().add(event);
   }
 
   void _changePage(int page) {
@@ -157,7 +154,7 @@ class _AppBar extends StatelessWidget {
         ],
         Expanded(
           child: Text(
-            'Products',
+            'Produits',
             style: TextStyle(
               fontSize: isMobile ? 20 : 22,
               fontWeight: FontWeight.bold,
@@ -193,43 +190,19 @@ class _SearchSection extends StatelessWidget {
     final searchField = TextField(
       controller: controller,
       onChanged: (value) {
-        if (value.isEmpty) {
-          onSearch('');
-          return;
-        }
         Future.delayed(const Duration(milliseconds: 500), () {
           if (controller.text == value) onSearch(value.trim());
         });
       },
+      onSubmitted: (value) => onSearch(value.trim()),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : 12,
-          vertical: isMobile ? 8 : 12,
-        ),
         hintText: 'Rechercher',
-        hintStyle: TextStyle(
-          fontSize: isMobile ? 13 : 14,
-          color: Colors.grey[500],
-        ),
-        prefixIcon: Icon(
-          Icons.search,
-          size: isMobile ? 20 : 24,
-          color: Colors.grey[500],
-        ),
+        prefixIcon: const Icon(Icons.search),
         suffixIcon:
             currentQuery.isNotEmpty
                 ? IconButton(
-                  padding: EdgeInsets.all(isMobile ? 4 : 8),
-                  constraints: BoxConstraints(
-                    minWidth: isMobile ? 32 : 40,
-                    minHeight: isMobile ? 32 : 40,
-                  ),
-                  icon: Icon(
-                    Icons.clear,
-                    size: isMobile ? 18 : 20,
-                    color: Colors.grey[600],
-                  ),
+                  icon: const Icon(Icons.clear),
                   onPressed: () {
                     controller.clear();
                     onSearch('');
@@ -266,21 +239,19 @@ class _SearchSection extends StatelessWidget {
     );
 
     // Only show addButton if not CLIENT
-    if (isMobile) {
-      return Column(
-        children: [
-          searchField,
-          if (!isClient) ...[const SizedBox(height: 12), addButton],
-        ],
-      );
-    } else {
-      return Row(
-        children: [
-          Expanded(flex: 3, child: searchField),
-          if (!isClient) ...[const SizedBox(width: 16), addButton],
-        ],
-      );
-    }
+    return isMobile
+        ? Column(
+          children: [
+            searchField,
+            if (!isClient) ...[const SizedBox(height: 12), addButton],
+          ],
+        )
+        : Row(
+          children: [
+            Expanded(flex: 3, child: searchField),
+            if (!isClient) ...[const SizedBox(width: 16), addButton],
+          ],
+        );
   }
 }
 
@@ -300,9 +271,7 @@ class _ProductContent extends StatelessWidget {
         if (state is ProductLoadSuccess) {
           return state.products.isEmpty
               ? const _EmptyState()
-              : isMobile
-              ? _MobileProductList(products: state.products)
-              : _ProductTable(products: state.products);
+              : _ProductTable(products: state.products, isMobile: isMobile);
         }
 
         if (state is ProductOperationFailure) {
@@ -380,217 +349,146 @@ String _formatDate(String? dateStr) {
   }
 }
 
-class _MobileProductList extends StatelessWidget {
-  final List<dynamic> products;
-
-  const _MobileProductList({required this.products});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        product.quality?.toString() ?? '',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    _ActionButtons(product: product, isMobile: true),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  Icons.person,
-                  'Propriétaire',
-                  product.clientDetails?['username']?.toString() ??
-                      product.client ??
-                      '-',
-                ),
-
-                _InfoRow(
-                  Icons.access_time,
-                  'Temps d\'entrée',
-                  _formatDate(product.createdAt?.toString()),
-                ),
-                _InfoRow(
-                  Icons.schedule,
-                  'Date d\'sortire',
-                  product.end_time != null
-                      ? _formatDate(product.end_time.toString())
-                      : '-',
-                ),
-                _InfoRow(
-                  Icons.scale,
-                  'Quantité',
-                  product.quantity != null ? '${product.quantity} Kg' : '',
-                ),
-                _InfoRow(Icons.place, 'Origine', product.origine ?? ''),
-                _InfoRow(
-                  Icons.info,
-                  'Statut',
-                  _translateStatus(product.status),
-                  textColor: _getStatusColor(product.status),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? textColor;
-
-  const _InfoRow(this.icon, this.label, this.value, {this.textColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey.shade600),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: textColor),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ProductTable extends StatelessWidget {
   final List<dynamic> products;
+  final bool isMobile;
 
-  const _ProductTable({required this.products});
+  const _ProductTable({required this.products, required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDesktop = screenWidth > 1200;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(
-            label: Text(
-              'Propriétaire',
-              style: TextStyle(fontWeight: FontWeight.bold),
+      child: SingleChildScrollView(
+        child: DataTable(
+          columnSpacing: isMobile ? 8 : (isLargeDesktop ? 100.0 : 80.0),
+          horizontalMargin: isMobile ? 4 : (isLargeDesktop ? 40 : 32),
+          headingRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
+          dataRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
+          columns: [
+            DataColumn(
+              label: Text(
+                'Propriétaire',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Temps d\'entrée',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            DataColumn(
+              label: Text(
+                'Temps d\'entrée',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Temps d\'sortie',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            // Removed "Temps de sortie" column
+            DataColumn(
+              label: Text(
+                'Quantité',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Quantité',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            DataColumn(
+              label: Text(
+                'Origine',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Origine',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            DataColumn(
+              label: Text(
+                'Statut',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Statut',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            DataColumn(
+              label: Text(
+                'Actions',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
+                ),
+              ),
             ),
-          ),
-          DataColumn(
-            label: Text(
-              'Actions',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-        rows:
-            products
-                .map((product) {
-                  if (product == null) return null;
+          ],
+          rows:
+              products
+                  .map((product) {
+                    if (product == null) return null;
 
-                  String ownerDisplay =
-                      product.clientDetails?['username']?.toString() ??
-                      product.client ??
-                      '-';
+                    String ownerDisplay =
+                        product.clientDetails?['username']?.toString() ??
+                        product.client ??
+                        '-';
 
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(ownerDisplay)),
-                      DataCell(
-                        Text(_formatDate(product.createdAt?.toString())),
-                      ),
-                      DataCell(
-                        Text(
-                          product.end_time != null
-                              ? _formatDate(product.end_time.toString())
-                              : '-',
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          product.quantity != null
-                              ? '${product.quantity} Kg'
-                              : '',
-                        ),
-                      ),
-                      DataCell(Text(product.origine?.toString() ?? '')),
-                      DataCell(
-                        Text(
-                          _translateStatus(product.status),
-                          style: TextStyle(
-                            color: _getStatusColor(product.status),
-                            fontWeight: FontWeight.w600,
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text(
+                            ownerDisplay,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: isMobile ? 11 : 14),
                           ),
                         ),
-                      ),
-                      DataCell(_ActionButtons(product: product)),
-                    ],
-                  );
-                })
-                .where((row) => row != null)
-                .cast<DataRow>()
-                .toList(),
+                        DataCell(
+                          Text(
+                            _formatDate(product.createdAt?.toString()),
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: isMobile ? 11 : 14),
+                          ),
+                        ),
+                        // Removed "Temps de sortie" cell
+                        DataCell(
+                          Text(
+                            product.quantity != null
+                                ? '${product.quantity} Kg'
+                                : '',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: isMobile ? 11 : 14),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            product.origine?.toString() ?? '',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: isMobile ? 11 : 14),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            _translateStatus(product.status),
+                            style: TextStyle(
+                              color: _getStatusColor(product.status),
+                              fontWeight: FontWeight.w600,
+                              fontSize: isMobile ? 11 : 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DataCell(
+                          _ActionButtons(product: product, isMobile: isMobile),
+                        ),
+                      ],
+                    );
+                  })
+                  .where((row) => row != null)
+                  .cast<DataRow>()
+                  .toList(),
+        ),
       ),
     );
   }
@@ -604,12 +502,96 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = isMobile ? 20.0 : 24.0;
+    final iconSize = isMobile ? 16.0 : 24.0;
     final isStatusDone =
         product.status == 'done' || product.status == 'canceled';
-    final canCancel =
-        product.status == 'pending'; // Only pending can be canceled
+    final canCancel = product.status == 'pending';
 
+    if (isMobile) {
+      // For mobile: Show actions vertically or in a more compact way
+      return PopupMenuButton<String>(
+        icon: Icon(Icons.more_vert, size: iconSize),
+        onSelected: (value) {
+          switch (value) {
+            case 'edit':
+              if (!isStatusDone) {
+                showDialog(
+                  context: context,
+                  builder: (context) => ProductUpdateDialog(product: product),
+                );
+              }
+              break;
+            case 'cancel':
+              if (canCancel) {
+                _confirmCancel(context, product);
+              }
+              break;
+            case 'view':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProductDetailScreen(product: product),
+                ),
+              );
+              break;
+          }
+        },
+        itemBuilder:
+            (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                enabled: !isStatusDone,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit,
+                      color: isStatusDone ? Colors.grey : Colors.green,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Modifier',
+                      style: TextStyle(
+                        color: isStatusDone ? Colors.grey : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'cancel',
+                enabled: canCancel,
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/Disactivate.png',
+                      width: 16,
+                      height: 16,
+                      color: canCancel ? null : Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Annuler',
+                      style: TextStyle(color: canCancel ? null : Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'view',
+                child: Row(
+                  children: [
+                    Image.asset('assets/icons/View.png', width: 16, height: 16),
+                    const SizedBox(width: 8),
+                    const Text('Voir'),
+                  ],
+                ),
+              ),
+            ],
+      );
+    }
+
+    // For desktop: Show actions horizontally as before
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -627,11 +609,9 @@ class _ActionButtons extends StatelessWidget {
                     builder: (context) => ProductUpdateDialog(product: product),
                   ),
         ),
-        if (!isMobile) ...[
-          const SizedBox(width: 5),
-          Text('|', style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(width: 5),
-        ],
+        const SizedBox(width: 5),
+        Text('|', style: TextStyle(color: Colors.grey.shade600)),
+        const SizedBox(width: 5),
         IconButton(
           icon: Image.asset(
             'assets/icons/Disactivate.png',
@@ -639,13 +619,11 @@ class _ActionButtons extends StatelessWidget {
             height: 16,
             color: canCancel ? null : Colors.grey,
           ),
-          onPressed: canCancel ? () => _confirmCancle(context, product) : null,
+          onPressed: canCancel ? () => _confirmCancel(context, product) : null,
         ),
-        if (!isMobile) ...[
-          const SizedBox(width: 5),
-          Text('|', style: TextStyle(color: Colors.grey.shade600)),
-          const SizedBox(width: 5),
-        ],
+        const SizedBox(width: 5),
+        Text('|', style: TextStyle(color: Colors.grey.shade600)),
+        const SizedBox(width: 5),
         IconButton(
           icon: Image.asset(
             'assets/icons/View.png',
@@ -783,7 +761,7 @@ class _PaginationControls extends StatelessWidget {
   }
 }
 
-void _confirmCancle(BuildContext context, dynamic product) {
+void _confirmCancel(BuildContext context, dynamic product) {
   showDialog(
     context: context,
     builder: (BuildContext context) {

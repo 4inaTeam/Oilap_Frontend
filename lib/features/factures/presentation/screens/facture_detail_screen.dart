@@ -9,16 +9,14 @@ import 'package:oilab_frontend/core/models/facture_model.dart';
 import '../bloc/facture_bloc.dart';
 import '../bloc/facture_event.dart';
 import '../bloc/facture_state.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:pdfx/pdfx.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io' show Platform;
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
-// **Conditional import** picks web or stub automatically:
-
-// Conditional imports for web
-import 'dart:html' as html show window, AnchorElement;
+// Platform-specific imports
+import '../helpers/pdf_utils_stub.dart'
+    if (dart.library.html) '../helpers/pdf_utils_web.dart' as pdf_utils;
 
 class FactureDetailScreen extends StatefulWidget {
   final int factureId;
@@ -35,9 +33,12 @@ class FactureDetailScreen extends StatefulWidget {
 }
 
 class _FactureDetailScreenState extends State<FactureDetailScreen> {
+  // State variables
   bool _isProcessingPayment = false;
+  PdfControllerPinch? _pdfController;
+  bool _isLoadingPdf = false;
+  String? _pdfError;
   Uint8List? _pdfBytes;
-  bool _isLoadingPdfBytes = false;
 
   @override
   void initState() {
@@ -45,82 +46,102 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     context.read<FactureBloc>().add(GetFacturePdf(widget.factureId));
   }
 
-  // Fetch PDF bytes for web
-  Future<void> _fetchPdfBytes(String pdfUrl) async {
-    if (kIsWeb && _pdfBytes == null && !_isLoadingPdfBytes) {
-      setState(() {
-        _isLoadingPdfBytes = true;
-      });
-
-      try {
-        final response = await http.get(
-          Uri.parse(pdfUrl),
-          headers: {'Accept': 'application/pdf'},
-        );
-
-        if (response.statusCode == 200) {
-          setState(() {
-            _pdfBytes = response.bodyBytes;
-            _isLoadingPdfBytes = false;
-          });
-        } else {
-          setState(() {
-            _isLoadingPdfBytes = false;
-          });
-          throw Exception('Failed to load PDF: ${response.statusCode}');
-        }
-      } catch (e) {
-        setState(() {
-          _isLoadingPdfBytes = false;
-        });
-        print('Error fetching PDF bytes: $e');
-
-        // Show error message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erreur lors du chargement du PDF: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
+  @override
+  void dispose() {
+    _pdfController?.dispose();
+    super.dispose();
   }
 
-  Future<void> _downloadPdf(String pdfUrl) async {
-    if (kIsWeb) {
-      // For web, create a download link
-      html.AnchorElement(href: pdfUrl)
-        ..setAttribute(
-          'download',
-          'facture_${widget.facture.factureNumber}.pdf',
-        )
-        ..click();
-    } else {
-      // For mobile platforms
-      final uri = Uri.parse(pdfUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _loadPdfController(String pdfUrl) async {
+    if (_pdfController != null || _isLoadingPdf) return;
+
+    setState(() {
+      _isLoadingPdf = true;
+      _pdfError = null;
+    });
+
+    try {
+      print('Loading PDF from: $pdfUrl');
+
+      // Optimized HTTP request with smaller timeout and better headers
+      final response = await http.get(
+        Uri.parse(pdfUrl),
+        headers: {
+          'Accept': 'application/pdf',
+          'Cache-Control': 'max-age=300', // Allow caching for 5 minutes
+          'Accept-Encoding': 'gzip, deflate',
+        },
+      ).timeout(const Duration(seconds: 15)); // Reduced timeout
+
+      if (response.statusCode == 200) {
+        // Verify content type
+        final contentType = response.headers['content-type'];
+        if (contentType != null && !contentType.contains('application/pdf')) {
+          throw Exception('Response is not a PDF. Content-Type: $contentType');
+        }
+
+        // Verify we have actual PDF data
+        if (response.bodyBytes.length < 100) {
+          throw Exception('PDF data is too small (${response.bodyBytes.length} bytes)');
+        }
+
+        _pdfBytes = response.bodyBytes;
+
+        // Create PDF controller with optimized settings
+        final document = PdfDocument.openData(_pdfBytes!);
+        final controller = PdfControllerPinch(
+          document: document,
+          initialPage: 1,
+        );
+
+        setState(() {
+          _pdfController = controller;
+          _isLoadingPdf = false;
+          _pdfError = null;
+        });
+
+        print('PDF loaded successfully: ${response.bodyBytes.length} bytes');
       } else {
+        throw Exception('Failed to load PDF: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingPdf = false;
+        _pdfError = e.toString();
+      });
+
+      print('Error loading PDF: $e');
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Impossible d\'ouvrir le lien de téléchargement du PDF',
-            ),
+          SnackBar(
+            content: Text('Erreur lors du chargement du PDF'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     }
   }
 
-  Future<void> _openPdfInNewTab(String pdfUrl) async {
+  Future<void> _downloadPdf(String pdfUrl) async {
     if (kIsWeb) {
-      html.window.open(pdfUrl, '_blank');
+      // Use web-specific download
+      pdf_utils.downloadPdfWeb(pdfUrl, 'facture_${widget.facture.factureNumber}.pdf');
     } else {
+      // Use URL launcher for mobile/desktop
       final uri = Uri.parse(pdfUrl);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Impossible d\'ouvrir le lien du PDF')),
+          );
+        }
       }
     }
   }
@@ -161,10 +182,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       );
 
       if (success) {
-        // Refresh the facture data after successful payment
         context.read<FactureBloc>().add(GetFacturePdf(widget.factureId));
-
-        // Show success dialog
         _showPaymentSuccessDialog();
       }
     } catch (e) {
@@ -200,8 +218,8 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); 
-                _goBackToList(); 
+                Navigator.of(context).pop();
+                _goBackToList();
               },
               child: const Text('OK'),
             ),
@@ -211,111 +229,133 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     );
   }
 
-
   void _goBackToList() {
     Navigator.of(context).pushReplacementNamed('/factures');
   }
 
-  // Build PDF viewer based on platform
-  Widget _buildPdfViewer(String pdfUrl) {
-    if (kIsWeb) {
-      // For web, first try to load PDF bytes
-      if (_pdfBytes != null) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: SfPdfViewer.memory(
-            _pdfBytes!,
-            onDocumentLoadFailed: (details) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error loading PDF: ${details.error}')),
-              );
-            },
-          ),
-        );
-      } else if (_isLoadingPdfBytes) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Chargement du PDF...'),
-              ],
-            ),
-          ),
-        );
-      } else {
-        // Try to fetch PDF bytes
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _fetchPdfBytes(pdfUrl);
-        });
+  Widget _buildOptimizedPdfViewer(String pdfUrl) {
+    // Auto-load PDF when URL is available
+    if (_pdfController == null && !_isLoadingPdf && _pdfError == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadPdfController(pdfUrl);
+      });
+    }
 
-        // Show fallback message with options
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
-                  'Aperçu PDF non disponible',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Utilisez les boutons ci-dessus pour ouvrir ou télécharger le PDF',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _openPdfInNewTab(pdfUrl),
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Ouvrir dans le navigateur'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    } else {
-      // For mobile platforms, use SfPdfViewer.network
+    if (_isLoadingPdf) {
       return Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: kIsWeb ? 600 : MediaQuery.of(context).size.height * 0.6,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SfPdfViewer.network(
-          pdfUrl,
-          onDocumentLoadFailed: (details) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error loading PDF: ${details.error}')),
-            );
-          },
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Chargement du PDF...'),
+            ],
+          ),
         ),
       );
     }
+
+    if (_pdfError != null) {
+      return Container(
+        height: kIsWeb ? 600 : MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Erreur lors du chargement du PDF',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _pdfController?.dispose();
+                    _pdfController = null;
+                    _isLoadingPdf = false;
+                    _pdfError = null;
+                    _pdfBytes = null;
+                  });
+                  _loadPdfController(pdfUrl);
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réessayer'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_pdfController != null) {
+      return Container(
+        height: kIsWeb ? 600 : MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: PdfViewPinch(
+            controller: _pdfController!,
+            scrollDirection: Axis.vertical,
+            onDocumentError: (error) {
+              setState(() {
+                _pdfError = 'Erreur de document PDF';
+              });
+            },
+            builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+              options: const DefaultBuilderOptions(
+                loaderSwitchDuration: Duration(milliseconds: 300),
+              ),
+              documentLoaderBuilder: (_) => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              pageLoaderBuilder: (_) => const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: kIsWeb ? 600 : MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.picture_as_pdf, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'PDF non disponible',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -372,10 +412,9 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color:
-                                widget.facture.paymentStatus == 'paid'
-                                    ? Colors.green
-                                    : Colors.orange,
+                            color: widget.facture.paymentStatus == 'paid'
+                                ? Colors.green
+                                : Colors.orange,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -402,35 +441,32 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(
-                  onPressed:
-                      _isProcessingPayment ||
-                              widget.facture.paymentStatus == 'paid'
-                          ? null
-                          : _processPayment,
-                  icon:
-                      _isProcessingPayment
-                          ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                          : const Icon(Icons.payment, color: Colors.white),
+                  onPressed: _isProcessingPayment ||
+                          widget.facture.paymentStatus == 'paid'
+                      ? null
+                      : _processPayment,
+                  icon: _isProcessingPayment
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.payment, color: Colors.white),
                   label: Text(
                     _isProcessingPayment
                         ? 'Traitement...'
                         : widget.facture.paymentStatus == 'paid'
-                        ? 'Déjà payée'
-                        : 'Payer',
+                            ? 'Déjà payée'
+                            : 'Payer',
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        widget.facture.paymentStatus == 'paid'
-                            ? Colors.grey
-                            : AppColors.accentGreen,
+                    backgroundColor: widget.facture.paymentStatus == 'paid'
+                        ? Colors.grey
+                        : AppColors.accentGreen,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -490,8 +526,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                         Text(state.message),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed:
-                              () => context.read<FactureBloc>().add(
+                          onPressed: () => context.read<FactureBloc>().add(
                                 GetFacturePdf(widget.factureId),
                               ),
                           child: const Text('Réessayer'),
@@ -501,35 +536,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                   );
                 }
                 if (state is FacturePdfLoaded) {
-                  return Column(
-                    children: [
-                      // Action buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TextButton.icon(
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('Ouvrir dans le navigateur'),
-                            onPressed: () => _openPdfInNewTab(state.pdfUrl),
-                          ),
-                          if (kIsWeb)
-                            TextButton.icon(
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Recharger PDF'),
-                              onPressed: () {
-                                setState(() {
-                                  _pdfBytes = null;
-                                  _isLoadingPdfBytes = false;
-                                });
-                                _fetchPdfBytes(state.pdfUrl);
-                              },
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildPdfViewer(state.pdfUrl),
-                    ],
-                  );
+                  return _buildOptimizedPdfViewer(state.pdfUrl);
                 }
                 return const Center(
                   child: Text(

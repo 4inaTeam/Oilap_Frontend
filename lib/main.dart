@@ -1,6 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:oilab_frontend/firebase_options.dart';
+import 'package:oilab_frontend/shared/services/fcm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:oilab_frontend/app.dart';
@@ -19,17 +23,24 @@ import 'package:oilab_frontend/features/parametres/data/profile_repository.dart'
 import 'package:oilab_frontend/features/parametres/presentation/bloc/profile_bloc.dart';
 import 'package:oilab_frontend/features/produits/data/product_repository.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
+import 'package:oilab_frontend/features/notifications/data/notification_repository.dart';
+import 'package:oilab_frontend/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:oilab_frontend/shared/services/stripe_service.dart';
 import 'package:oilab_frontend/core/constants/consts.dart';
 
-// Global flag to track Stripe availability
 bool isStripeAvailable = false;
+
+// Top-level function for background message handling
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print('Background message received: ${message.notification?.title}');
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Load environment variables
     await _loadEnvironment();
 
     final String backendUrl = _getBackendUrl();
@@ -41,8 +52,17 @@ Future<void> main() async {
       sharedPreferences: sharedPreferences,
     );
 
-    // Initialize Stripe service with the properly configured authRepository
+    await authRepository.initializeAuth();
+
     await _initializeStripe(authRepository);
+
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Set background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     runApp(
       MultiRepositoryProvider(
@@ -52,39 +72,40 @@ Future<void> main() async {
             create: (_) => ProfileRepository(baseUrl: backendUrl),
           ),
           RepositoryProvider<EmployeeRepository>(
-            create:
-                (ctx) => EmployeeRepository(
-                  baseUrl: backendUrl,
-                  authRepo: ctx.read<AuthRepository>(),
-                ),
+            create: (ctx) => EmployeeRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
           ),
           RepositoryProvider<ComptableRepository>(
-            create:
-                (ctx) => ComptableRepository(
-                  baseUrl: backendUrl,
-                  authRepo: ctx.read<AuthRepository>(),
-                ),
+            create: (ctx) => ComptableRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
           ),
           RepositoryProvider<ClientRepository>(
-            create:
-                (ctx) => ClientRepository(
-                  baseUrl: backendUrl,
-                  authRepo: ctx.read<AuthRepository>(),
-                ),
+            create: (ctx) => ClientRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
           ),
           RepositoryProvider<ProductRepository>(
-            create:
-                (ctx) => ProductRepository(
-                  baseUrl: backendUrl,
-                  authRepo: ctx.read<AuthRepository>(),
-                ),
+            create: (ctx) => ProductRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
           ),
           RepositoryProvider<FactureRepository>(
-            create:
-                (ctx) => FactureRepository(
-                  baseUrl: backendUrl,
-                  authRepo: ctx.read<AuthRepository>(),
-                ),
+            create: (ctx) => FactureRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
+          ),
+          RepositoryProvider<NotificationRepository>(
+            create: (ctx) => NotificationRepository(
+              baseUrl: backendUrl,
+              authRepo: ctx.read<AuthRepository>(),
+            ),
           ),
         ],
         child: MultiBlocProvider(
@@ -111,25 +132,74 @@ Future<void> main() async {
               create: (ctx) => ProductBloc(ctx.read<ProductRepository>()),
             ),
             BlocProvider<FactureBloc>(
-              create:
-                  (ctx) => FactureBloc(
-                    factureRepository: ctx.read<FactureRepository>(),
-                  ),
+              create: (ctx) => FactureBloc(
+                factureRepository: ctx.read<FactureRepository>(),
+              ),
+            ),
+            BlocProvider<NotificationBloc>(
+              create: (ctx) => NotificationBloc(ctx.read<NotificationRepository>()),
             ),
           ],
-          child: const MyApp(),
+          child: MyAppWithFCM(
+            authRepository: authRepository,
+            backendUrl: backendUrl,
+          ),
         ),
       ),
     );
   } catch (e) {
-    // Handle any initialization errors
-    print('Error during app initialization: $e');
-    // You might want to show an error screen or fallback UI here
     runApp(
       MaterialApp(
         home: Scaffold(body: Center(child: Text('Error initializing app: $e'))),
       ),
     );
+  }
+}
+
+class MyAppWithFCM extends StatefulWidget {
+  final AuthRepository authRepository;
+  final String backendUrl;
+
+  const MyAppWithFCM({
+    Key? key,
+    required this.authRepository,
+    required this.backendUrl,
+  }) : super(key: key);
+
+  @override
+  State<MyAppWithFCM> createState() => _MyAppWithFCMState();
+}
+
+class _MyAppWithFCMState extends State<MyAppWithFCM> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeFCM();
+    });
+  }
+
+  Future<void> _initializeFCM() async {
+    try {
+      final notificationBloc = context.read<NotificationBloc>();
+      
+      // Initialize FCM Service with the correct parameters
+      await FCMService().initialize(
+        authRepository: widget.authRepository,
+        notificationBloc: notificationBloc,
+        baseUrl: widget.backendUrl,
+      );
+
+      // Subscribe to user-specific topics after initialization
+      await FCMService().subscribeToUserTopics();
+    } catch (e) {
+      print('Error initializing FCM: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MyApp();
   }
 }
 

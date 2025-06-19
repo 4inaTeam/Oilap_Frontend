@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
+import '../../features/auth/data/auth_repository.dart';
 
 class Sidebar extends StatefulWidget {
   const Sidebar({Key? key}) : super(key: key);
@@ -17,7 +18,7 @@ class Sidebar extends StatefulWidget {
 class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
 
-  static const _items = [
+  static const _allItems = [
     {
       'label': 'Tableau de bord',
       'icon': Icons.dashboard,
@@ -33,6 +34,11 @@ class _SidebarState extends State<Sidebar> {
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
     {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
     {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
+    {
+      'label': 'Notifications',
+      'icon': Icons.notifications,
+      'route': '/notifications',
+    },
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
@@ -56,6 +62,49 @@ class _SidebarState extends State<Sidebar> {
         authBloc.add(AuthUserRequested());
       }
     });
+  }
+
+  // Method to filter items based on user role (matching AppRouter logic)
+  List<Map<String, dynamic>> _getFilteredItems() {
+    final String? role = AuthRepository.currentRole;
+
+    bool isAdmin = role == 'ADMIN';
+    bool isEmployee = role == 'EMPLOYEE';
+    bool isAccountant = role == 'ACCOUNTANT';
+    bool isClient = role == 'CLIENT';
+
+    // If user is ADMIN, show all items
+    if (isAdmin) {
+      return List.from(_allItems);
+    }
+
+    // Filter items based on role permissions (matching AppRouter logic)
+    return _allItems.where((item) {
+      final route = item['route'] as String;
+
+      switch (route) {
+        case '/dashboard':
+          return isEmployee || isAccountant || isClient;
+        case '/clients':
+          return isEmployee;
+        case '/comptables':
+          return false;
+        case '/employees':
+          return false;
+        case '/produits':
+          return isEmployee || isClient;
+        case '/factures':
+          return isAccountant || isClient;
+        case '/energie':
+          return false;
+        case '/notifications':
+          return isClient;
+        case '/parametres':
+          return isEmployee || isAccountant || isClient;
+        default:
+          return false;
+      }
+    }).toList();
   }
 
   void _onItemTap(String route) {
@@ -210,6 +259,9 @@ class _SidebarState extends State<Sidebar> {
           );
         }
 
+        // Get filtered items based on current user role
+        final visibleItems = _getFilteredItems();
+
         return Container(
           width: 260,
           color: AppColors.mainColor,
@@ -227,7 +279,8 @@ class _SidebarState extends State<Sidebar> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            ..._items.map(
+                            // Only show items that the user has access to
+                            ...visibleItems.map(
                               (item) => _SidebarItem(
                                 label: item['label'] as String,
                                 icon: item['icon'] as IconData,

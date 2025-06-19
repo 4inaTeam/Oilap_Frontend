@@ -7,6 +7,7 @@ import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
+import '../../../auth/data/auth_repository.dart';
 
 class FactureListScreen extends StatefulWidget {
   const FactureListScreen({Key? key}) : super(key: key);
@@ -29,6 +30,13 @@ class _FactureListScreenState extends State<FactureListScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Helper method to check if current user can add invoices
+  bool _canAddInvoice() {
+    final currentRole = AuthRepository.currentRole?.toLowerCase();
+    // Hide button for clients, show for admin, manager, etc.
+    return currentRole != null && currentRole != 'client';
   }
 
   void _onSearch(String query) {
@@ -249,26 +257,28 @@ class _FactureListScreenState extends State<FactureListScreen> {
                     tooltip: 'Effacer les filtres',
                   ),
                 const SizedBox(width: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/factures/upload');
-                  },
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Ajouter une facture',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentGreen,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
+                // Only show the "Add Invoice" button if user has permission
+                if (_canAddInvoice())
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/factures/upload');
+                    },
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'Ajouter une facture',
+                      style: TextStyle(color: Colors.white),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentGreen,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
 
@@ -638,7 +648,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
   }
 }
 
-// Fixed PaginationFooter widget - the original code referenced this but it wasn't defined
+// Rest of the widget classes remain the same...
 class _PaginationFooter extends StatelessWidget {
   final FactureLoaded state;
   final Function(int) onPageChange;
@@ -654,7 +664,6 @@ class _PaginationFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.totalPages <= 1) return const SizedBox.shrink();
 
-    // Calculate the correct page size and range
     final currentPageFactures = state.factures.length;
     final totalFactures = state.totalCount;
     final currentPage = state.currentPage;
@@ -692,7 +701,6 @@ class _PaginationControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate which pages to show
     int startPage = 1;
     int endPage = state.totalPages;
 
@@ -710,7 +718,6 @@ class _PaginationControls extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Previous button
         IconButton(
           onPressed:
               state.currentPage > 1
@@ -718,8 +725,6 @@ class _PaginationControls extends StatelessWidget {
                   : null,
           icon: const Icon(Icons.chevron_left),
         ),
-
-        // First page button (if not visible in range)
         if (startPage > 1) ...[
           _PageButton(
             pageNumber: 1,
@@ -729,8 +734,6 @@ class _PaginationControls extends StatelessWidget {
           if (startPage > 2)
             const Text('...', style: TextStyle(color: Colors.grey)),
         ],
-
-        // Page number buttons
         ...List.generate(endPage - startPage + 1, (index) {
           final pageNum = startPage + index;
           return _PageButton(
@@ -739,8 +742,6 @@ class _PaginationControls extends StatelessWidget {
             onTap: () => onPageChange(pageNum),
           );
         }),
-
-        // Last page button (if not visible in range)
         if (endPage < state.totalPages) ...[
           if (endPage < state.totalPages - 1)
             const Text('...', style: TextStyle(color: Colors.grey)),
@@ -750,8 +751,6 @@ class _PaginationControls extends StatelessWidget {
             onTap: () => onPageChange(state.totalPages),
           ),
         ],
-
-        // Next button
         IconButton(
           onPressed:
               state.currentPage < state.totalPages

@@ -13,6 +13,7 @@ class AuthRepository {
  
   static String? currentToken;
   static String? currentRole;
+  static String? currentUserId; // Add this line
 
   static String? extractRoleFromToken(String? token) {
     if (token == null) {
@@ -52,11 +53,48 @@ class AuthRepository {
     }
   }
 
+  // Add this method to extract user ID from token
+  static String? extractUserIdFromToken(String? token) {
+    if (token == null) {
+      return null;
+    }
+    
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        return null;
+      }
+      
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      
+      final payloadMap = json.decode(payload);
+
+      // Common fields where user ID might be stored in JWT tokens
+      final possibleUserIdFields = ['user_id', 'userId', 'id', 'sub', 'uid', 'user'];
+      
+      for (String field in possibleUserIdFields) {
+        if (payloadMap.containsKey(field)) {
+          final userId = payloadMap[field];
+          if (userId != null) {
+            return userId.toString(); // Convert to string in case it's an integer
+          }
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> initializeAuth() async {
     final token = await _ts.accessToken;
     if (token != null) {
       currentToken = token;
       currentRole = extractRoleFromToken(token);
+      currentUserId = extractUserIdFromToken(token); // Add this line
     } 
   }
 
@@ -104,10 +142,12 @@ class AuthRepository {
         res = await fn(newToken);
         currentToken = newToken;
         currentRole = extractRoleFromToken(newToken);
+        currentUserId = extractUserIdFromToken(newToken); // Add this line
       } else {
         await _ts.clear();
         currentToken = null;
         currentRole = null;
+        currentUserId = null; // Add this line
         throw Exception('Authentication failed - please login again');
       }
     }
@@ -136,6 +176,7 @@ class AuthRepository {
       
       currentToken = accessToken;
       currentRole = extractRoleFromToken(accessToken);
+      currentUserId = extractUserIdFromToken(accessToken); // Add this line
       
     } else {
       throw Exception('Auth failed (${res.statusCode}): ${res.body}');
@@ -145,6 +186,7 @@ class AuthRepository {
   Future<void> logout() {
     currentToken = null;
     currentRole = null;
+    currentUserId = null; // Add this line
     return _ts.clear();
   }
 
@@ -172,12 +214,14 @@ class AuthRepository {
         
         currentToken = newAccess;
         currentRole = extractRoleFromToken(newAccess);
+        currentUserId = extractUserIdFromToken(newAccess); // Add this line
         
         return newAccess;
       } else if (res.statusCode == 401 || res.statusCode == 403) {
         await _ts.clear();
         currentToken = null;
         currentRole = null;
+        currentUserId = null; // Add this line
         return null;
       } else {
         return null;
@@ -205,6 +249,13 @@ class AuthRepository {
 
         if (json.containsKey('role')) {
           currentRole = json['role'] as String?;
+        }
+
+        // Set currentUserId from the user data
+        if (json.containsKey('id')) {
+          currentUserId = json['id'].toString();
+        } else if (json.containsKey('user_id')) {
+          currentUserId = json['user_id'].toString();
         }
         
         return User.fromJson(json);

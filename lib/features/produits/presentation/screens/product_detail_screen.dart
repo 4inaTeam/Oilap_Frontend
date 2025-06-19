@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
 class ProductDetailScreen extends StatelessWidget {
-  final dynamic product; // Changed to dynamic temporarily
+  final dynamic product;
 
   const ProductDetailScreen({Key? key, required this.product})
     : super(key: key);
@@ -73,115 +72,126 @@ class ProductDetailScreen extends StatelessWidget {
                 ),
                 SizedBox(height: isMobile ? 16 : 24),
 
-                // Form-like layout matching the screenshot
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        // First row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                'Nom de Client',
-                                product.clientName ?? product.client ?? '-',
+                // NEW: Table layout for mobile instead of card
+                if (isMobile) ...[
+                  _buildMobileTable(),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  // Existing card layout for larger screens
+                  Card(
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          // First row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  'Nom de Client',
+                                  product.clientName ?? product.client ?? '-',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildFormField(
-                                'Ville',
-                                product.origine ?? '-',
+                              const SizedBox(width: 24),
+                              Expanded(
+                                child: _buildFormField(
+                                  'Ville',
+                                  product.origine ?? '-',
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Second row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                'Mode de livraison',
-                                product.quality ?? '-',
+                          // Second row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  'Mode de livraison',
+                                  product.quality ?? '-',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildFormField(
-                                'Quantité',
-                                product.quantity != null
-                                    ? '${product.quantity} Kg'
-                                    : '-',
+                              const SizedBox(width: 24),
+                              Expanded(
+                                child: _buildFormField(
+                                  'Quantité',
+                                  product.quantity != null
+                                      ? '${product.quantity} Kg'
+                                      : '-',
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Third row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                'Temps d\'entrée',
-                                product.formattedCreatedAt ?? '-',
+                          // Third row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  'Temps d\'entrée',
+                                  product.formattedCreatedAt ?? '-',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildFormField(
-                                'Sortie',
-                                product.status?.toLowerCase() == 'done'
-                                    ? 'Oui'
-                                    : 'Non',
+                              const SizedBox(width: 24),
+                              Expanded(
+                                child: _buildFormField(
+                                  'Sortie',
+                                  product.status?.toLowerCase() == 'done'
+                                      ? 'Oui'
+                                      : 'Non',
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
 
-                        // Fourth row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildFormField(
-                                'Prix unitaire',
-                                product.price != null
-                                    ? '${product.price} DT'
-                                    : '-',
+                          // Fourth row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  'Prix unitaire',
+                                  product.price != null
+                                      ? '${product.price} DT'
+                                      : '-',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            // Add an empty Expanded to maintain layout
-                            const Expanded(child: SizedBox()),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 24),
+                              const Expanded(child: SizedBox()),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ],
 
                 // Status tracking section matching the screenshot
                 Card(
-                  elevation: 2,
+                  elevation: isMobile ? 0 : 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(isMobile ? 0 : 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Suivi de commande',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: isMobile ? 0 : 0,
+                            bottom: isMobile ? 16 : 24,
+                            top: isMobile ? 0 : 0,
+                          ),
+                          child: const Text(
+                            'Suivi de commande',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 24),
                         _buildStatusTracker(),
                       ],
                     ),
@@ -192,6 +202,66 @@ class ProductDetailScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  // NEW: Mobile table layout
+  Widget _buildMobileTable() {
+    return Table(
+      columnWidths: const {0: FlexColumnWidth(1.5), 1: FlexColumnWidth(2)},
+      border: TableBorder.all(
+        color: Colors.grey.shade300,
+        width: 1.0,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      children: [
+        _buildTableRow(
+          'Nom de Client',
+          product.clientName ?? product.client ?? '-',
+        ),
+        _buildTableRow('Ville', product.origine ?? '-'),
+        _buildTableRow('Mode de livraison', product.quality ?? '-'),
+        _buildTableRow(
+          'Quantité',
+          product.quantity != null ? '${product.quantity} Kg' : '-',
+        ),
+        _buildTableRow('Temps d\'entrée', product.formattedCreatedAt ?? '-'),
+        _buildTableRow(
+          'Sortie',
+          product.status?.toLowerCase() == 'done' ? 'Oui' : 'Non',
+        ),
+        _buildTableRow(
+          'Prix unitaire',
+          product.price != null ? '${product.price} DT' : '-',
+        ),
+      ],
+    );
+  }
+
+  // NEW: Table row builder
+  TableRow _buildTableRow(String label, String value) {
+    return TableRow(
+      decoration: BoxDecoration(color: Colors.grey.shade50),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+          ),
+        ),
+      ],
     );
   }
 
@@ -218,11 +288,7 @@ class ProductDetailScreen extends StatelessWidget {
           ),
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.textColor,
-              fontWeight: FontWeight.w400,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
           ),
         ),
       ],
@@ -240,7 +306,7 @@ class ProductDetailScreen extends StatelessWidget {
     int currentIndex = statuses.indexWhere((s) => s['status'] == currentStatus);
 
     if (currentIndex == -1) {
-      currentIndex = 0; // Default to pending if status not found
+      currentIndex = 0;
     }
 
     return Column(
@@ -255,7 +321,6 @@ class ProductDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 16),
               child: Row(
                 children: [
-                  // Status indicator circle
                   Container(
                     width: 20,
                     height: 20,
@@ -276,8 +341,6 @@ class ProductDetailScreen extends StatelessWidget {
                             : null,
                   ),
                   const SizedBox(width: 12),
-
-                  // Progress line
                   Expanded(
                     child: Container(
                       height: 2,
@@ -291,20 +354,16 @@ class ProductDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-
-                  // Status label
                   Text(
                     statusInfo['label'] as String,
                     style: TextStyle(
-                      color: isCompleted ? AppColors.textColor : Colors.grey,
+                      color: isCompleted ? Colors.black : Colors.grey,
                       fontWeight:
                           isActive ? FontWeight.bold : FontWeight.normal,
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(width: 12),
-
-                  // Status indicator circle (right side)
                   Container(
                     width: 20,
                     height: 20,

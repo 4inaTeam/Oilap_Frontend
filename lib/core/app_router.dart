@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/energie/presentation/screens/energie_list_screen.dart';
+import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
 import 'package:oilab_frontend/features/auth/presentation/screens/signin_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
@@ -32,7 +33,6 @@ class AppRouter {
   }
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
-    // Use the static variables from AuthRepository
     final String? role = AuthRepository.currentRole;
 
     bool isAdmin = role == 'ADMIN';
@@ -40,7 +40,6 @@ class AppRouter {
     bool isAccountant = role == 'ACCOUNTANT';
     bool isClient = role == 'CLIENT';
 
-    // ADMIN has access to all routes
     if (isAdmin) {
       switch (settings.name) {
         case '/':
@@ -73,6 +72,10 @@ class AppRouter {
           return MaterialPageRoute(builder: (_) => const ParametresScreen());
         case '/energie':
           return MaterialPageRoute(builder: (_) => const EnergieScrren());
+        case '/notifications':
+          return MaterialPageRoute(
+            builder: (_) => const NotificationScreen(),
+          );
         default:
           break;
       }
@@ -92,22 +95,18 @@ class AppRouter {
             return MaterialPageRoute(builder: (_) => const ClientListScreen());
           }
           break;
-        case '/comptables':
-          break;
-        case '/employees':
-          break;
         case '/produits':
           if (isEmployee || isClient) {
             return MaterialPageRoute(builder: (_) => const ProductListScreen());
           }
           break;
         case '/factures':
-          if (isAccountant) {
+          if (isAccountant || isClient) {
             return MaterialPageRoute(builder: (_) => const FactureListScreen());
           }
           break;
         case '/factures/detail':
-          if (isAccountant) {
+          if (isAccountant || isClient) {
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => FactureDetailScreen(
@@ -118,7 +117,7 @@ class AppRouter {
           }
           break;
         case '/factures/upload':
-          if (isAccountant) {
+          if (isAccountant || isClient) {
             return MaterialPageRoute(builder: (_) => FactureUploadScreen());
           }
           break;
@@ -127,15 +126,20 @@ class AppRouter {
             return MaterialPageRoute(builder: (_) => const ParametresScreen());
           }
           break;
-        case '/energie':
+        case '/notifications':
+          if (isClient) {
+            return MaterialPageRoute(
+              builder: (_) => const NotificationScreen(),
+            );
+          }
           break;
         default:
           break;
       }
     }
-    
+
     return MaterialPageRoute(
-      builder: (_) => Scaffold(
+      builder: (_) => const Scaffold(
         body: Center(
           child: Text(
             'Accès refusé. Vous n\'avez pas la permission pour cette page.',
@@ -144,5 +148,4 @@ class AppRouter {
       ),
     );
   }
-
 }

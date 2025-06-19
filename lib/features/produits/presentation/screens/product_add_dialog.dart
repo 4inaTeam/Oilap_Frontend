@@ -19,23 +19,28 @@ class ProductAddDialog extends StatefulWidget {
 class _ProductAddDialogState extends State<ProductAddDialog> {
   final _quantityController = TextEditingController();
   final _originController = TextEditingController();
-  final _qualityController = TextEditingController();
-  final _priceController = TextEditingController();
   final _clientCinController = TextEditingController();
-  final _estimationTimeController = TextEditingController();
 
   bool _isCheckingClient = false;
   bool _clientExists = false;
   final Map<String, String> _errors = {};
 
+  // Quality dropdown value
+  String _selectedQuality = 'moyenne';
+
+  // Quality options matching the backend
+  final List<Map<String, String>> _qualityOptions = [
+    {'value': 'excellente', 'label': 'Excellente'},
+    {'value': 'bonne', 'label': 'Bonne'},
+    {'value': 'moyenne', 'label': 'Moyenne'},
+    {'value': 'mauvaise', 'label': 'Mauvaise'},
+  ];
+
   @override
   void dispose() {
     _quantityController.dispose();
     _originController.dispose();
-    _qualityController.dispose();
-    _priceController.dispose();
     _clientCinController.dispose();
-    _estimationTimeController.dispose();
     super.dispose();
   }
 
@@ -97,18 +102,12 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
           return 'Le CIN ne doit contenir que des chiffres';
         }
         break;
-      case 'price':
       case 'quantity':
         if (double.tryParse(value) == null) {
           return 'Veuillez entrer un nombre valide';
         }
-        break;
-      case 'estimation_time':
-        if (int.tryParse(value) == null) {
-          return 'Veuillez entrer un nombre entier valide';
-        }
-        if (int.parse(value) <= 0) {
-          return 'Le temps estimé doit être supérieur à 0';
+        if (double.parse(value) <= 0) {
+          return 'La quantité doit être supérieure à 0';
         }
         break;
     }
@@ -149,20 +148,11 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildInputField(
-                  label: 'Qualité',
-                  controller: _qualityController,
-                ),
+                _buildQualityDropdown(),
                 const SizedBox(height: 12),
                 _buildInputField(
                   label: 'Origine',
                   controller: _originController,
-                ),
-                const SizedBox(height: 12),
-                _buildInputField(
-                  label: 'Prix (DT)',
-                  controller: _priceController,
-                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 _buildInputField(
@@ -176,12 +166,6 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   controller: _clientCinController,
                   keyboardType: TextInputType.number,
                   onBlur: _checkClientExists,
-                ),
-                const SizedBox(height: 12),
-                _buildInputField(
-                  label: 'Temps estimé (minutes)',
-                  controller: _estimationTimeController,
-                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -223,6 +207,56 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildQualityDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Qualité',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textColor,
+          ),
+        ),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          value: _selectedQuality,
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+          items:
+              _qualityOptions.map((quality) {
+                return DropdownMenuItem<String>(
+                  value: quality['value'],
+                  child: Text(
+                    quality['label']!,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                );
+              }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedQuality = value!;
+            });
+          },
+        ),
+      ],
     );
   }
 
@@ -307,12 +341,9 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
   void _handleAddProduct() {
     final fields = {
-      'quality': _qualityController.text.trim(),
       'origine': _originController.text.trim(),
-      'price': _priceController.text.trim(),
       'quantity': _quantityController.text.trim(),
       'cin': _clientCinController.text.trim(),
-      'estimation_time': _estimationTimeController.text.trim(),
     };
 
     setState(() {
@@ -339,14 +370,17 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       return;
     }
 
+    // Note: Price is calculated automatically by the backend based on quality
+    // estimation_time defaults to 15 minutes in the backend
+    // payement defaults to 'unpaid' in the backend
     context.read<ProductBloc>().add(
       CreateProduct(
-        quality: fields['quality']!,
+        quality: _selectedQuality,
         origine: fields['origine']!,
-        price: double.parse(fields['price']!),
+        price: 0.0, // Will be calculated by backend
         quantity: double.parse(fields['quantity']!),
         clientCin: fields['cin']!,
-        estimationTime: int.parse(fields['estimation_time']!),
+        estimationTime: 15, // Default value, backend will handle this
       ),
     );
   }
