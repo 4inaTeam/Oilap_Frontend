@@ -186,7 +186,7 @@ class AuthRepository {
   Future<void> logout() {
     currentToken = null;
     currentRole = null;
-    currentUserId = null; // Add this line
+    currentUserId = null;
     return _ts.clear();
   }
 

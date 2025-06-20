@@ -30,11 +30,9 @@ import 'package:oilab_frontend/core/constants/consts.dart';
 
 bool isStripeAvailable = false;
 
-// Top-level function for background message handling
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print('Background message received: ${message.notification?.title}');
 }
 
 Future<void> main() async {
@@ -72,40 +70,46 @@ Future<void> main() async {
             create: (_) => ProfileRepository(baseUrl: backendUrl),
           ),
           RepositoryProvider<EmployeeRepository>(
-            create: (ctx) => EmployeeRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => EmployeeRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
           RepositoryProvider<ComptableRepository>(
-            create: (ctx) => ComptableRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => ComptableRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
           RepositoryProvider<ClientRepository>(
-            create: (ctx) => ClientRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => ClientRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
           RepositoryProvider<ProductRepository>(
-            create: (ctx) => ProductRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => ProductRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
           RepositoryProvider<FactureRepository>(
-            create: (ctx) => FactureRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => FactureRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
           RepositoryProvider<NotificationRepository>(
-            create: (ctx) => NotificationRepository(
-              baseUrl: backendUrl,
-              authRepo: ctx.read<AuthRepository>(),
-            ),
+            create:
+                (ctx) => NotificationRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
           ),
         ],
         child: MultiBlocProvider(
@@ -132,12 +136,14 @@ Future<void> main() async {
               create: (ctx) => ProductBloc(ctx.read<ProductRepository>()),
             ),
             BlocProvider<FactureBloc>(
-              create: (ctx) => FactureBloc(
-                factureRepository: ctx.read<FactureRepository>(),
-              ),
+              create:
+                  (ctx) => FactureBloc(
+                    factureRepository: ctx.read<FactureRepository>(),
+                  ),
             ),
             BlocProvider<NotificationBloc>(
-              create: (ctx) => NotificationBloc(ctx.read<NotificationRepository>()),
+              create:
+                  (ctx) => NotificationBloc(ctx.read<NotificationRepository>()),
             ),
           ],
           child: MyAppWithFCM(
@@ -182,7 +188,7 @@ class _MyAppWithFCMState extends State<MyAppWithFCM> {
   Future<void> _initializeFCM() async {
     try {
       final notificationBloc = context.read<NotificationBloc>();
-      
+
       // Initialize FCM Service with the correct parameters
       await FCMService().initialize(
         authRepository: widget.authRepository,

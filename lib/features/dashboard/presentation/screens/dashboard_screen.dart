@@ -209,7 +209,6 @@ class DashboardScreen extends StatelessWidget {
                         ],
                       );
                     } else if (isTablet) {
-                      // Tablet layout: summary+quantity+regions stacked, line chart below
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [

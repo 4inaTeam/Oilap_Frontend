@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:oilab_frontend/features/notifications/presentation/bloc/notification_event.dart';
 import 'package:oilab_frontend/features/notifications/presentation/bloc/notifications_state.dart';
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
 import 'sidebar.dart';
 import 'footer_widget.dart';
+import 'header_widget.dart';
 
 class AppLayout extends StatelessWidget {
   final Widget child;
-  const AppLayout({Key? key, required this.child}) : super(key: key);
+  final String? userName;
+  final VoidCallback? onUserProfileTap;
+  final Function(String)? onSearchResult;
+  final List<String>? searchData;
+
+  const AppLayout({
+    Key? key,
+    required this.child,
+    this.userName,
+    this.onUserProfileTap,
+    this.onSearchResult,
+    this.searchData,
+  }) : super(key: key);
 
   static const desktopBreakpoint = 800.0;
 
@@ -18,16 +30,37 @@ class AppLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width >= desktopBreakpoint) {
-      return _DesktopScaffold(child: child);
+      return _DesktopScaffold(
+        child: child,
+        userName: userName,
+        onUserProfileTap: onUserProfileTap,
+        onSearchResult: onSearchResult,
+        searchData: searchData,
+      );
     } else {
-      return _MobileScaffold(child: child);
+      return _MobileScaffold(
+        child: child,
+        onSearchResult: onSearchResult,
+        searchData: searchData,
+      );
     }
   }
 }
 
 class _DesktopScaffold extends StatelessWidget {
   final Widget child;
-  const _DesktopScaffold({required this.child});
+  final String? userName;
+  final VoidCallback? onUserProfileTap;
+  final Function(String)? onSearchResult;
+  final List<String>? searchData;
+
+  const _DesktopScaffold({
+    required this.child,
+    this.userName,
+    this.onUserProfileTap,
+    this.onSearchResult,
+    this.searchData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,70 +71,13 @@ class _DesktopScaffold extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _DesktopHeader(),
-                Expanded(child: child), 
-                const FooterWidget()
+                AppHeader(),
+                Expanded(child: child),
+                const FooterWidget(),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DesktopHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.search, size: 24),
-              onPressed: () {},
-            ),
-            const SizedBox(width: 8),
-            _NotificationButton(),
-            const SizedBox(width: 16),
-            // User profile section
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.mainColor,
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'User',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -109,7 +85,14 @@ class _DesktopHeader extends StatelessWidget {
 
 class _MobileScaffold extends StatelessWidget {
   final Widget child;
-  const _MobileScaffold({required this.child});
+  final Function(String)? onSearchResult;
+  final List<String>? searchData;
+
+  const _MobileScaffold({
+    required this.child,
+    this.onSearchResult,
+    this.searchData,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -119,53 +102,43 @@ class _MobileScaffold extends StatelessWidget {
         title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          ),
+          builder:
+              (ctx) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: LiveSearchDelegate(
+                  onSearchResult: onSearchResult,
+                  customSearchData: searchData,
+                ),
+              );
+            },
           ),
-          _NotificationButton(isWhite: true),
+          _MobileNotificationIcon(),
         ],
       ),
       drawer: const Drawer(child: Sidebar()),
-      body: child, 
+      body: child,
       bottomNavigationBar: const FooterWidget(),
     );
   }
 }
 
-class _NotificationButton extends StatefulWidget {
-  final bool isWhite;
-  
-  const _NotificationButton({this.isWhite = false});
-
-  @override
-  State<_NotificationButton> createState() => _NotificationButtonState();
-}
-
-class _NotificationButtonState extends State<_NotificationButton> {
-  @override
-  void initState() {
-    super.initState();
-    // Load notifications when the button is created
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<NotificationBloc>().add(LoadUnreadCount());
-      }
-    });
-  }
-
+// Mobile notification icon for AppBar
+class _MobileNotificationIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<NotificationBloc, NotificationState>(
       builder: (context, state) {
         int unreadCount = 0;
-        
+
         if (state is NotificationLoaded) {
           unreadCount = state.unreadCount;
         }
@@ -173,12 +146,9 @@ class _NotificationButtonState extends State<_NotificationButton> {
         return Stack(
           children: [
             IconButton(
-              icon: Icon(
-                Icons.notifications_none,
-                color: widget.isWhite ? Colors.white : Colors.grey.shade700,
-                size: 24,
-              ),
+              icon: const Icon(Icons.notifications_none, color: Colors.white),
               onPressed: () {
+                // Navigate to notifications screen or show modal
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const NotificationScreen(),
@@ -218,49 +188,89 @@ class _NotificationButtonState extends State<_NotificationButton> {
   }
 }
 
-// Notification Badge Widget for reuse
-class NotificationBadge extends StatelessWidget {
-  final int count;
-  final Widget child;
-  
-  const NotificationBadge({
-    Key? key,
-    required this.count,
-    required this.child,
-  }) : super(key: key);
+// Live Search Delegate for Mobile
+class LiveSearchDelegate extends SearchDelegate<String> {
+  final Function(String)? onSearchResult;
+  final List<String>? customSearchData;
+
+  LiveSearchDelegate({this.onSearchResult, this.customSearchData});
+
+  List<String> _searchResults = [];
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        child,
-        if (count > 0)
-          Positioned(
-            right: -6,
-            top: -6,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              constraints: const BoxConstraints(
-                minWidth: 16,
-                minHeight: 16,
-              ),
-              child: Text(
-                count > 99 ? '99+' : count.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          showSuggestions(context);
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, '');
+      },
     );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _buildSearchResults();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return const Center(child: Text('Start typing to search...'));
+    }
+    return _buildSearchResults();
+  }
+
+  Widget _buildSearchResults() {
+    // Use custom search data if provided, otherwise use mock data
+    final searchData =
+        customSearchData ??
+        [
+          'User: John Doe',
+          'Project: Mobile App',
+          'Document: Requirements.pdf',
+          'Task: Update Dashboard',
+          'File: config.json',
+        ];
+
+    _searchResults =
+        searchData
+            .where((item) => item.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+
+    return ListView.builder(
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        return ListTile(
+          leading: Icon(_getIconForResult(_searchResults[index])),
+          title: Text(_searchResults[index]),
+          onTap: () {
+            onSearchResult?.call(_searchResults[index]);
+            close(context, _searchResults[index]);
+          },
+        );
+      },
+    );
+  }
+
+  IconData _getIconForResult(String result) {
+    if (result.startsWith('User:')) return Icons.person;
+    if (result.startsWith('Project:')) return Icons.folder;
+    if (result.startsWith('Document:')) return Icons.description;
+    if (result.startsWith('Task:')) return Icons.task;
+    if (result.startsWith('File:')) return Icons.insert_drive_file;
+    return Icons.search;
   }
 }

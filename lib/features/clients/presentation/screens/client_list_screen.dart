@@ -52,8 +52,7 @@ class __ClientListViewState extends State<_ClientListView>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-  }
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
 
   void _refreshData() {
     if (!mounted || _isRefreshing) return;
@@ -379,65 +378,119 @@ class _ClientTable extends StatelessWidget {
   });
 
   @override
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: isMobile ? 10 : 56.0,
-          horizontalMargin: isMobile ? 8 : 24,
-          columns: [
-            const DataColumn(label: Text('Nom', style: TextStyle(fontWeight: FontWeight.bold))),
-            const DataColumn(label: Text('Tél', style: TextStyle(fontWeight: FontWeight.bold))),
-            if (!isMobile) const DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
-            const DataColumn(label: Text('CIN', style: TextStyle(fontWeight: FontWeight.bold))),
-            const DataColumn(label: Text('Statut', style: TextStyle(fontWeight: FontWeight.bold))),
-            const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-          rows: clients
-              .map(
-                (client) => DataRow(
-                  cells: [
-                    DataCell(
-                      Text(client.name, overflow: TextOverflow.ellipsis),
-                    ),
-                    DataCell(
-                      Text(
-                        client.tel ?? '',
-                        overflow: TextOverflow.ellipsis,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox.expand(
+          // Makes it take all available space
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: isMobile ? 10 : 56.0,
+                  horizontalMargin: isMobile ? 8 : 24,
+                  columns: const [
+                    DataColumn(
+                      label: Text(
+                        'Nom',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    if (!isMobile)
-                      DataCell(
-                        Text(client.email, overflow: TextOverflow.ellipsis),
-                      ),
-                    DataCell(
-                      Text(client.cin, overflow: TextOverflow.ellipsis),
-                    ),
-                    DataCell(
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              client.isActive ? Colors.green : Colors.red,
-                        ),
+                    DataColumn(
+                      label: Text(
+                        'Tél',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    DataCell(
-                      _ActionButtons(
-                        client: client,
-                        isMobile: isMobile,
-                        onRefresh: onRefresh, // Pass refresh callback
+                    DataColumn(
+                      label: Text(
+                        'Email',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'CIN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Statut',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Action',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
+                  rows:
+                      clients.map((client) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                client.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                client.tel ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                client.email,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(client.cin, overflow: TextOverflow.ellipsis),
+                            ),
+                            DataCell(
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          client.isActive
+                                              ? Colors.green
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(client.isActive ? 'Active' : 'Inactive'),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              _ActionButtons(
+                                client: client,
+                                isMobile: isMobile,
+                                onRefresh: onRefresh,
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
                 ),
-              )
-              .toList(),
-        ),
-      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

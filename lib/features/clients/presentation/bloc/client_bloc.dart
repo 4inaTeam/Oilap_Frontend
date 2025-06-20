@@ -174,34 +174,17 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
     on<ViewClientProfile>((event, emit) async {
       emit(ClientLoading());
       try {
-        print(
-          'ViewClientProfile: Loading profile for client ID: ${event.clientId}',
-        );
-
-        // First get the client details
         final client = await repo.getClientById(event.clientId);
-        print(
-          'ViewClientProfile: Client loaded - ${client.name} (CIN: ${client.cin})',
-        );
 
-        // Then get the products
         List<Product> products = [];
         try {
-          // Use client.cin as the identifier for products
           products = await repo.getClientProducts(client.cin);
-          print(
-            'ViewClientProfile: Loaded ${products.length} products for client CIN ${client.cin}',
-          );
         } catch (productError) {
-          print(
-            'ViewClientProfile: Error loading products - ${productError.toString()}',
-          );
           // Continue without products rather than failing entirely
         }
 
         emit(ClientProfileLoaded(client, products: products));
       } catch (err) {
-        print('ViewClientProfile: Error - ${err.toString()}');
         emit(
           ClientOperationFailure(
             'Failed to load client profile: ${err.toString()}',

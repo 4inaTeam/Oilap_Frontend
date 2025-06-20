@@ -16,7 +16,8 @@ import 'package:http/http.dart' as http;
 
 // Platform-specific imports
 import '../helpers/pdf_utils_stub.dart'
-    if (dart.library.html) '../helpers/pdf_utils_web.dart' as pdf_utils;
+    if (dart.library.html) '../helpers/pdf_utils_web.dart'
+    as pdf_utils;
 
 class FactureDetailScreen extends StatefulWidget {
   final int factureId;
@@ -61,17 +62,17 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     });
 
     try {
-      print('Loading PDF from: $pdfUrl');
-
       // Optimized HTTP request with smaller timeout and better headers
-      final response = await http.get(
-        Uri.parse(pdfUrl),
-        headers: {
-          'Accept': 'application/pdf',
-          'Cache-Control': 'max-age=300', // Allow caching for 5 minutes
-          'Accept-Encoding': 'gzip, deflate',
-        },
-      ).timeout(const Duration(seconds: 15)); // Reduced timeout
+      final response = await http
+          .get(
+            Uri.parse(pdfUrl),
+            headers: {
+              'Accept': 'application/pdf',
+              'Cache-Control': 'max-age=300', // Allow caching for 5 minutes
+              'Accept-Encoding': 'gzip, deflate',
+            },
+          )
+          .timeout(const Duration(seconds: 15)); // Reduced timeout
 
       if (response.statusCode == 200) {
         // Verify content type
@@ -82,7 +83,9 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
 
         // Verify we have actual PDF data
         if (response.bodyBytes.length < 100) {
-          throw Exception('PDF data is too small (${response.bodyBytes.length} bytes)');
+          throw Exception(
+            'PDF data is too small (${response.bodyBytes.length} bytes)',
+          );
         }
 
         _pdfBytes = response.bodyBytes;
@@ -99,8 +102,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
           _isLoadingPdf = false;
           _pdfError = null;
         });
-
-        print('PDF loaded successfully: ${response.bodyBytes.length} bytes');
       } else {
         throw Exception('Failed to load PDF: ${response.statusCode}');
       }
@@ -109,8 +110,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
         _isLoadingPdf = false;
         _pdfError = e.toString();
       });
-
-      print('Error loading PDF: $e');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,19 +126,21 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   Future<void> _downloadPdf(String pdfUrl) async {
     if (kIsWeb) {
       // Use web-specific download
-      pdf_utils.downloadPdfWeb(pdfUrl, 'facture_${widget.facture.factureNumber}.pdf');
+      pdf_utils.downloadPdfWeb(
+        pdfUrl,
+        'facture_${widget.facture.factureNumber}.pdf',
+      );
     } else {
       // Use URL launcher for mobile/desktop
       final uri = Uri.parse(pdfUrl);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Impossible d\'ouvrir le lien du PDF')),
+            const SnackBar(
+              content: Text('Impossible d\'ouvrir le lien du PDF'),
+            ),
           );
         }
       }
@@ -230,7 +231,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   }
 
   void _goBackToList() {
-    Navigator.of(context).pushReplacementNamed('/factures');
+    Navigator.of(context).pushReplacementNamed('/factures/client');
   }
 
   Widget _buildOptimizedPdfViewer(String pdfUrl) {
@@ -324,12 +325,10 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
               options: const DefaultBuilderOptions(
                 loaderSwitchDuration: Duration(milliseconds: 300),
               ),
-              documentLoaderBuilder: (_) => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              pageLoaderBuilder: (_) => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              documentLoaderBuilder:
+                  (_) => const Center(child: CircularProgressIndicator()),
+              pageLoaderBuilder:
+                  (_) => const Center(child: CircularProgressIndicator()),
             ),
           ),
         ),
@@ -412,9 +411,10 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: widget.facture.paymentStatus == 'paid'
-                                ? Colors.green
-                                : Colors.orange,
+                            color:
+                                widget.facture.paymentStatus == 'paid'
+                                    ? Colors.green
+                                    : Colors.orange,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -441,32 +441,35 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _isProcessingPayment ||
-                          widget.facture.paymentStatus == 'paid'
-                      ? null
-                      : _processPayment,
-                  icon: _isProcessingPayment
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.payment, color: Colors.white),
+                  onPressed:
+                      _isProcessingPayment ||
+                              widget.facture.paymentStatus == 'paid'
+                          ? null
+                          : _processPayment,
+                  icon:
+                      _isProcessingPayment
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.payment, color: Colors.white),
                   label: Text(
                     _isProcessingPayment
                         ? 'Traitement...'
                         : widget.facture.paymentStatus == 'paid'
-                            ? 'Déjà payée'
-                            : 'Payer',
+                        ? 'Déjà payée'
+                        : 'Payer',
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.facture.paymentStatus == 'paid'
-                        ? Colors.grey
-                        : AppColors.accentGreen,
+                    backgroundColor:
+                        widget.facture.paymentStatus == 'paid'
+                            ? Colors.grey
+                            : AppColors.accentGreen,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -526,7 +529,8 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                         Text(state.message),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () => context.read<FactureBloc>().add(
+                          onPressed:
+                              () => context.read<FactureBloc>().add(
                                 GetFacturePdf(widget.factureId),
                               ),
                           child: const Text('Réessayer'),

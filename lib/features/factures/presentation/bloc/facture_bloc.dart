@@ -15,10 +15,10 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
 
   FactureBloc({required this.factureRepository}) : super(FactureInitial()) {
     on<LoadFactures>(_onLoadFactures);
-    on<LoadFacturesPage>(_onLoadFacturesPage); // Add this handler
     on<SearchFactures>(_onSearchFactures);
     on<FilterFacturesByStatus>(_onFilterFacturesByStatus);
     on<RefreshFactures>(_onRefreshFactures);
+    on<ChangePage>(_onChangePage);
     on<LoadFactureDetail>(_onLoadFactureDetail);
     on<GetFacturePdf>(_onGetFacturePdf);
   }
@@ -28,16 +28,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     emit(FactureLoading());
-    _currentPage = 1; 
-    await _loadFacturesData(emit);
-  }
-
-  Future<void> _onLoadFacturesPage(
-    LoadFacturesPage event,
-    Emitter<FactureState> emit,
-  ) async {
-    emit(FactureLoading());
     _currentPage = event.page;
+    _currentSearchQuery = event.searchQuery;
+    _currentStatusFilter = event.statusFilter;
     await _loadFacturesData(emit);
   }
 
@@ -77,19 +70,35 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     await _loadFacturesData(emit);
   }
 
-  void _onSearchFactures(SearchFactures event, Emitter<FactureState> emit) {
-    _currentSearchQuery = event.query.isEmpty ? null : event.query;
-    _currentPage = 1; // Reset to first page when searching
-    add(LoadFacturesPage(1)); // Trigger a new load with search
+  Future<void> _onChangePage(
+    ChangePage event,
+    Emitter<FactureState> emit,
+  ) async {
+    if (state is FactureLoaded) {
+      //final currentState = state as FactureLoaded;
+      _currentPage = event.page;
+      _currentSearchQuery = event.currentSearchQuery;
+      _currentStatusFilter = event.statusFilter;
+      await _loadFacturesData(emit);
+    }
   }
 
-  void _onFilterFacturesByStatus(
+  Future<void> _onSearchFactures(
+    SearchFactures event,
+    Emitter<FactureState> emit,
+  ) async {
+    _currentSearchQuery = event.query.isEmpty ? null : event.query;
+    _currentPage = 1; // Reset to first page
+    add(LoadFactures(page: 1, searchQuery: _currentSearchQuery, statusFilter: _currentStatusFilter));
+  }
+
+  Future<void> _onFilterFacturesByStatus(
     FilterFacturesByStatus event,
     Emitter<FactureState> emit,
-  ) {
+  ) async {
     _currentStatusFilter = event.status;
-    _currentPage = 1; // Reset to first page when filtering
-    add(LoadFacturesPage(1)); // Trigger a new load with filter
+    _currentPage = 1; // Reset to first page
+    add(LoadFactures(page: 1, searchQuery: _currentSearchQuery, statusFilter: _currentStatusFilter));
   }
 
   Future<void> _onLoadFactureDetail(

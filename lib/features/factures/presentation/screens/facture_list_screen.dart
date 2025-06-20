@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
@@ -7,7 +8,6 @@ import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
-import '../../../auth/data/auth_repository.dart';
 
 class FactureListScreen extends StatefulWidget {
   const FactureListScreen({Key? key}) : super(key: key);
@@ -19,6 +19,7 @@ class FactureListScreen extends StatefulWidget {
 class _FactureListScreenState extends State<FactureListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedStatusFilter;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -29,30 +30,24 @@ class _FactureListScreenState extends State<FactureListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  // Helper method to check if current user can add invoices
-  bool _canAddInvoice() {
-    final currentRole = AuthRepository.currentRole?.toLowerCase();
-    // Hide button for clients, show for admin, manager, etc.
-    return currentRole != null && currentRole != 'client';
-  }
-
   void _onSearch(String query) {
-    context.read<FactureBloc>().add(SearchFactures(query));
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        context.read<FactureBloc>().add(SearchFactures(query));
+      }
+    });
   }
 
   void _onFilterByStatus(String? status) {
     setState(() {
       _selectedStatusFilter = status;
     });
-    context.read<FactureBloc>().add(
-      FilterFacturesByStatus(
-        status == null || status.isEmpty ? null : status.toLowerCase(),
-      ),
-    );
-    context.read<FactureBloc>().add(LoadFactures());
+    context.read<FactureBloc>().add(FilterFacturesByStatus(status));
   }
 
   void _onRefresh() {
@@ -63,12 +58,15 @@ class _FactureListScreenState extends State<FactureListScreen> {
     final bloc = context.read<FactureBloc>();
     final currentState = bloc.state;
 
-    if (currentState is FactureLoaded && page == currentState.currentPage) {
-      return;
+    if (currentState is FactureLoaded) {
+      bloc.add(
+        ChangePage(
+          page,
+          currentSearchQuery: currentState.currentSearch,
+          statusFilter: currentState.currentFilter,
+        ),
+      );
     }
-    // Prevent multiple rapid taps by disabling the button if already loading
-    if (bloc.state is FactureLoading) return;
-    bloc.add(LoadFacturesPage(page));
   }
 
   String _formatDate(DateTime date) {
@@ -101,7 +99,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
 
   void _viewFacture(Facture facture) {
     Navigator.of(context).pushNamed(
-      '/factures/detail',
+      '/factures/client/detail',
       arguments: {
         'factureId': facture.id,
         'facture': facture,
@@ -257,28 +255,6 @@ class _FactureListScreenState extends State<FactureListScreen> {
                     tooltip: 'Effacer les filtres',
                   ),
                 const SizedBox(width: 16),
-                // Only show the "Add Invoice" button if user has permission
-                if (_canAddInvoice())
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pushNamed('/factures/upload');
-                    },
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'Ajouter une facture',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentGreen,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
               ],
             ),
 
@@ -451,10 +427,10 @@ class _FactureListScreenState extends State<FactureListScreen> {
     return SingleChildScrollView(
       child: Table(
         columnWidths: const {
-          0: FlexColumnWidth(2), // Client
-          1: FlexColumnWidth(1), // Price
-          2: FlexColumnWidth(1), // Status
-          3: FixedColumnWidth(50), // Actions
+          0: FlexColumnWidth(2),
+          1: FlexColumnWidth(1),
+          2: FlexColumnWidth(1),
+          3: FixedColumnWidth(50),
         },
         children: [
           TableRow(
@@ -648,7 +624,6 @@ class _FactureListScreenState extends State<FactureListScreen> {
   }
 }
 
-// Rest of the widget classes remain the same...
 class _PaginationFooter extends StatelessWidget {
   final FactureLoaded state;
   final Function(int) onPageChange;
@@ -662,29 +637,21 @@ class _PaginationFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.totalPages <= 1) return const SizedBox.shrink();
-
-    final currentPageFactures = state.factures.length;
-    final totalFactures = state.totalCount;
-    final currentPage = state.currentPage;
-    int startItem;
-    if (currentPage == 1) {
-      startItem = 1;
-    } else {
-      final estimatedPageSize = (totalFactures / state.totalPages).ceil();
-      startItem = (currentPage - 1) * estimatedPageSize + 1;
+    if (state.totalPages <= 1) {
+      return const SizedBox.shrink();
     }
-    final endItem = startItem + currentPageFactures - 1;
+
+    final startItem = (state.currentPage - 1) * 6 + 1;
+    final endItem = startItem + state.factures.length - 1;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              'Affichage $startItem à $endItem sur $totalFactures factures',
-              style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
-            ),
+          Text(
+            'Affichage de $startItem à $endItem sur ${state.totalCount} factures',
+            style: TextStyle(color: AppColors.parametereColor, fontSize: 12),
           ),
           _PaginationControls(state: state, onPageChange: onPageChange),
         ],

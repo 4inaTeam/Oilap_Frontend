@@ -385,9 +385,7 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      onPressed: () {
-        // TODO: navigate to invoices
-      },
+      onPressed: () {},
     );
   }
 

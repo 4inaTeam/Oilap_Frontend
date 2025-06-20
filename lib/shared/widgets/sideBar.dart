@@ -17,7 +17,9 @@ class Sidebar extends StatefulWidget {
 
 class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
+  bool _isFacturesExpanded = false;
 
+  // Reorganized items in the requested order
   static const _allItems = [
     {
       'label': 'Tableau de bord',
@@ -32,7 +34,7 @@ class _SidebarState extends State<Sidebar> {
     },
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
-    {'label': 'Factures', 'icon': Icons.receipt, 'route': '/factures'},
+    // Note: Factures will be handled separately as dropdown
     {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
     {
       'label': 'Notifications',
@@ -51,7 +53,13 @@ class _SidebarState extends State<Sidebar> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentRoute = ModalRoute.of(context)?.settings.name;
       if (currentRoute != null) {
-        setState(() => _selectedRoute = currentRoute);
+        setState(() {
+          _selectedRoute = currentRoute;
+          // Expand factures dropdown if current route is a facture route
+          if (currentRoute.startsWith('/factures/')) {
+            _isFacturesExpanded = true;
+          }
+        });
       }
 
       final authBloc = context.read<AuthBloc>();
@@ -64,8 +72,8 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
-  // Method to filter items based on user role (matching AppRouter logic)
-  List<Map<String, dynamic>> _getFilteredItems() {
+  // Method to get organized items based on user role
+  List<Map<String, dynamic>> _getOrganizedItems() {
     final String? role = AuthRepository.currentRole;
 
     bool isAdmin = role == 'ADMIN';
@@ -73,38 +81,70 @@ class _SidebarState extends State<Sidebar> {
     bool isAccountant = role == 'ACCOUNTANT';
     bool isClient = role == 'CLIENT';
 
-    // If user is ADMIN, show all items
-    if (isAdmin) {
-      return List.from(_allItems);
+    List<Map<String, dynamic>> organizedItems = [];
+
+    // Always show Dashboard first if user has access
+    if (isAdmin || isEmployee || isAccountant || isClient) {
+      organizedItems.add(
+        _allItems.firstWhere((item) => item['route'] == '/dashboard'),
+      );
     }
 
-    // Filter items based on role permissions (matching AppRouter logic)
-    return _allItems.where((item) {
-      final route = item['route'] as String;
+    // Add items in the requested order based on role permissions
+    final itemsToCheck = [
+      '/employees', // Employés
+      '/comptables', // Comptables
+      '/clients', // Clients
+      '/produits', // Produits
+      '/energie', // Énergie
+      '/notifications', // Notifications
+      '/parametres', // Paramètres
+    ];
+
+    for (String route in itemsToCheck) {
+      bool hasAccess = false;
 
       switch (route) {
-        case '/dashboard':
-          return isEmployee || isAccountant || isClient;
-        case '/clients':
-          return isEmployee;
-        case '/comptables':
-          return false;
         case '/employees':
-          return false;
+          hasAccess = isAdmin;
+          break;
+        case '/comptables':
+          hasAccess = isAdmin;
+          break;
+        case '/clients':
+          hasAccess = isAdmin || isEmployee;
+          break;
         case '/produits':
-          return isEmployee || isClient;
-        case '/factures':
-          return isAccountant || isClient;
+          hasAccess = isAdmin || isEmployee || isClient;
+          break;
         case '/energie':
-          return false;
+          hasAccess = isAdmin;
+          break;
         case '/notifications':
-          return isClient;
+          hasAccess = isAdmin || isClient;
+          break;
         case '/parametres':
-          return isEmployee || isAccountant || isClient;
-        default:
-          return false;
+          hasAccess = isAdmin || isEmployee || isAccountant || isClient;
+          break;
       }
-    }).toList();
+
+      if (hasAccess) {
+        final item = _allItems.firstWhere((item) => item['route'] == route);
+        organizedItems.add(item);
+      }
+    }
+
+    return organizedItems;
+  }
+
+  // Check if user has access to factures
+  bool _hasFacturesAccess() {
+    final String? role = AuthRepository.currentRole;
+    bool isAdmin = role == 'ADMIN';
+    bool isAccountant = role == 'ACCOUNTANT';
+    bool isClient = role == 'CLIENT';
+
+    return isAdmin || isAccountant || isClient;
   }
 
   void _onItemTap(String route) {
@@ -112,6 +152,12 @@ class _SidebarState extends State<Sidebar> {
     setState(() => _selectedRoute = route);
     Navigator.of(context).pushNamed(route).then((_) {
       setState(() => _selectedRoute = route);
+    });
+  }
+
+  void _toggleFacturesDropdown() {
+    setState(() {
+      _isFacturesExpanded = !_isFacturesExpanded;
     });
   }
 
@@ -259,72 +305,88 @@ class _SidebarState extends State<Sidebar> {
           );
         }
 
-        // Get filtered items based on current user role
-        final visibleItems = _getFilteredItems();
+        // Get organized items based on current user role
+        final organizedItems = _getOrganizedItems();
+        final hasFacturesAccess = _hasFacturesAccess();
 
         return Container(
           width: 260,
           color: AppColors.mainColor,
           child: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  children: [
-                    const SizedBox(height: 40),
-                    avatar,
-                    const SizedBox(height: 12),
-                    header,
-                    const SizedBox(height: 32),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            // Only show items that the user has access to
-                            ...visibleItems.map(
-                              (item) => _SidebarItem(
-                                label: item['label'] as String,
-                                icon: item['icon'] as IconData,
-                                route: item['route'] as String,
-                                selectedRoute: _selectedRoute,
-                                onTap:
-                                    () => _onItemTap(item['route'] as String),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const _LogoutButton(),
-                            const SizedBox(height: 16),
-                            Row(
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                avatar,
+                const SizedBox(height: 12),
+                header,
+                const SizedBox(height: 32),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Show items in organized order
+                        ...organizedItems.map((item) {
+                          // Insert Factures dropdown after Produits if user has access
+                          if (item['route'] == '/produits' &&
+                              hasFacturesAccess) {
+                            return Column(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(24),
-                                    child: Image.asset(
-                                      'assets/images/image118.png',
-                                      height: 200,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
+                                _SidebarItem(
+                                  label: item['label'] as String,
+                                  icon: item['icon'] as IconData,
+                                  route: item['route'] as String,
+                                  selectedRoute: _selectedRoute,
+                                  onTap:
+                                      () => _onItemTap(item['route'] as String),
+                                ),
+                                _FacturesDropdown(
+                                  isExpanded: _isFacturesExpanded,
+                                  selectedRoute: _selectedRoute,
+                                  onToggle: _toggleFacturesDropdown,
+                                  onItemTap: _onItemTap,
                                 ),
                               ],
+                            );
+                          } else {
+                            return _SidebarItem(
+                              label: item['label'] as String,
+                              icon: item['icon'] as IconData,
+                              route: item['route'] as String,
+                              selectedRoute: _selectedRoute,
+                              onTap: () => _onItemTap(item['route'] as String),
+                            );
+                          }
+                        }),
+
+                        const SizedBox(height: 16),
+                        const _LogoutButton(),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: Image.asset(
+                              'assets/images/image118.png',
+                              height: 200,
+                              fit: BoxFit.cover,
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                );
-              },
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -397,6 +459,163 @@ class _SidebarItem extends StatelessWidget {
                 ),
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FacturesDropdown extends StatelessWidget {
+  final bool isExpanded;
+  final String? selectedRoute;
+  final VoidCallback onToggle;
+  final Function(String) onItemTap;
+
+  const _FacturesDropdown({
+    Key? key,
+    required this.isExpanded,
+    required this.selectedRoute,
+    required this.onToggle,
+    required this.onItemTap,
+  }) : super(key: key);
+
+  static const _factureItems = [
+    {'label': 'Facture Client', 'route': '/factures/client'},
+    {'label': 'Facture d\'Entreprise', 'route': '/factures/entreprise'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelectedFacture = selectedRoute?.startsWith('/factures/') ?? false;
+
+    return Column(
+      children: [
+        // Main Factures item
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          decoration: BoxDecoration(
+            color:
+                hasSelectedFacture
+                    ? AppColors.accentGreen.withOpacity(0.2)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(8),
+            child: ListTile(
+              leading: Icon(
+                Icons.receipt,
+                color:
+                    hasSelectedFacture ? AppColors.accentGreen : Colors.white70,
+                size: 24,
+              ),
+              title: Text(
+                'Factures',
+                style: TextStyle(
+                  color:
+                      hasSelectedFacture ? AppColors.accentGreen : Colors.white,
+                  fontWeight:
+                      hasSelectedFacture ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+              trailing: AnimatedRotation(
+                turns: isExpanded ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  color:
+                      hasSelectedFacture
+                          ? AppColors.accentGreen
+                          : Colors.white70,
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Dropdown items with proper overflow handling
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 300),
+          crossFadeState:
+              isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          firstChild: const SizedBox.shrink(),
+          secondChild: Column(
+            mainAxisSize: MainAxisSize.min,
+            children:
+                _factureItems
+                    .map(
+                      (item) => _FactureSubItem(
+                        label: item['label'] as String,
+                        route: item['route'] as String,
+                        selectedRoute: selectedRoute,
+                        onTap: () => onItemTap(item['route'] as String),
+                      ),
+                    )
+                    .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FactureSubItem extends StatelessWidget {
+  final String label;
+  final String route;
+  final String? selectedRoute;
+  final VoidCallback onTap;
+
+  const _FactureSubItem({
+    Key? key,
+    required this.label,
+    required this.route,
+    required this.selectedRoute,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = route == selectedRoute;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+      decoration: BoxDecoration(
+        color:
+            isSelected
+                ? AppColors.accentGreen.withOpacity(0.3)
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            children: [
+              const SizedBox(width: 32), // Indent for sub-items
+              Icon(
+                Icons.arrow_right,
+                color: isSelected ? AppColors.accentGreen : Colors.white60,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.accentGreen : Colors.white70,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

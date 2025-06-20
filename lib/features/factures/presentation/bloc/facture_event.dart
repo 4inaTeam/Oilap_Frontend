@@ -1,6 +1,12 @@
 abstract class FactureEvent {}
 
-class LoadFactures extends FactureEvent {}
+class LoadFactures extends FactureEvent {
+  final int page;
+  final String? searchQuery;
+  final String? statusFilter;
+
+  LoadFactures({this.page = 1, this.searchQuery, this.statusFilter});
+}
 
 class SearchFactures extends FactureEvent {
   final String query;
@@ -24,7 +30,10 @@ class GetFacturePdf extends FactureEvent {
   GetFacturePdf(this.factureId);
 }
 
-class LoadFacturesPage extends FactureEvent {
+class ChangePage extends FactureEvent {
   final int page;
-  LoadFacturesPage(this.page);
+  final String? currentSearchQuery;
+  final String? statusFilter;
+
+  ChangePage(this.page, {this.currentSearchQuery, this.statusFilter});
 }
