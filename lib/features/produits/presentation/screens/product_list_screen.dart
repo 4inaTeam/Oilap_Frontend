@@ -357,139 +357,156 @@ class _ProductTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeDesktop = screenWidth > 1200;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox.expand(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: isMobile ? 10 : 56.0,
+                  horizontalMargin: isMobile ? 8 : 24,
+                  columns: [
+                    DataColumn(
+                      label: Text(
+                        'Propriétaire',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Temps d\'entrée',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    // Only show "Date de sortie" column on web/desktop, right after "Temps d'entrée"
+                    if (!isMobile)
+                      DataColumn(
+                        label: Text(
+                          'Date de sortie',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    DataColumn(
+                      label: Text(
+                        'Quantité',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Origine',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Statut',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Actions',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  rows:
+                      products
+                          .map((product) {
+                            if (product == null) return null;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: isMobile ? 8 : (isLargeDesktop ? 100.0 : 80.0),
-          horizontalMargin: isMobile ? 4 : (isLargeDesktop ? 40 : 32),
-          headingRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          dataRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          columns: [
-            DataColumn(
-              label: Text(
-                'Propriétaire',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Temps d\'entrée',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            // Removed "Temps de sortie" column
-            DataColumn(
-              label: Text(
-                'Quantité',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Origine',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Statut',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Actions',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-          ],
-          rows:
-              products
-                  .map((product) {
-                    if (product == null) return null;
+                            final ownerDisplay =
+                                product.clientDetails?['username']
+                                    ?.toString() ??
+                                product.client ??
+                                '-';
 
-                    String ownerDisplay =
-                        product.clientDetails?['username']?.toString() ??
-                        product.client ??
-                        '-';
-
-                    return DataRow(
-                      cells: [
-                        DataCell(
-                          Text(
-                            ownerDisplay,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: isMobile ? 11 : 14),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            _formatDate(product.createdAt?.toString()),
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: isMobile ? 11 : 14),
-                          ),
-                        ),
-                        // Removed "Temps de sortie" cell
-                        DataCell(
-                          Text(
-                            product.quantity != null
-                                ? '${product.quantity} Kg'
-                                : '',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: isMobile ? 11 : 14),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            product.origine?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: isMobile ? 11 : 14),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            _translateStatus(product.status),
-                            style: TextStyle(
-                              color: _getStatusColor(product.status),
-                              fontWeight: FontWeight.w600,
-                              fontSize: isMobile ? 11 : 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        DataCell(
-                          _ActionButtons(product: product, isMobile: isMobile),
-                        ),
-                      ],
-                    );
-                  })
-                  .where((row) => row != null)
-                  .cast<DataRow>()
-                  .toList(),
-        ),
-      ),
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    ownerDisplay,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    _formatDate(product.createdAt?.toString()),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // Only show "Date de sortie" cell on web/desktop, right after "Temps d'entrée"
+                                if (!isMobile)
+                                  DataCell(
+                                    Text(
+                                      _formatDate(product.end_time?.toString()),
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color:
+                                            product.end_time != null
+                                                ? Colors.black
+                                                : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                DataCell(
+                                  Text(
+                                    product.quantity != null
+                                        ? '${product.quantity} Kg'
+                                        : '',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    product.origine?.toString() ?? '',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                DataCell(
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _getStatusColor(
+                                            product.status,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _translateStatus(product.status),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                DataCell(
+                                  _ActionButtons(
+                                    product: product,
+                                    isMobile: isMobile,
+                                  ),
+                                ),
+                              ],
+                            );
+                          })
+                          .where((row) => row != null)
+                          .cast<DataRow>()
+                          .toList(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -19,21 +19,20 @@ class ProductDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with back button and download
                 Row(
                   children: [
-                    if (!isMobile) ...[
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, size: 28),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    const Expanded(
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 28),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'Détails de produit',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: isMobile ? 20 : 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -51,19 +50,22 @@ class ProductDetailScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.download,
                           color: Colors.white,
-                          size: 18,
+                          size: isMobile ? 16 : 18,
                         ),
-                        label: const Text(
-                          'Télécharger',
-                          style: TextStyle(color: Colors.white),
+                        label: Text(
+                          isMobile ? 'DL' : 'Télécharger',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isMobile ? 12 : 14,
+                          ),
                         ),
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 8 : 16,
+                            vertical: isMobile ? 4 : 8,
                           ),
                         ),
                       ),
@@ -72,7 +74,7 @@ class ProductDetailScreen extends StatelessWidget {
                 ),
                 SizedBox(height: isMobile ? 16 : 24),
 
-                // NEW: Table layout for mobile instead of card
+                // Table layout for mobile, card layout for larger screens
                 if (isMobile) ...[
                   _buildMobileTable(),
                   const SizedBox(height: 24),
@@ -205,7 +207,7 @@ class ProductDetailScreen extends StatelessWidget {
     );
   }
 
-  // NEW: Mobile table layout
+  // Mobile table layout
   Widget _buildMobileTable() {
     return Table(
       columnWidths: const {0: FlexColumnWidth(1.5), 1: FlexColumnWidth(2)},
@@ -238,7 +240,7 @@ class ProductDetailScreen extends StatelessWidget {
     );
   }
 
-  // NEW: Table row builder
+  // Table row builder
   TableRow _buildTableRow(String label, String value) {
     return TableRow(
       decoration: BoxDecoration(color: Colors.grey.shade50),
@@ -296,98 +298,102 @@ class ProductDetailScreen extends StatelessWidget {
   }
 
   Widget _buildStatusTracker() {
-    final statuses = [
+    // Define status list
+    final List<Map<String, dynamic>> statuses = [
       {'status': 'pending', 'label': 'En attente', 'color': Colors.grey},
       {'status': 'doing', 'label': 'En cours', 'color': Colors.green},
       {'status': 'done', 'label': 'Fini', 'color': Colors.blue},
     ];
 
-    final currentStatus = product.status?.toLowerCase() ?? 'pending';
-    int currentIndex = statuses.indexWhere((s) => s['status'] == currentStatus);
+    // Get current status with null safety
+    final String currentStatus = product?.status?.toLowerCase() ?? 'pending';
 
+    // Find current index
+    int currentIndex = statuses.indexWhere((s) => s['status'] == currentStatus);
     if (currentIndex == -1) {
-      currentIndex = 0;
+      currentIndex = 0; // Default to first status if not found
     }
 
-    return Column(
-      children:
-          statuses.asMap().entries.map((entry) {
-            final index = entry.key;
-            final statusInfo = entry.value;
-            final isCompleted = index <= currentIndex;
-            final isActive = index == currentIndex;
+    // Build status items
+    final List<Widget> statusWidgets = [];
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color:
-                          isCompleted
-                              ? statusInfo['color'] as Color
-                              : Colors.grey.shade300,
-                    ),
-                    child:
-                        isCompleted
-                            ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 14,
-                            )
-                            : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      decoration: BoxDecoration(
-                        color:
-                            isCompleted
-                                ? statusInfo['color'] as Color
-                                : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(1),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    statusInfo['label'] as String,
-                    style: TextStyle(
-                      color: isCompleted ? Colors.black : Colors.grey,
-                      fontWeight:
-                          isActive ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color:
-                          isCompleted
-                              ? statusInfo['color'] as Color
-                              : Colors.grey.shade300,
-                    ),
-                    child:
-                        isCompleted
-                            ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 14,
-                            )
-                            : null,
-                  ),
-                ],
+    for (int index = 0; index < statuses.length; index++) {
+      final statusInfo = statuses[index];
+      final isCompleted = index <= currentIndex;
+      final isActive = index == currentIndex;
+
+      statusWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              // Left circle
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color:
+                      isCompleted
+                          ? (statusInfo['color'] as Color)
+                          : Colors.grey.shade300,
+                ),
+                child:
+                    isCompleted
+                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                        : null,
               ),
-            );
-          }).toList(),
-    );
+              const SizedBox(width: 12),
+
+              // Progress line
+              Expanded(
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color:
+                        isCompleted
+                            ? (statusInfo['color'] as Color)
+                            : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Status label
+              Text(
+                statusInfo['label'] as String,
+                style: TextStyle(
+                  color: isCompleted ? Colors.black : Colors.grey,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Right circle
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color:
+                      isCompleted
+                          ? (statusInfo['color'] as Color)
+                          : Colors.grey.shade300,
+                ),
+                child:
+                    isCompleted
+                        ? const Icon(Icons.check, color: Colors.white, size: 14)
+                        : null,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(children: statusWidgets);
   }
 }
 

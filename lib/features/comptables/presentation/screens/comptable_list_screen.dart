@@ -303,99 +303,122 @@ class _ComptableTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeDesktop = screenWidth > 1200;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: isMobile ? 10 : (isLargeDesktop ? 100.0 : 80.0),
-          horizontalMargin: isMobile ? 8 : (isLargeDesktop ? 40 : 32),
-          headingRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          dataRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          columns: [
-            DataColumn(
-              label: Text(
-                'Nom',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Tél',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Email',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'CIN',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Action',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-          ],
-          rows:
-              comptables
-                  .map(
-                    (comptable) => DataRow(
-                      cells: [
-                        DataCell(
-                          Text(comptable.name, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          Text(
-                            comptable.tel ?? '',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            comptable.email,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        DataCell(
-                          Text(comptable.cin, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          _ActionButtons(
-                            comptable: comptable,
-                            isMobile: isMobile,
-                          ),
-                        ),
-                      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox.expand(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: isMobile ? 10 : 56.0,
+                  horizontalMargin: isMobile ? 8 : 24,
+                  headingRowHeight: isMobile ? 48 : 60,
+                  dataRowHeight: isMobile ? 48 : 60,
+                  columns: const [
+                    DataColumn(
+                      label: Text(
+                        'Nom',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  )
-                  .toList(),
-        ),
-      ),
+                    DataColumn(
+                      label: Text(
+                        'Tél',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Email',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'CIN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Statut',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Action',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  rows:
+                      comptables.map((comptable) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                comptable.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                comptable.tel ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                comptable.email,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                comptable.cin,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          comptable.isActive
+                                              ? Colors.green
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    comptable.isActive ? 'Active' : 'Inactive',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              _ActionButtons(
+                                comptable: comptable,
+                                isMobile: isMobile,
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

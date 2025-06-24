@@ -44,6 +44,31 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
         statusFilter: _currentStatusFilter,
       );
 
+      // Validate that the current page is within bounds
+      if (_currentPage > result.totalPages && result.totalPages > 0) {
+        _currentPage = result.totalPages;
+        // Retry with the corrected page
+        final correctedResult = await factureRepository.fetchFactures(
+          page: _currentPage,
+          pageSize: _pageSize,
+          searchQuery: _currentSearchQuery,
+          statusFilter: _currentStatusFilter,
+        );
+
+        emit(
+          FactureLoaded(
+            factures: correctedResult.factures,
+            filteredFactures: correctedResult.factures,
+            totalCount: correctedResult.totalCount,
+            currentPage: correctedResult.currentPage,
+            totalPages: correctedResult.totalPages,
+            currentSearch: _currentSearchQuery,
+            currentFilter: _currentStatusFilter,
+          ),
+        );
+        return;
+      }
+
       emit(
         FactureLoaded(
           factures: result.factures,
@@ -74,12 +99,34 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     ChangePage event,
     Emitter<FactureState> emit,
   ) async {
+    // Validate page number
+    if (event.page <= 0) {
+      emit(FactureError('Numéro de page invalide'));
+      return;
+    }
+
+    // Check if we're already on this page
+    if (event.page == _currentPage) {
+      return;
+    }
+
+    // Update page and filters
+    _currentPage = event.page;
+    _currentSearchQuery = event.currentSearchQuery;
+    _currentStatusFilter = event.statusFilter;
+
+    // Show loading only if we're changing pages significantly
     if (state is FactureLoaded) {
-      //final currentState = state as FactureLoaded;
-      _currentPage = event.page;
-      _currentSearchQuery = event.currentSearchQuery;
-      _currentStatusFilter = event.statusFilter;
+      final currentState = state as FactureLoaded;
+      if ((event.page - currentState.currentPage).abs() > 1) {
+        emit(FactureLoading());
+      }
+    }
+
+    try {
       await _loadFacturesData(emit);
+    } catch (e) {
+      emit(FactureError('Erreur lors du changement de page: ${e.toString()}'));
     }
   }
 
@@ -88,8 +135,18 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     _currentSearchQuery = event.query.isEmpty ? null : event.query;
-    _currentPage = 1; // Reset to first page
-    add(LoadFactures(page: 1, searchQuery: _currentSearchQuery, statusFilter: _currentStatusFilter));
+    _currentPage = 1; // Reset to first page when searching
+
+    // Don't show loading if it's just clearing the search
+    if (event.query.isNotEmpty || state is! FactureLoaded) {
+      emit(FactureLoading());
+    }
+
+    try {
+      await _loadFacturesData(emit);
+    } catch (e) {
+      emit(FactureError('Erreur lors de la recherche: ${e.toString()}'));
+    }
   }
 
   Future<void> _onFilterFacturesByStatus(
@@ -97,8 +154,17 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     _currentStatusFilter = event.status;
-    _currentPage = 1; // Reset to first page
-    add(LoadFactures(page: 1, searchQuery: _currentSearchQuery, statusFilter: _currentStatusFilter));
+    _currentPage = 1; // Reset to first page when filtering
+
+    emit(FactureLoading());
+
+    try {
+      await _loadFacturesData(emit);
+    } catch (e) {
+      emit(FactureError('Erreur lors du filtrage: ${e.toString()}'));
+    }
+
+    // REMOVED: The duplicate add(LoadFactures(...)) call that was causing issues
   }
 
   Future<void> _onLoadFactureDetail(
@@ -135,5 +201,22 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     } catch (e) {
       emit(FactureError('Erreur lors du chargement du PDF: ${e.toString()}'));
     }
+  }
+
+  // Helper method to get current state info
+  Map<String, dynamic> getCurrentStateInfo() {
+    return {
+      'currentPage': _currentPage,
+      'pageSize': _pageSize,
+      'searchQuery': _currentSearchQuery,
+      'statusFilter': _currentStatusFilter,
+    };
+  }
+
+  // Method to reset pagination state
+  void resetPagination() {
+    _currentPage = 1;
+    _currentSearchQuery = null;
+    _currentStatusFilter = null;
   }
 }

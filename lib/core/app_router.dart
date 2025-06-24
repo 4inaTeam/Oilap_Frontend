@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_detail_screen.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_list_screen.dart';
-import 'package:oilab_frontend/features/bills/presentation/screens/bill_upload_screen.dart';
-import 'package:oilab_frontend/features/energie/presentation/screens/energie_list_screen.dart';
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
 import 'package:oilab_frontend/features/auth/presentation/screens/signin_screen.dart';
@@ -16,6 +14,7 @@ import 'package:oilab_frontend/features/factures/presentation/screens/facture_de
 import 'package:oilab_frontend/features/parametres/presentation/screens/parametre_screen.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
+import 'package:oilab_frontend/core/models/bill_model.dart';
 import 'dart:convert';
 
 class AppRouter {
@@ -32,6 +31,22 @@ class AppRouter {
     } catch (_) {
       return null;
     }
+  }
+
+  // Helper method to get image URL from Bill
+  static String? _getBillImageUrl(Bill bill) {
+    // Check if bill has originalImage
+    if (bill.originalImage != null && bill.originalImage!.isNotEmpty) {
+      // If the URL is already absolute, return it
+      if (bill.originalImage!.startsWith('http')) {
+        return bill.originalImage;
+      }
+      // If it's relative, make it absolute (assuming your base URL)
+      return 'http://localhost:8000${bill.originalImage}';
+    }
+
+    // Fallback to pdfUrl if available
+    return bill.pdfUrl;
   }
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -103,13 +118,7 @@ class AppRouter {
         }
         break;
 
-      case '/factures/client/upload':
-        if (isAdmin || isAccountant || isClient) {
-          return MaterialPageRoute(builder: (_) => FactureUploadScreen());
-        }
-        break;
-
-      // Facture entreprise routes
+      // Bill/Enterprise facture routes
       case '/factures/entreprise':
         if (isAdmin || isAccountant || isClient) {
           return MaterialPageRoute(builder: (_) => const BillListScreen());
@@ -118,13 +127,72 @@ class AppRouter {
 
       case '/factures/entreprise/detail':
         if (isAdmin || isAccountant || isClient) {
-          return MaterialPageRoute(builder: (_) => BillDetailScreen());
-        }
-        break;
+          final args = settings.arguments as Map<String, dynamic>?;
+          if (args != null) {
+            // Check if we have the bill object (preferred method)
+            if (args.containsKey('bill')) {
+              final Bill bill = args['bill'] as Bill;
+              final String? imageUrl = _getBillImageUrl(bill);
 
-      case '/factures/entreprise/upload':
-        if (isAdmin || isAccountant || isClient) {
-          return MaterialPageRoute(builder: (_) => FactureUploadScreen());
+              // Always navigate to BillDetailScreen, even if no image URL
+              // The screen will handle the case of missing image gracefully
+              return MaterialPageRoute(
+                builder:
+                    (_) => BillDetailScreen(
+                      imageUrl: imageUrl, // Can be null, screen handles it
+                      bill: bill,
+                      billTitle:
+                          args['billTitle'] as String? ??
+                          'Facture - ${bill.owner}',
+                      billId: args['billId'] as int? ?? bill.id,
+                    ),
+              );
+            }
+            // Fallback: if only imageUrl/pdfUrl is provided, create a minimal Bill object
+            else if (args.containsKey('pdfUrl') ||
+                args.containsKey('imageUrl')) {
+              final String? imageUrl =
+                  args['imageUrl'] as String? ?? args['pdfUrl'] as String?;
+
+              // Create a minimal bill object with available data
+              final Bill tempBill = Bill(
+                id: args['billId'] as int? ?? 0,
+                owner: args['billTitle'] as String? ?? 'Facture',
+                amount: 0.0, // Required field
+                category: '', // Required field
+                pdfFile:
+                    imageUrl ?? '', // This will be used by the pdfUrl getter
+                createdAt: DateTime.now(),
+                // Add originalImage if it's an image URL
+                originalImage: imageUrl,
+              );
+
+              return MaterialPageRoute(
+                builder:
+                    (_) => BillDetailScreen(
+                      imageUrl: imageUrl,
+                      bill: tempBill,
+                      billTitle: args['billTitle'] as String?,
+                      billId: args['billId'] as int?,
+                    ),
+              );
+            } else {
+              // If no valid arguments, show error
+              return MaterialPageRoute(
+                builder:
+                    (_) => Scaffold(
+                      appBar: AppBar(title: const Text('Erreur')),
+                      body: const Center(
+                        child: Text(
+                          'Arguments invalides pour la facture.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+              );
+            }
+          }
         }
         break;
 
@@ -134,14 +202,8 @@ class AppRouter {
         }
         break;
 
-      case '/energie':
-        if (isAdmin) {
-          return MaterialPageRoute(builder: (_) => const EnergieScrren());
-        }
-        break;
-
       case '/notifications':
-        if (isAdmin || isClient) {
+        if (isClient) {
           return MaterialPageRoute(builder: (_) => const NotificationScreen());
         }
         break;
@@ -150,13 +212,15 @@ class AppRouter {
         break;
     }
 
-    // Return access denied page if no route matched or user doesn't have permission
+    // Return access denied page for unauthorized access or invalid routes
     return MaterialPageRoute(
       builder:
           (_) => const Scaffold(
             body: Center(
               child: Text(
                 'Accès refusé. Vous n\'avez pas la permission pour cette page.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16),
               ),
             ),
           ),

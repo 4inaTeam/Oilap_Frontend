@@ -17,6 +17,8 @@ import 'package:oilab_frontend/features/comptables/data/comptable_repository.dar
 import 'package:oilab_frontend/features/comptables/presentation/bloc/comptable_bloc.dart';
 import 'package:oilab_frontend/features/employees/data/employee_repository.dart';
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_bloc.dart';
+import 'package:oilab_frontend/features/bills/data/bill_repository.dart';
+import 'package:oilab_frontend/features/bills/presentation/bloc/bill_bloc.dart';
 import 'package:oilab_frontend/features/factures/data/facture_repository.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.dart';
 import 'package:oilab_frontend/features/parametres/data/profile_repository.dart';
@@ -67,11 +69,26 @@ Future<void> main() async {
         providers: [
           RepositoryProvider<AuthRepository>.value(value: authRepository),
           RepositoryProvider<ProfileRepository>(
-            create: (_) => ProfileRepository(baseUrl: backendUrl),
+            create:
+                (ctx) => ProfileRepository(
+                  baseUrl: backendUrl,
+                  authRepository:
+                      ctx
+                          .read<
+                            AuthRepository
+                          >(), // Fixed: Pass the AuthRepository
+                ),
           ),
           RepositoryProvider<EmployeeRepository>(
             create:
                 (ctx) => EmployeeRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
+          ),
+          RepositoryProvider<BillRepository>(
+            create:
+                (ctx) => BillRepository(
                   baseUrl: backendUrl,
                   authRepo: ctx.read<AuthRepository>(),
                 ),
@@ -121,10 +138,17 @@ Future<void> main() async {
               create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
             ),
             BlocProvider<ProfileBloc>(
-              create: (ctx) => ProfileBloc(ctx.read<ProfileRepository>()),
+              create:
+                  (ctx) => ProfileBloc(
+                    ctx.read<ProfileRepository>(),
+                    ctx.read<AuthRepository>(),
+                  ),
             ),
             BlocProvider<EmployeeBloc>(
               create: (ctx) => EmployeeBloc(ctx.read<EmployeeRepository>()),
+            ),
+            BlocProvider<BillBloc>(
+              create: (ctx) => BillBloc(ctx.read<BillRepository>()),
             ),
             BlocProvider<ComptableBloc>(
               create: (ctx) => ComptableBloc(ctx.read<ComptableRepository>()),

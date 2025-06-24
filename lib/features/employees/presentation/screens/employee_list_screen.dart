@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
-import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_event.dart';
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_state.dart';
@@ -10,6 +9,7 @@ import 'package:oilab_frontend/features/employees/presentation/screens/employee_
 import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
 import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
+import 'package:oilab_frontend/shared/widgets/header_widget.dart';
 
 class EmployeeListScreen extends StatelessWidget {
   const EmployeeListScreen({Key? key}) : super(key: key);
@@ -68,70 +68,45 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-
-          return Padding(
-            padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Column(
-              children: [
-                _AppBar(isMobile: isMobile),
-                SizedBox(height: isMobile ? 12 : 16),
-                _SearchSection(
-                  controller: _searchController,
-                  onSearch: _performSearch,
-                  currentQuery: _currentSearchQuery,
-                  isMobile: isMobile,
-                ),
-                SizedBox(height: isMobile ? 16 : 24),
-                Expanded(child: _EmployeeContent(isMobile: isMobile)),
-                _PaginationFooter(
-                  isMobile: isMobile,
-                  onPageChange: _changePage,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AppBar extends StatelessWidget {
-  final bool isMobile;
-
-  const _AppBar({required this.isMobile});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (!isMobile) ...[
-          IconButton(
-            icon: const Icon(Icons.arrow_back, size: 28),
-            onPressed:
-                () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                ),
+      child: Column(
+        children: [
+          // Use the unified AppHeader with title and back arrow
+          AppHeader(
+            title: 'Employés',
+            showBackArrow: true,
+            showSearch:
+                false, // Hide search in header since we have custom search below
           ),
-          const SizedBox(width: 8),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 600;
+
+                return Padding(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  child: Column(
+                    children: [
+                      SizedBox(height: isMobile ? 12 : 16),
+                      _SearchSection(
+                        controller: _searchController,
+                        onSearch: _performSearch,
+                        currentQuery: _currentSearchQuery,
+                        isMobile: isMobile,
+                      ),
+                      SizedBox(height: isMobile ? 16 : 24),
+                      Expanded(child: _EmployeeContent(isMobile: isMobile)),
+                      _PaginationFooter(
+                        isMobile: isMobile,
+                        onPageChange: _changePage,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         ],
-        Expanded(
-          child: Text(
-            'Employés',
-            style: TextStyle(
-              fontSize: isMobile ? 20 : 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
-        ),
-      ],
+      ),
     );
   }
 }
@@ -301,96 +276,122 @@ class _EmployeeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeDesktop = screenWidth > 1200;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: isMobile ? 10 : (isLargeDesktop ? 100.0 : 80.0),
-          horizontalMargin: isMobile ? 8 : (isLargeDesktop ? 40 : 32),
-          headingRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          dataRowHeight: isMobile ? 48 : (isLargeDesktop ? 70 : 60),
-          columns: [
-            DataColumn(
-              label: Text(
-                'Nom',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Tél',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Email',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'CIN',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Action',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 14 : (isLargeDesktop ? 18 : 16),
-                ),
-              ),
-            ),
-          ],
-          rows:
-              employees
-                  .map(
-                    (employee) => DataRow(
-                      cells: [
-                        DataCell(
-                          Text(employee.name, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          Text(
-                            employee.tel ?? '',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        DataCell(
-                          Text(employee.email, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          Text(employee.cin, overflow: TextOverflow.ellipsis),
-                        ),
-                        DataCell(
-                          _ActionButtons(
-                            employee: employee,
-                            isMobile: isMobile,
-                          ),
-                        ),
-                      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox.expand(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: isMobile ? 10 : 56.0,
+                  horizontalMargin: isMobile ? 8 : 24,
+                  headingRowHeight: isMobile ? 48 : 60,
+                  dataRowHeight: isMobile ? 48 : 60,
+                  columns: const [
+                    DataColumn(
+                      label: Text(
+                        'Nom',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  )
-                  .toList(),
-        ),
-      ),
+                    DataColumn(
+                      label: Text(
+                        'Tél',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Email',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'CIN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Statut',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    DataColumn(
+                      label: Text(
+                        'Action',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                  rows:
+                      employees.map((employee) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                employee.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                employee.tel ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                employee.email,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                employee.cin,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            DataCell(
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          employee.isActive
+                                              ? Colors.green
+                                              : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    employee.isActive ? 'Active' : 'Inactive',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DataCell(
+                              _ActionButtons(
+                                employee: employee,
+                                isMobile: isMobile,
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

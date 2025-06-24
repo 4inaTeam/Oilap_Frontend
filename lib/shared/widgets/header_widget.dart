@@ -7,14 +7,48 @@ import '../../features/notifications/presentation/bloc/notification_bloc.dart';
 import '../../core/constants/app_colors.dart';
 
 class AppHeader extends StatelessWidget {
-  const AppHeader({Key? key}) : super(key: key);
+  final String? title;
+  final bool showBackArrow;
+  final bool showSearch;
+  final VoidCallback? onBackPressed;
+
+  const AppHeader({
+    Key? key,
+    this.title,
+    this.showBackArrow = false,
+    this.showSearch = true,
+    this.onBackPressed,
+  }) : super(key: key);
+
+  static const Map<String, String> _routeTitles = {
+    '/dashboard': 'Tableau de bord',
+    '/employees': 'Employés',
+    '/comptables': 'Comptables',
+    '/clients': 'Clients',
+    '/produits': 'Produits',
+    '/factures/client': 'Facture Client',
+    '/factures/entreprise': 'Facture d\'Entreprise',
+    '/energie': 'Énergie',
+    '/notifications': 'Notifications',
+    '/parametres': 'Paramètres',
+  };
+
+  String _getDynamicTitle(BuildContext context) {
+    if (title != null) return title!;
+    
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    
+    return _routeTitles[currentRoute] ?? 'Dashboard';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final dynamicTitle = _getDynamicTitle(context);
+    
     return Container(
       height: 60,
       decoration: BoxDecoration(
-        color: Color(0xFFFEF7FF),
+        color: const Color(0xFFFEF7FF),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -28,9 +62,28 @@ class AppHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const Spacer(),
-            const _SearchBarUI(),
-            const SizedBox(width: 16),
+            if (showBackArrow)
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: onBackPressed ?? () => Navigator.pop(context),
+              ),
+            
+            Expanded(
+              child: Text(
+                dynamicTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3748),
+                ),
+              ),
+            ),
+            
+            if (showSearch) ...[
+              const _SearchBarUI(),
+              const SizedBox(width: 16),
+            ],
+            
             _NotificationDropdown(),
           ],
         ),
@@ -39,7 +92,6 @@ class AppHeader extends StatelessWidget {
   }
 }
 
-// Static Search Bar UI (no functionality)
 class _SearchBarUI extends StatelessWidget {
   const _SearchBarUI();
 
@@ -106,12 +158,11 @@ class _NotificationDropdownState extends State<_NotificationDropdown> {
     final offset = renderBox.localToGlobal(Offset.zero);
 
     _overlayEntry = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            left: offset.dx - 300 + size.width,
-            top: offset.dy + size.height + 8,
-            child: _NotificationDropdownContent(onClose: _closeDropdown),
-          ),
+      builder: (context) => Positioned(
+        left: offset.dx - 300 + size.width,
+        top: offset.dy + size.height + 8,
+        child: _NotificationDropdownContent(onClose: _closeDropdown),
+      ),
     );
 
     Overlay.of(context).insert(_overlayEntry!);
@@ -357,10 +408,9 @@ class _NotificationItem extends StatelessWidget {
                   Text(
                     notification.title ?? 'Notification',
                     style: TextStyle(
-                      fontWeight:
-                          notification.isRead
-                              ? FontWeight.normal
-                              : FontWeight.bold,
+                      fontWeight: notification.isRead
+                          ? FontWeight.normal
+                          : FontWeight.bold,
                       fontSize: 14,
                     ),
                   ),
@@ -435,7 +485,7 @@ class NotificationBadge extends StatelessWidget {
   final Widget child;
 
   const NotificationBadge({Key? key, required this.count, required this.child})
-    : super(key: key);
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {

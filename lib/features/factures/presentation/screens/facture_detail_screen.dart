@@ -41,21 +41,43 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   String? _pdfError;
   Uint8List? _pdfBytes;
 
+  // Add a reference to the BlocProvider to access it safely
+  FactureBloc? _factureBloc;
+
   @override
   void initState() {
     super.initState();
-    context.read<FactureBloc>().add(GetFacturePdf(widget.factureId));
+    // Initialize the bloc reference early
+    _factureBloc = context.read<FactureBloc>();
+    _factureBloc?.add(GetFacturePdf(widget.factureId));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store the bloc reference when dependencies change
+    _factureBloc ??= context.read<FactureBloc>();
   }
 
   @override
   void dispose() {
+    // Dispose PDF controller first
     _pdfController?.dispose();
+    _pdfController = null;
+
+    // Clear the bloc reference
+    _factureBloc = null;
+
     super.dispose();
   }
 
   Future<void> _loadPdfController(String pdfUrl) async {
+    // Check if widget is still mounted before proceeding
+    if (!mounted) return;
+
     if (_pdfController != null || _isLoadingPdf) return;
 
+    if (!mounted) return;
     setState(() {
       _isLoadingPdf = true;
       _pdfError = null;
@@ -73,6 +95,9 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
             },
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         // Verify content type
@@ -97,6 +122,12 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
           initialPage: 1,
         );
 
+        if (!mounted) {
+          // If widget is no longer mounted, dispose the controller
+          controller.dispose();
+          return;
+        }
+
         setState(() {
           _pdfController = controller;
           _isLoadingPdf = false;
@@ -106,6 +137,8 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
         throw Exception('Failed to load PDF: ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _isLoadingPdf = false;
         _pdfError = e.toString();
@@ -148,30 +181,38 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   }
 
   Future<void> _processPayment() async {
+    // Check if widget is still mounted
+    if (!mounted) return;
+
     // Check if facture is already paid
     if (widget.facture.paymentStatus == 'paid') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cette facture a déjà été payée'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cette facture a déjà été payée'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
 
     // Check if payment amount is valid
     if (widget.facture.finalTotal < AppConfig.minPaymentAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Le montant minimum pour un paiement est de \${AppConfig.minPaymentAmount}. Montant actuel: \${widget.facture.finalTotal}',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Le montant minimum pour un paiement est de \${AppConfig.minPaymentAmount}. Montant actuel: \${widget.facture.finalTotal}',
+            ),
+            backgroundColor: Colors.red,
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _isProcessingPayment = true;
     });
@@ -182,25 +223,34 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
         context: context,
       );
 
+      if (!mounted) return;
+
       if (success) {
-        context.read<FactureBloc>().add(GetFacturePdf(widget.factureId));
+        // Use the stored bloc reference instead of context.read
+        _factureBloc?.add(GetFacturePdf(widget.factureId));
         _showPaymentSuccessDialog();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur de paiement: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur de paiement: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isProcessingPayment = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessingPayment = false;
+        });
+      }
     }
   }
 
   void _showPaymentSuccessDialog() {
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -231,14 +281,18 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   }
 
   void _goBackToList() {
-    Navigator.of(context).pushReplacementNamed('/factures/client');
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/factures/client');
+    }
   }
 
   Widget _buildOptimizedPdfViewer(String pdfUrl) {
     // Auto-load PDF when URL is available
     if (_pdfController == null && !_isLoadingPdf && _pdfError == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadPdfController(pdfUrl);
+        if (mounted) {
+          _loadPdfController(pdfUrl);
+        }
       });
     }
 
@@ -282,14 +336,16 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
-                  setState(() {
-                    _pdfController?.dispose();
-                    _pdfController = null;
-                    _isLoadingPdf = false;
-                    _pdfError = null;
-                    _pdfBytes = null;
-                  });
-                  _loadPdfController(pdfUrl);
+                  if (mounted) {
+                    setState(() {
+                      _pdfController?.dispose();
+                      _pdfController = null;
+                      _isLoadingPdf = false;
+                      _pdfError = null;
+                      _pdfBytes = null;
+                    });
+                    _loadPdfController(pdfUrl);
+                  }
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Réessayer'),
@@ -317,9 +373,11 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
             controller: _pdfController!,
             scrollDirection: Axis.vertical,
             onDocumentError: (error) {
-              setState(() {
-                _pdfError = 'Erreur de document PDF';
-              });
+              if (mounted) {
+                setState(() {
+                  _pdfError = 'Erreur de document PDF';
+                });
+              }
             },
             builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
               options: const DefaultBuilderOptions(
@@ -529,10 +587,10 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                         Text(state.message),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed:
-                              () => context.read<FactureBloc>().add(
-                                GetFacturePdf(widget.factureId),
-                              ),
+                          onPressed: () {
+                            // Use the stored bloc reference instead of context.read
+                            _factureBloc?.add(GetFacturePdf(widget.factureId));
+                          },
                           child: const Text('Réessayer'),
                         ),
                       ],

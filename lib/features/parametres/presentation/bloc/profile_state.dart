@@ -1,24 +1,25 @@
-import 'package:equatable/equatable.dart';
+import 'package:oilab_frontend/core/models/user_model.dart';
 
-abstract class ProfileState extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
+abstract class ProfileState {}
 
 class ProfileInitial extends ProfileState {}
 
 class ProfileLoading extends ProfileState {}
 
 class ProfileLoaded extends ProfileState {
-  final Map<String, dynamic> userData;
-  ProfileLoaded(this.userData);
-  @override
-  List<Object?> get props => [userData];
+  final User user;
+
+  ProfileLoaded(this.user);
+}
+
+class ProfileUpdated extends ProfileState {
+  final User user;
+
+  ProfileUpdated(this.user);
 }
 
 class ProfileError extends ProfileState {
   final String message;
+
   ProfileError(this.message);
-  @override
-  List<Object?> get props => [message];
 }

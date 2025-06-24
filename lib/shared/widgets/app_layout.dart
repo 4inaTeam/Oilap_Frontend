@@ -47,6 +47,7 @@ class AppLayout extends StatelessWidget {
   }
 }
 
+// Updated _DesktopScaffold - now uses dynamic header without title parameter
 class _DesktopScaffold extends StatelessWidget {
   final Widget child;
   final String? userName;
@@ -71,7 +72,8 @@ class _DesktopScaffold extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                AppHeader(),
+                // Dynamic header that automatically detects the route and shows appropriate title
+                const AppHeader(showSearch: true),
                 Expanded(child: child),
                 const FooterWidget(),
               ],
@@ -83,6 +85,7 @@ class _DesktopScaffold extends StatelessWidget {
   }
 }
 
+// Updated _MobileScaffold with dynamic title
 class _MobileScaffold extends StatelessWidget {
   final Widget child;
   final Function(String)? onSearchResult;
@@ -94,12 +97,36 @@ class _MobileScaffold extends StatelessWidget {
     this.searchData,
   });
 
+  // Map routes to their display titles for mobile
+  static const Map<String, String> _routeTitles = {
+    '/dashboard': 'Tableau de bord',
+    '/employees': 'Employés',
+    '/comptables': 'Comptables',
+    '/clients': 'Clients',
+    '/produits': 'Produits',
+    '/factures/client': 'Facture Client',
+    '/factures/entreprise': 'Facture d\'Entreprise',
+    '/energie': 'Énergie',
+    '/notifications': 'Notifications',
+    '/parametres': 'Paramètres',
+  };
+
+  String _getDynamicTitle(BuildContext context) {
+    // Get current route
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+
+    // Return the mapped title or default
+    return _routeTitles[currentRoute] ?? 'Dashboard';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dynamicTitle = _getDynamicTitle(context);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.mainColor,
-        title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
+        title: Text(dynamicTitle, style: const TextStyle(color: Colors.white)),
         centerTitle: true,
         leading: Builder(
           builder:

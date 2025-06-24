@@ -1,33 +1,28 @@
 import 'dart:io';
-import 'package:equatable/equatable.dart';
+import 'dart:typed_data';
 
-abstract class ProfileEvent extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
+abstract class ProfileEvent {}
 
-class LoadProfile extends ProfileEvent {}
+class LoadCurrentUser extends ProfileEvent {}
+
+class RefreshProfile extends ProfileEvent {}
 
 class UpdateProfile extends ProfileEvent {
-  final String username;
+  final String name;
   final String email;
-  final String? firstName;
-  final String? lastName;
+  final String cin;
   final String? tel;
   final String? password;
-  final File?   photo;
+  final File? profilePhoto;
+  final Uint8List? profilePhotoBytes; // Add this for web support
 
   UpdateProfile({
-    required this.username,
+    required this.name,
     required this.email,
-    this.firstName,
-    this.lastName,
+    required this.cin,
     this.tel,
     this.password,
-    this.photo,
+    this.profilePhoto,
+    this.profilePhotoBytes,
   });
-
-  @override
-  List<Object?> get props =>
-      [username, email, firstName, lastName, tel, password, photo];
 }

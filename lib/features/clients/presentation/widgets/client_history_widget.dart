@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/core/models/product_model.dart' as product_model;
 import 'package:oilab_frontend/features/produits/presentation/screens/product_detail_screen.dart';
@@ -68,25 +67,19 @@ class ClientHistoryWidget extends StatelessWidget {
     List<DataColumn> columns = [
       // Entry Time
       DataColumn(
-        label: SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+        label: Expanded(
           child: Text(
             isMobile ? 'Entrée' : 'Temps d\'entrée',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
       // Estimated Time
       DataColumn(
-        label: SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+        label: Expanded(
           child: Text(
             isMobile ? 'Estimé' : 'Temps estimé',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -96,12 +89,10 @@ class ClientHistoryWidget extends StatelessWidget {
     if (!isMobile) {
       columns.add(
         DataColumn(
-          label: SizedBox(
-            width: isTablet ? 100 : (isLargeDesktop ? 150 : 120),
+          label: Expanded(
             child: Text(
               'Temps de sortie',
               style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -111,12 +102,10 @@ class ClientHistoryWidget extends StatelessWidget {
     // Origin
     columns.add(
       DataColumn(
-        label: SizedBox(
-          width: isMobile ? 60 : (isTablet ? 80 : (isLargeDesktop ? 120 : 100)),
+        label: Expanded(
           child: Text(
             'Origine',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -125,13 +114,10 @@ class ClientHistoryWidget extends StatelessWidget {
     // Status
     columns.add(
       DataColumn(
-        label: SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+        label: Expanded(
           child: Text(
             'Statut',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -141,12 +127,10 @@ class ClientHistoryWidget extends StatelessWidget {
     if (!isMobile) {
       columns.add(
         DataColumn(
-          label: SizedBox(
-            width: isTablet ? 80 : (isLargeDesktop ? 120 : 100),
+          label: Expanded(
             child: Text(
               'Qualité',
               style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -156,12 +140,10 @@ class ClientHistoryWidget extends StatelessWidget {
     // Price
     columns.add(
       DataColumn(
-        label: SizedBox(
-          width: isMobile ? 70 : (isTablet ? 90 : (isLargeDesktop ? 120 : 100)),
+        label: Expanded(
           child: Text(
             'Prix',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -169,14 +151,10 @@ class ClientHistoryWidget extends StatelessWidget {
 
     columns.add(
       DataColumn(
-        label: SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+        label: Expanded(
           child: Text(
             'Actions',
             style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -197,8 +175,7 @@ class ClientHistoryWidget extends StatelessWidget {
     List<DataCell> cells = [
       DataCell(
         SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          width: double.infinity,
           child: Text(
             product.formattedCreatedAt,
             overflow: TextOverflow.ellipsis,
@@ -208,8 +185,7 @@ class ClientHistoryWidget extends StatelessWidget {
       ),
       DataCell(
         SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          width: double.infinity,
           child: Text(
             product.formattedEstimationDate,
             overflow: TextOverflow.ellipsis,
@@ -223,7 +199,7 @@ class ClientHistoryWidget extends StatelessWidget {
       cells.add(
         DataCell(
           SizedBox(
-            width: isTablet ? 100 : (isLargeDesktop ? 150 : 120),
+            width: double.infinity,
             child: Text(
               product.formattedEndTime,
               overflow: TextOverflow.ellipsis,
@@ -237,7 +213,7 @@ class ClientHistoryWidget extends StatelessWidget {
     cells.add(
       DataCell(
         SizedBox(
-          width: isMobile ? 60 : (isTablet ? 80 : (isLargeDesktop ? 120 : 100)),
+          width: double.infinity,
           child: Text(
             product.origine ?? 'N/A',
             overflow: TextOverflow.ellipsis,
@@ -250,8 +226,7 @@ class ClientHistoryWidget extends StatelessWidget {
     cells.add(
       DataCell(
         SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          width: double.infinity,
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: isMobile ? 4 : (isLargeDesktop ? 12 : 8),
@@ -282,7 +257,7 @@ class ClientHistoryWidget extends StatelessWidget {
       cells.add(
         DataCell(
           SizedBox(
-            width: isTablet ? 80 : (isLargeDesktop ? 120 : 100),
+            width: double.infinity,
             child: Text(
               product.quality ?? 'N/A',
               overflow: TextOverflow.ellipsis,
@@ -296,7 +271,7 @@ class ClientHistoryWidget extends StatelessWidget {
     cells.add(
       DataCell(
         SizedBox(
-          width: isMobile ? 70 : (isTablet ? 90 : (isLargeDesktop ? 120 : 100)),
+          width: double.infinity,
           child: Text(
             product.price != null
                 ? '${product.price!.toStringAsFixed(2)} DT'
@@ -311,8 +286,7 @@ class ClientHistoryWidget extends StatelessWidget {
     cells.add(
       DataCell(
         SizedBox(
-          width:
-              isMobile ? 80 : (isTablet ? 100 : (isLargeDesktop ? 150 : 120)),
+          width: double.infinity,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -389,78 +363,56 @@ class ClientHistoryWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     // Enhanced responsive spacing and sizing
     final double columnSpacing =
-        isMobile ? 2 : (isTablet ? 6 : (isLargeDesktop ? 12 : 8));
+        isMobile ? 8 : (isTablet ? 12 : (isLargeDesktop ? 16 : 14));
     final double horizontalMargin =
-        isMobile ? 4 : (isTablet ? 8 : (isLargeDesktop ? 16 : 12));
+        isMobile ? 8 : (isTablet ? 12 : (isLargeDesktop ? 20 : 16));
     final double rowHeight =
-        isMobile ? 44 : (isTablet ? 52 : (isLargeDesktop ? 64 : 56));
+        isMobile ? 48 : (isTablet ? 56 : (isLargeDesktop ? 68 : 60));
     final double headerHeight =
-        isMobile ? 40 : (isTablet ? 48 : (isLargeDesktop ? 60 : 52));
+        isMobile ? 44 : (isTablet ? 52 : (isLargeDesktop ? 64 : 56));
 
-    // Calculate minimum width needed for all columns with enhanced desktop support
-    double minRequiredWidth = 0;
-    if (isMobile) {
-      minRequiredWidth = 80 + 80 + 80 + 60 + 80 + 70 + 80;
-      minRequiredWidth += columnSpacing * 6;
-      minRequiredWidth += horizontalMargin * 2;
-    } else if (isTablet) {
-      double baseWidth = 100 + 100 + 100 + 80 + 100 + 80 + 90 + 100;
-      baseWidth += columnSpacing * 7;
-      baseWidth += horizontalMargin * 2;
-      minRequiredWidth = baseWidth;
-    } else if (isLargeDesktop) {
-      double baseWidth = 150 + 150 + 150 + 120 + 150 + 120 + 120 + 150;
-      baseWidth += columnSpacing * 7;
-      baseWidth += horizontalMargin * 2;
-      minRequiredWidth = baseWidth;
-    } else {
-      double baseWidth = 120 + 120 + 120 + 100 + 120 + 100 + 100 + 120;
-      baseWidth += columnSpacing * 7;
-      baseWidth += horizontalMargin * 2;
-      minRequiredWidth = baseWidth;
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        constraints: BoxConstraints(
-          minWidth: minRequiredWidth,
-          maxWidth: math.max(
-            minRequiredWidth,
-            constraints.maxWidth + (isLargeDesktop ? 400 : 200),
+    Widget dataTableWidget = Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(isLargeDesktop ? 12 : 8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: isLargeDesktop ? 6 : 4,
+            offset: Offset(0, isLargeDesktop ? 3 : 2),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dataTableTheme: DataTableThemeData(
+            headingRowHeight: headerHeight,
+            dataRowHeight: rowHeight,
+            horizontalMargin: horizontalMargin,
+            columnSpacing: columnSpacing,
+            dividerThickness: 0.5,
           ),
         ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(isLargeDesktop ? 12 : 8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: isLargeDesktop ? 6 : 4,
-              offset: Offset(0, isLargeDesktop ? 3 : 2),
-            ),
-          ],
-        ),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            dataTableTheme: DataTableThemeData(
-              headingRowHeight: headerHeight,
-              dataRowHeight: rowHeight,
-              horizontalMargin: horizontalMargin,
-              columnSpacing: columnSpacing,
-              dividerThickness: 0.5,
-            ),
-          ),
-          child: DataTable(
-            showCheckboxColumn: false,
-            columns: _buildColumns(),
-            rows:
-                products.map((product) {
-                  return DataRow(cells: _buildCells(product, context));
-                }).toList(),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              width: constraints.maxWidth,
+              child: DataTable(
+                showCheckboxColumn: false,
+                columnSpacing: columnSpacing,
+                columns: _buildColumns(),
+                rows:
+                    products.map((product) {
+                      return DataRow(cells: _buildCells(product, context));
+                    }).toList(),
+              ),
+            );
+          },
         ),
       ),
     );
+
+    return dataTableWidget;
   }
 }

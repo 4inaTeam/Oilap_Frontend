@@ -19,7 +19,6 @@ class _SidebarState extends State<Sidebar> {
   String? _selectedRoute;
   bool _isFacturesExpanded = false;
 
-  // Reorganized items in the requested order
   static const _allItems = [
     {
       'label': 'Tableau de bord',
@@ -34,7 +33,6 @@ class _SidebarState extends State<Sidebar> {
     },
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
-    // Note: Factures will be handled separately as dropdown
     {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
     {
       'label': 'Notifications',
@@ -55,7 +53,6 @@ class _SidebarState extends State<Sidebar> {
       if (currentRoute != null) {
         setState(() {
           _selectedRoute = currentRoute;
-          // Expand factures dropdown if current route is a facture route
           if (currentRoute.startsWith('/factures/')) {
             _isFacturesExpanded = true;
           }
@@ -72,7 +69,6 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
-  // Method to get organized items based on user role
   List<Map<String, dynamic>> _getOrganizedItems() {
     final String? role = AuthRepository.currentRole;
 
@@ -83,22 +79,20 @@ class _SidebarState extends State<Sidebar> {
 
     List<Map<String, dynamic>> organizedItems = [];
 
-    // Always show Dashboard first if user has access
     if (isAdmin || isEmployee || isAccountant || isClient) {
       organizedItems.add(
         _allItems.firstWhere((item) => item['route'] == '/dashboard'),
       );
     }
 
-    // Add items in the requested order based on role permissions
     final itemsToCheck = [
-      '/employees', // Employés
-      '/comptables', // Comptables
-      '/clients', // Clients
-      '/produits', // Produits
-      '/energie', // Énergie
-      '/notifications', // Notifications
-      '/parametres', // Paramètres
+      '/employees',
+      '/comptables',
+      '/clients',
+      '/produits',
+      '/energie',
+      '/notifications',
+      '/parametres',
     ];
 
     for (String route in itemsToCheck) {
@@ -121,7 +115,7 @@ class _SidebarState extends State<Sidebar> {
           hasAccess = isAdmin;
           break;
         case '/notifications':
-          hasAccess = isAdmin || isClient;
+          hasAccess = isClient;
           break;
         case '/parametres':
           hasAccess = isAdmin || isEmployee || isAccountant || isClient;
@@ -137,7 +131,6 @@ class _SidebarState extends State<Sidebar> {
     return organizedItems;
   }
 
-  // Check if user has access to factures
   bool _hasFacturesAccess() {
     final String? role = AuthRepository.currentRole;
     bool isAdmin = role == 'ADMIN';
@@ -361,24 +354,27 @@ class _SidebarState extends State<Sidebar> {
                         const SizedBox(height: 16),
                         const _LogoutButton(),
                         const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Image.asset(
+                                'assets/images/image118.png',
+                                height: 200,
+                                fit: BoxFit.cover,
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: Image.asset(
-                              'assets/images/image118.png',
-                              height: 200,
-                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -597,7 +593,7 @@ class _FactureSubItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           child: Row(
             children: [
-              const SizedBox(width: 32), // Indent for sub-items
+              const SizedBox(width: 32),
               Icon(
                 Icons.arrow_right,
                 color: isSelected ? AppColors.accentGreen : Colors.white60,

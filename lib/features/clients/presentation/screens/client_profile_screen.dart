@@ -632,23 +632,36 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         if (products.isEmpty)
           _buildEmptyState(screenWidth)
         else
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
+          // Removed the Card wrapper to make table full width
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Colors.grey.shade200),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
             child: Padding(
               padding: EdgeInsets.all(_isMobile(screenWidth) ? 8 : 16),
-              child: ClientHistoryWidget(
-                products: products,
-                constraints: BoxConstraints(
-                  maxWidth:
-                      constraints.maxWidth - (_isMobile(screenWidth) ? 48 : 64),
+              child: SizedBox(
+                width: double.infinity,
+                child: ClientHistoryWidget(
+                  products: products,
+                  constraints: BoxConstraints(
+                    maxWidth: double.infinity,
+                    minWidth: double.infinity, // Force full width
+                  ),
+                  isMobile: _isMobile(screenWidth),
+                  isTablet: _isTablet(screenWidth),
+                  isDesktop: _isDesktop(screenWidth),
                 ),
-                isMobile: _isMobile(screenWidth),
-                isTablet: _isTablet(screenWidth),
-                isDesktop: _isDesktop(screenWidth),
               ),
             ),
           ),
