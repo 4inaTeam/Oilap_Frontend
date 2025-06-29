@@ -664,14 +664,29 @@ class BillRepository {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
+      // Transform items to match backend expectations
+      List<Map<String, dynamic>>? transformedItems;
+      if (items != null) {
+        transformedItems =
+            items.map((item) {
+              return {
+                'title': item['name']?.toString() ?? '',
+                'quantity': item['quantity'],
+                'unit_price': item['price'],
+              };
+            }).toList();
+      }
+
       final requestBody = {
         'owner': owner,
         'category': category,
         'amount': amount,
         'payment_date': paymentDate.toIso8601String().split('T')[0],
         if (consumption != null) 'consumption': consumption,
-        if (items != null) 'items': items,
+        if (transformedItems != null) 'items': transformedItems,
       };
+
+      print('Update request body: ${jsonEncode(requestBody)}');
 
       final response = await http.patch(
         Uri.parse('$baseUrl/api/bills/$id/'),
@@ -681,6 +696,9 @@ class BillRepository {
         },
         body: jsonEncode(requestBody),
       );
+
+      print('Update response status: ${response.statusCode}');
+      print('Update response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:oilab_frontend/core/models/bill_model.dart';
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_layout.dart';
-import '../../../factures/presentation/bloc/facture_bloc.dart';
-import '../../../factures/presentation/bloc/facture_state.dart';
+import '../../../bills/data/bill_repository.dart';
+import '../../../auth/data/auth_repository.dart';
+
+// Platform-specific imports
+import 'dart:io' as io;
+import 'package:path_provider/path_provider.dart';
+
+// Web-only imports
+import 'dart:html' as html;
 
 class BillDetailScreen extends StatefulWidget {
   final String? imageUrl;
@@ -32,16 +37,22 @@ class BillDetailScreen extends StatefulWidget {
 
 class _BillDetailScreenState extends State<BillDetailScreen> {
   String? localPath;
-  Uint8List? imageBytes; // Fallback for memory storage
+  Uint8List? imageBytes;
   bool isLoading = true;
   bool hasError = false;
   String errorMessage = '';
   double _scale = 1.0;
   double _previousScale = 1.0;
 
+  // Repositories for download functionality
+  late BillRepository _billRepository;
+  late AuthRepository _authRepository;
+
   @override
   void initState() {
     super.initState();
+    _authRepository = context.read<AuthRepository>();
+    _billRepository = context.read<BillRepository>();
     _loadImage();
   }
 
@@ -73,34 +84,40 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         throw Exception('No image URL available');
       }
 
-      // Download image from backend
-      final response = await http.get(Uri.parse(imageUrl));
+      final imageBytes = await _billRepository.fetchBillImageBytes(imageUrl);
 
-      if (response.statusCode == 200) {
-        // Try to save to file, fallback to memory if path_provider fails
-        try {
-          final dir = await getTemporaryDirectory();
-          final file = File(
-            '${dir.path}/bill_image_${widget.billId ?? widget.bill.id ?? 'temp'}.jpg',
-          );
-          await file.writeAsBytes(response.bodyBytes);
-
+      if (imageBytes != null) {
+        if (kIsWeb) {
+          // For web, just store in memory
           setState(() {
-            localPath = file.path;
-            imageBytes = null; // Clear memory storage
-            isLoading = false;
-          });
-        } catch (pathError) {
-          // Fallback to memory storage
-          print('Path provider failed, using memory storage: $pathError');
-          setState(() {
-            imageBytes = response.bodyBytes;
+            this.imageBytes = imageBytes;
             localPath = null;
             isLoading = false;
           });
+        } else {
+          // For mobile/desktop, try to save to file
+          try {
+            final dir = await getTemporaryDirectory();
+            final file = io.File(
+              '${dir.path}/bill_image_${widget.billId ?? widget.bill.id ?? 'temp'}.jpg',
+            );
+            await file.writeAsBytes(imageBytes);
+
+            setState(() {
+              localPath = file.path;
+              this.imageBytes = null;
+              isLoading = false;
+            });
+          } catch (pathError) {
+            setState(() {
+              this.imageBytes = imageBytes;
+              localPath = null;
+              isLoading = false;
+            });
+          }
         }
       } else {
-        throw Exception('Failed to load image: ${response.statusCode}');
+        throw Exception('Failed to load image from server');
       }
     } catch (e) {
       setState(() {
@@ -111,101 +128,115 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     }
   }
 
-  Future<void> _downloadPdf(String pdfUrl) async {
+  Future<void> _downloadPdf() async {
+    final billId = widget.billId ?? widget.bill.id;
+    if (billId == null) {
+      _showErrorMessage('ID de facture non disponible');
+      return;
+    }
+
     try {
-      // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Téléchargement en cours...'),
-          backgroundColor: AppColors.mainColor,
-        ),
+      final token = await _authRepository.getAccessToken();
+      if (token == null) {
+        throw Exception('Non authentifié');
+      }
+
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/api/bills/$billId/download/'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
-      final response = await http.get(Uri.parse(pdfUrl));
-
       if (response.statusCode == 200) {
-        final dir = await getTemporaryDirectory();
-        final file = File(
-          '${dir.path}/facture_${widget.billId ?? widget.bill.id ?? 'temp'}.pdf',
-        );
+        final contentType = response.headers['content-type'];
+        if (contentType != null && contentType.contains('application/pdf')) {
+          if (kIsWeb) {
+            _downloadFileWeb(response.bodyBytes, 'facture_$billId.pdf');
+          } else {
+            await _downloadFileMobile(response.bodyBytes, billId);
+          }
 
-        await file.writeAsBytes(response.bodyBytes);
-
-        // Share the PDF file
-        await Share.shareXFiles([
-          XFile(file.path),
-        ], text: 'Facture PDF ${widget.billTitle ?? widget.bill.owner}');
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('PDF téléchargé avec succès'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('PDF téléchargé avec succès!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          throw Exception('Le serveur n\'a pas retourné un fichier PDF valide');
         }
       } else {
-        throw Exception('Failed to download PDF: ${response.statusCode}');
+        throw Exception('Erreur serveur: ${response.statusCode}');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors du téléchargement: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      _showErrorMessage('Erreur: $e');
+    }
+  }
+
+  void _downloadFileWeb(Uint8List bytes, String filename) {
+    if (kIsWeb) {
+      try {
+        // Create a blob with the PDF data
+        final blob = html.Blob([bytes], 'application/pdf');
+
+        // Create a download URL
+        final url = html.Url.createObjectUrlFromBlob(blob);
+
+        // Create an anchor element and trigger download
+        final anchor =
+            html.AnchorElement(href: url)
+              ..setAttribute('download', filename)
+              ..style.display = 'none';
+
+        // Add to DOM, click, and remove
+        html.document.body?.children.add(anchor);
+        anchor.click();
+        html.document.body?.children.remove(anchor);
+
+        // Clean up the URL
+        html.Url.revokeObjectUrl(url);
+
+        print('Web download triggered for: $filename');
+      } catch (e) {
+        print('Error in web download: $e');
+        throw Exception('Erreur lors du téléchargement web: $e');
       }
     }
   }
 
-  Future<void> _downloadBillImage() async {
-    try {
-      // Show loading indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Téléchargement en cours...'),
-          backgroundColor: AppColors.mainColor,
-        ),
-      );
-
-      if (localPath != null) {
-        // Share the image file directly
-        await Share.shareXFiles([
-          XFile(localPath!),
-        ], text: 'Facture ${widget.billTitle ?? widget.bill.owner}');
-      } else if (imageBytes != null) {
-        // Create temporary file from memory bytes
+  // Mobile/Desktop download using file system and share
+  Future<void> _downloadFileMobile(Uint8List bytes, int billId) async {
+    if (!kIsWeb) {
+      try {
         final dir = await getTemporaryDirectory();
-        final file = File(
-          '${dir.path}/facture_${widget.billId ?? widget.bill.id ?? 'temp'}.jpg',
-        );
-        await file.writeAsBytes(imageBytes!);
+        final file = io.File('${dir.path}/facture_$billId.pdf');
 
+        await file.writeAsBytes(bytes);
+
+        print('PDF saved to: ${file.path}');
+
+        // Share the PDF file using the system share dialog
         await Share.shareXFiles([
           XFile(file.path),
-        ], text: 'Facture ${widget.billTitle ?? widget.bill.owner}');
-      } else {
-        throw Exception('Aucune image disponible pour le téléchargement');
+        ], text: 'Facture PDF - ${widget.bill.owner}');
+      } catch (e) {
+        print('Error in mobile download: $e');
+        throw Exception('Erreur lors du téléchargement mobile: $e');
       }
+    }
+  }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Image téléchargée avec succès'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors du téléchargement: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  void _showErrorMessage(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -217,7 +248,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         backgroundColor: Colors.grey[50],
         body: Column(
           children: [
-            // Top action bar with download button
+            // Top action bar with simple download button
             Container(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -232,14 +263,16 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       ),
     );
   }
-
   Widget _buildDownloadButton() {
     return Container(
       margin: const EdgeInsets.only(top: 16, right: 16),
       child: ElevatedButton.icon(
-        onPressed: isLoading || hasError ? null : _downloadBillImage,
+        onPressed: isLoading || hasError ? null : _downloadPdf,
         icon: const Icon(Icons.download, color: Colors.white),
-        label: const Text('Télécharger', style: TextStyle(color: Colors.white)),
+        label: Text(
+          kIsWeb ? 'Télécharger ' : 'Partager PDF',
+          style: const TextStyle(color: Colors.white),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.mainColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -380,17 +413,15 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 
   Widget _buildImage() {
-    if (localPath != null) {
-      // Display from file
+    if (localPath != null && !kIsWeb) {
       return Image.file(
-        File(localPath!),
+        io.File(localPath!),
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           return _buildImageError();
         },
       );
     } else if (imageBytes != null) {
-      // Display from memory
       return Image.memory(
         imageBytes!,
         fit: BoxFit.contain,
