@@ -11,7 +11,6 @@ import 'package:oilab_frontend/features/bills/presentation/screens/bill_upload_s
 import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
 import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
-import 'package:oilab_frontend/shared/widgets/header_widget.dart';
 
 class BillListScreen extends StatelessWidget {
   const BillListScreen({Key? key}) : super(key: key);
@@ -68,15 +67,9 @@ class __BillListViewState extends State<_BillListView> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
+      currentRoute: "/factures/entreprise",
       child: Column(
         children: [
-          // Use the unified AppHeader with title and back arrow
-          AppHeader(
-            title: 'Factures',
-            showBackArrow: true,
-            showSearch:
-                false, // Hide search in header since we have custom search below
-          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {

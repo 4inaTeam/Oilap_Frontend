@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/notifications/presentation/bloc/notification_event.dart';
 import 'package:oilab_frontend/features/notifications/presentation/bloc/notifications_state.dart';
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
@@ -11,6 +12,7 @@ class AppHeader extends StatelessWidget {
   final bool showBackArrow;
   final bool showSearch;
   final VoidCallback? onBackPressed;
+  final String? currentRoute;
 
   const AppHeader({
     Key? key,
@@ -18,33 +20,124 @@ class AppHeader extends StatelessWidget {
     this.showBackArrow = false,
     this.showSearch = true,
     this.onBackPressed,
+    this.currentRoute,
   }) : super(key: key);
 
   static const Map<String, String> _routeTitles = {
-    '/dashboard': 'Tableau de bord',
+    '/dashboard': 'Dashboard',
     '/employees': 'Employés',
     '/comptables': 'Comptables',
     '/clients': 'Clients',
+    '/clients/detail': 'Profile Client',
     '/produits': 'Produits',
+    '/produits/detail': 'Détail de Produit',
     '/factures/client': 'Facture Client',
+    '/factures/client/detail': 'Détail Facture Client',
     '/factures/entreprise': 'Facture d\'Entreprise',
+    '/factures/entreprise/ajouter': 'Ajouter Facture',
+    '/factures/entreprise/detail': 'Détail Facture Entreprise',
     '/energie': 'Énergie',
     '/notifications': 'Notifications',
     '/parametres': 'Paramètres',
   };
 
+  // Define navigation hierarchy - Updated to include ajouter route
+  static const Map<String, String> _backNavigationMap = {
+    '/factures/client/detail': '/factures/client',
+    '/factures/entreprise/detail': '/factures/entreprise',
+    '/factures/entreprise/ajouter': '/factures/entreprise', // Added this line
+    '/clients/detail': '/clients',
+    '/produits/detail': '/produits',
+  };
+
   String _getDynamicTitle(BuildContext context) {
     if (title != null) return title!;
-    
-    final currentRoute = ModalRoute.of(context)?.settings.name;
-    
-    return _routeTitles[currentRoute] ?? 'Dashboard';
+
+    // Use explicit currentRoute parameter first
+    if (currentRoute != null) {
+      return _routeTitles[currentRoute] ?? 'Tableau de bord';
+    }
+
+    // Fallback: try multiple methods to get route
+    final route = ModalRoute.of(context)?.settings.name;
+    print('Current route: $route'); // Debug print
+
+    // If still null, default to dashboard
+    if (route == null) {
+      return 'Tableau de bord'; // Default to dashboard title
+    }
+
+    return _routeTitles[route] ?? 'Tableau de bord';
+  }
+
+  bool _shouldShowBackArrow(BuildContext context) {
+    if (showBackArrow) return true;
+
+    if (currentRoute != null) {
+      return currentRoute != '/dashboard';
+    }
+
+    final route = ModalRoute.of(context)?.settings.name;
+
+    if (route == null) {
+      return false;
+    }
+
+    return route != '/dashboard';
+  }
+
+  bool _shouldShowSearch(BuildContext context) {
+    if (!showSearch) return false;
+
+    if (currentRoute != null) {
+      return currentRoute == '/dashboard';
+    }
+
+    final route = ModalRoute.of(context)?.settings.name;
+
+    if (route == null) {
+      return true; // Default to showing search when route is unknown
+    }
+
+    return route == '/dashboard';
+  }
+
+  bool _shouldShowNotifications() {
+    final String? role = AuthRepository.currentRole;
+    // Show notifications only to clients
+    return role == 'CLIENT';
+  }
+
+  void _handleBackPress(BuildContext context) {
+    if (onBackPressed != null) {
+      onBackPressed!();
+      return;
+    }
+
+    // Get current route
+    String? route = currentRoute ?? ModalRoute.of(context)?.settings.name;
+
+    if (route != null && _backNavigationMap.containsKey(route)) {
+      // Navigate to specific parent route based on hierarchy
+      String parentRoute = _backNavigationMap[route]!;
+      Navigator.pushNamedAndRemoveUntil(context, parentRoute, (route) => false);
+    } else {
+      // For all other pages, go back to dashboard
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/dashboard',
+        (route) => false,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final dynamicTitle = _getDynamicTitle(context);
-    
+    final shouldShowBackArrow = _shouldShowBackArrow(context);
+    final shouldShowSearch = _shouldShowSearch(context);
+    final shouldShowNotifications = _shouldShowNotifications();
+
     return Container(
       height: 60,
       decoration: BoxDecoration(
@@ -62,12 +155,12 @@ class AppHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            if (showBackArrow)
+            if (shouldShowBackArrow)
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: onBackPressed ?? () => Navigator.pop(context),
+                onPressed: () => _handleBackPress(context),
               ),
-            
+
             Expanded(
               child: Text(
                 dynamicTitle,
@@ -78,13 +171,13 @@ class AppHeader extends StatelessWidget {
                 ),
               ),
             ),
-            
-            if (showSearch) ...[
+
+            if (shouldShowSearch) ...[
               const _SearchBarUI(),
               const SizedBox(width: 16),
             ],
-            
-            _NotificationDropdown(),
+
+            if (shouldShowNotifications) _NotificationDropdown(),
           ],
         ),
       ),
@@ -158,11 +251,12 @@ class _NotificationDropdownState extends State<_NotificationDropdown> {
     final offset = renderBox.localToGlobal(Offset.zero);
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: offset.dx - 300 + size.width,
-        top: offset.dy + size.height + 8,
-        child: _NotificationDropdownContent(onClose: _closeDropdown),
-      ),
+      builder:
+          (context) => Positioned(
+            left: offset.dx - 300 + size.width,
+            top: offset.dy + size.height + 8,
+            child: _NotificationDropdownContent(onClose: _closeDropdown),
+          ),
     );
 
     Overlay.of(context).insert(_overlayEntry!);
@@ -408,9 +502,10 @@ class _NotificationItem extends StatelessWidget {
                   Text(
                     notification.title ?? 'Notification',
                     style: TextStyle(
-                      fontWeight: notification.isRead
-                          ? FontWeight.normal
-                          : FontWeight.bold,
+                      fontWeight:
+                          notification.isRead
+                              ? FontWeight.normal
+                              : FontWeight.bold,
                       fontSize: 14,
                     ),
                   ),
@@ -485,7 +580,7 @@ class NotificationBadge extends StatelessWidget {
   final Widget child;
 
   const NotificationBadge({Key? key, required this.count, required this.child})
-      : super(key: key);
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

@@ -9,7 +9,6 @@ import 'package:oilab_frontend/features/employees/presentation/screens/employee_
 import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
 import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
-import 'package:oilab_frontend/shared/widgets/header_widget.dart';
 
 class EmployeeListScreen extends StatelessWidget {
   const EmployeeListScreen({Key? key}) : super(key: key);
@@ -68,49 +67,38 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      child: Column(
-        children: [
-          // Use the unified AppHeader with title and back arrow
-          AppHeader(
-            title: 'Employés',
-            showBackArrow: true,
-            showSearch:
-                false, // Hide search in header since we have custom search below
-          ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 600;
+      currentRoute: '/employees', 
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
 
-                return Padding(
-                  padding: EdgeInsets.all(isMobile ? 12 : 16),
-                  child: Column(
-                    children: [
-                      SizedBox(height: isMobile ? 12 : 16),
-                      _SearchSection(
-                        controller: _searchController,
-                        onSearch: _performSearch,
-                        currentQuery: _currentSearchQuery,
-                        isMobile: isMobile,
-                      ),
-                      SizedBox(height: isMobile ? 16 : 24),
-                      Expanded(child: _EmployeeContent(isMobile: isMobile)),
-                      _PaginationFooter(
-                        isMobile: isMobile,
-                        onPageChange: _changePage,
-                      ),
-                    ],
-                  ),
-                );
-              },
+          return Padding(
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            child: Column(
+              children: [
+                SizedBox(height: isMobile ? 12 : 16),
+                _SearchSection(
+                  controller: _searchController,
+                  onSearch: _performSearch,
+                  currentQuery: _currentSearchQuery,
+                  isMobile: isMobile,
+                ),
+                SizedBox(height: isMobile ? 16 : 24),
+                Expanded(child: _EmployeeContent(isMobile: isMobile)),
+                _PaginationFooter(
+                  isMobile: isMobile,
+                  onPageChange: _changePage,
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
+// Rest of your existing code remains the same...
 class _SearchSection extends StatelessWidget {
   final TextEditingController controller;
   final Function(String) onSearch;

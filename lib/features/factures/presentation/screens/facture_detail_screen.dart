@@ -418,26 +418,11 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
+      currentRoute: "/factures/client/detail",
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: _goBackToList,
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.notifications_none),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Facture Info Card
             Card(
               elevation: 4,
               child: Padding(

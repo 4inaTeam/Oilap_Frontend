@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:json_annotation/json_annotation.dart';
 
 @JsonSerializable()
@@ -30,23 +32,15 @@ class Bill {
     this.createdAt,
   });
 
-  // Getter for PDF URL - returns the pdfFile as the URL
   String? get pdfUrl => pdfFile;
 
-  // Alternative getter if you need to prepend a base URL
   String? get fullPdfUrl {
     if (pdfFile == null || pdfFile!.isEmpty) return null;
 
-    // If pdfFile already contains a full URL, return as is
     if (pdfFile!.startsWith('http://') || pdfFile!.startsWith('https://')) {
       return pdfFile;
     }
 
-    // Otherwise, you might want to prepend your base URL
-    // Replace 'YOUR_BASE_URL' with your actual base URL
-    // return 'YOUR_BASE_URL/$pdfFile';
-
-    // For now, return the pdfFile as is
     return pdfFile;
   }
 
@@ -64,10 +58,7 @@ class Bill {
           json['consumption'] != null
               ? _parseDouble(json['consumption'])
               : null,
-      items:
-          json['items'] != null
-              ? (json['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>()
-              : null,
+      items: _parseItemsFromBackend(json['items']),
       originalImage: json['original_image']?.toString(),
       pdfFile: json['pdf_file']?.toString(),
       createdAt:
@@ -75,6 +66,49 @@ class Bill {
               ? DateTime.tryParse(json['created_at'].toString())
               : null,
     );
+  }
+
+  static List<Map<String, dynamic>>? _parseItemsFromBackend(dynamic itemsData) {
+    if (itemsData == null) return null;
+
+    try {
+      if (itemsData is List) {
+        return itemsData.map((item) {
+          if (item is Map<String, dynamic>) {
+            return {
+              'name': item['title']?.toString() ?? '',
+              'quantity': _parseDouble(item['quantity']),
+              'price': _parseDouble(item['unit_price']),
+            };
+          }
+          return item as Map<String, dynamic>;
+        }).toList();
+      }
+
+      if (itemsData is String) {
+        final decoded = json.decode(itemsData);
+        if (decoded is List) {
+          return decoded.map((item) {
+            if (item is Map<String, dynamic>) {
+              if (item.containsKey('title') && item.containsKey('unit_price')) {
+                return {
+                  'name': item['title']?.toString() ?? '',
+                  'quantity': _parseDouble(item['quantity']),
+                  'price': _parseDouble(item['unit_price']),
+                };
+              }
+              return item;
+            }
+            return item as Map<String, dynamic>;
+          }).toList();
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('Error parsing items: $e');
+      return null;
+    }
   }
 
   Map<String, dynamic> toJson() {

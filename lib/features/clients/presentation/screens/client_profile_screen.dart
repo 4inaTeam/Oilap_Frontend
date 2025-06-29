@@ -25,12 +25,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     context.read<ClientBloc>().add(ViewClientProfile(widget.clientId));
   }
 
-  // Enhanced breakpoint definitions
   bool _isMobile(double width) => width < 768;
   bool _isTablet(double width) => width >= 768 && width < 1024;
   bool _isDesktop(double width) => width >= 1024;
 
-  // Responsive padding helper
   EdgeInsets _getResponsivePadding(double screenWidth) {
     if (_isMobile(screenWidth)) {
       return const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
@@ -41,7 +39,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     }
   }
 
-  // Responsive font size helper
   double _getResponsiveFontSize(
     double screenWidth, {
     double mobile = 14,
@@ -64,37 +61,44 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         }
       },
       builder: (context, state) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final screenWidth = constraints.maxWidth;
+        return AppLayout(
+          currentRoute: '/clients/detail',
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isMobile = screenWidth < 600;
 
-            // Show loading state
-            if (state is ClientLoading) {
-              return AppLayout(
+              if (state is ClientLoading) {
+                return Padding(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (state is ClientProfileLoaded) {
+                final clientProducts = state.products ?? [];
+                return _buildContent(
+                  state.client,
+                  clientProducts,
+                  screenWidth,
+                  constraints,
+                  isMobile,
+                );
+              }
+
+              if (state is ClientOperationFailure) {
+                return Padding(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  child: _buildErrorState(state.message, screenWidth),
+                );
+              }
+
+              return Padding(
+                padding: EdgeInsets.all(isMobile ? 12 : 16),
                 child: Center(child: CircularProgressIndicator()),
               );
-            }
-
-            // Show the actual profile content
-            if (state is ClientProfileLoaded) {
-              final clientProducts = state.products ?? [];
-              return _buildContent(
-                state.client,
-                clientProducts,
-                screenWidth,
-                constraints,
-              );
-            }
-
-            // Show error state
-            if (state is ClientOperationFailure) {
-              return AppLayout(
-                child: _buildErrorState(state.message, screenWidth),
-              );
-            }
-
-            return AppLayout(child: Center(child: CircularProgressIndicator()));
-          },
+            },
+          ),
         );
       },
     );
@@ -159,79 +163,24 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     List<Product> products,
     double screenWidth,
     BoxConstraints constraints,
+    bool isMobile,
   ) {
     final stats = _calculateStatsFromProducts(products);
 
-    return AppLayout(
+    return Padding(
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
       child: SingleChildScrollView(
-        child: Padding(
-          padding: _getResponsivePadding(screenWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context, screenWidth),
-              SizedBox(height: _isMobile(screenWidth) ? 16 : 24),
-              _buildProfileSection(user, screenWidth),
-              SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
-              _buildStatsSection(stats, screenWidth),
-              SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
-              _buildProductsSection(
-                context,
-                products,
-                screenWidth,
-                constraints,
-              ),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildProfileSection(user, screenWidth),
+            SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
+            _buildStatsSection(stats, screenWidth),
+            SizedBox(height: _isMobile(screenWidth) ? 20 : 32),
+            _buildProductsSection(context, products, screenWidth, constraints),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, double screenWidth) {
-    return Row(
-      children: [
-        IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            size: _getResponsiveFontSize(
-              screenWidth,
-              mobile: 24,
-              tablet: 28,
-              desktop: 32,
-            ),
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'Profil Client',
-            style: TextStyle(
-              fontSize: _getResponsiveFontSize(
-                screenWidth,
-                mobile: 18,
-                tablet: 22,
-                desktop: 28,
-              ),
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.notifications_none,
-            size: _getResponsiveFontSize(
-              screenWidth,
-              mobile: 20,
-              tablet: 24,
-              desktop: 28,
-            ),
-          ),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 

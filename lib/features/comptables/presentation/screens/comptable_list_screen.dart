@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
-import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/comptables/presentation/bloc/comptable_bloc.dart';
 import 'package:oilab_frontend/features/comptables/presentation/bloc/comptable_event.dart';
 import 'package:oilab_frontend/features/comptables/presentation/bloc/comptable_state.dart';
@@ -66,6 +65,7 @@ class __ComptableListViewState extends State<_ComptableListView> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
+      currentRoute: '/comptables',
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
@@ -74,7 +74,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
             padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Column(
               children: [
-                _AppBar(isMobile: isMobile),
                 SizedBox(height: isMobile ? 12 : 16),
                 _SearchSection(
                   controller: _searchController,
@@ -93,43 +92,6 @@ class __ComptableListViewState extends State<_ComptableListView> {
           );
         },
       ),
-    );
-  }
-}
-
-class _AppBar extends StatelessWidget {
-  final bool isMobile;
-
-  const _AppBar({required this.isMobile});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (!isMobile) ...[
-          IconButton(
-            icon: const Icon(Icons.arrow_back, size: 28),
-            onPressed:
-                () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        Expanded(
-          child: Text(
-            'Comptables',
-            style: TextStyle(
-              fontSize: isMobile ? 20 : 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 }

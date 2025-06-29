@@ -10,20 +10,17 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
+      currentRoute: '/dashboard',
       child: Column(
         children: [
-          // Remove the AppHeader from here since AppLayout handles it
-          // Only add AppHeader for mobile or when AppLayout doesn't provide one
           LayoutBuilder(
             builder: (context, constraints) {
-              // Check if we're in mobile mode (when AppLayout uses drawer)
               final isMobile =
                   MediaQuery.of(context).size.width <
                   AppLayout.desktopBreakpoint;
 
               return Column(
                 children: [
-                  // Only show AppHeader for mobile or specific cases
                   if (isMobile)
                     AppHeader(
                       title: 'Dashboard',
@@ -50,7 +47,6 @@ class DashboardScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Responsive main row: summary, quantity, line chart, regions card
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   final isWide = constraints.maxWidth >= 1000;
@@ -159,7 +155,6 @@ class DashboardScreen extends StatelessWidget {
                                                     ),
                                                   ),
                                                   const SizedBox(width: 24),
-                                                  // Quantity details card
                                                   Expanded(
                                                     flex: 2,
                                                     child: QuantityDetailsCard(
@@ -171,7 +166,6 @@ class DashboardScreen extends StatelessWidget {
                                                 ],
                                               ),
                                               const SizedBox(height: 16),
-                                              // Line chart
                                               const SizedBox(
                                                 height: 300,
                                                 child: LineChartCard(),
@@ -295,17 +289,14 @@ class DashboardScreen extends StatelessWidget {
                                       ],
                                     );
                                   } else {
-                                    // Mobile layout - Summary cards and quantity details in same row
                                     return Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        // Main row with summary cards and quantity details
                                         Row(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            // 2x2 Grid for Summary Cards (left side)
                                             Expanded(
                                               flex: 3,
                                               child: Container(
@@ -314,7 +305,6 @@ class DashboardScreen extends StatelessWidget {
                                                 ),
                                                 child: Column(
                                                   children: [
-                                                    // First row
                                                     Row(
                                                       children: [
                                                         Expanded(
@@ -351,7 +341,6 @@ class DashboardScreen extends StatelessWidget {
                                                       ],
                                                     ),
                                                     const SizedBox(height: 6),
-                                                    // Second row
                                                     Row(
                                                       children: [
                                                         Expanded(
@@ -392,12 +381,11 @@ class DashboardScreen extends StatelessWidget {
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            // Quantity Details Card (right side)
                                             Expanded(
                                               flex: 2,
                                               child: Container(
                                                 height:
-                                                    150, // Match approximately the height of 2x2 grid
+                                                    150,
                                                 padding: const EdgeInsets.all(
                                                   8,
                                                 ),
@@ -420,7 +408,7 @@ class DashboardScreen extends StatelessWidget {
                                                         fontWeight:
                                                             FontWeight.bold,
                                                         fontSize:
-                                                            12, // Smaller font for mobile
+                                                            12,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
@@ -460,13 +448,11 @@ class DashboardScreen extends StatelessWidget {
                                           ],
                                         ),
                                         const SizedBox(height: 12),
-                                        // Pie Chart Card
                                         SizedBox(
                                           height: 350,
                                           child: PieChartCard(),
                                         ),
                                         const SizedBox(height: 12),
-                                        // Line Chart Card
                                         SizedBox(
                                           height: 250,
                                           child: LineChartCard(),
@@ -478,8 +464,6 @@ class DashboardScreen extends StatelessWidget {
                               ),
 
                               const SizedBox(height: 24),
-
-                              // Tables grid
                               GridView.count(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -504,7 +488,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // Helper method for compact detail rows
   Widget _buildCompactDetailRow(
     BuildContext context,
     String label,

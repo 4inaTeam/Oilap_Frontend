@@ -353,6 +353,7 @@ class BillRepository {
   }
 
   // Updated createBill method that handles both mobile and web
+  // Updated createBill method that handles the new Item model structure
   Future<Bill> createBill({
     required String owner,
     required String category,
@@ -375,7 +376,7 @@ class BillRepository {
       }
 
       if (kIsWeb) {
-        // Web implementation using multipart form data (like mobile)
+        // Web implementation using multipart form data
         return _createBillForWeb(
           owner: owner,
           category: category,
@@ -404,7 +405,7 @@ class BillRepository {
     }
   }
 
-  // Updated Web-specific implementation to use multipart form data
+  // Fixed Web implementation - ensure image is properly added
   Future<Bill> _createBillForWeb({
     required String owner,
     required String category,
@@ -419,6 +420,9 @@ class BillRepository {
       throw Exception('No image provided for web');
     }
 
+    print('Creating multipart request for web...');
+    print('Image bytes length: ${webImageBytes.length}');
+
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/bills/'),
@@ -426,7 +430,7 @@ class BillRepository {
 
     request.headers['Authorization'] = 'Bearer $token';
 
-    // Add form fields
+    // Add basic form fields
     request.fields['owner'] = owner;
     request.fields['category'] = category;
     request.fields['amount'] = amount.toString();
@@ -437,27 +441,54 @@ class BillRepository {
       request.fields['consumption'] = consumption.toString();
     }
 
-    if (items != null) {
-      request.fields['items'] = jsonEncode(items);
+    // Handle items for purchase bills - Django expects nested form data
+    if (category == 'purchase' && items != null && items.isNotEmpty) {
+      // Send items count first (some Django setups need this)
+      request.fields['items-TOTAL_FORMS'] = items.length.toString();
+      request.fields['items-INITIAL_FORMS'] = '0';
+      request.fields['items-MIN_NUM_FORMS'] = '0';
+      request.fields['items-MAX_NUM_FORMS'] = '1000';
+
+      // Send each item as nested form data
+      for (int i = 0; i < items.length; i++) {
+        final item = items[i];
+        // Django formset format
+        request.fields['items-$i-title'] = item['name']?.toString() ?? '';
+        request.fields['items-$i-quantity'] =
+            item['quantity']?.toString() ?? '0';
+        request.fields['items-$i-unit_price'] =
+            item['price']?.toString() ?? '0';
+      }
     }
 
-    // Add the image file from bytes for web
+    // CRITICAL: Add the image file - this was missing/broken
     try {
-      // Create multipart file from bytes
+      print('Adding image file to request...');
       final multipartFile = http.MultipartFile.fromBytes(
-        'original_image', // Make sure this matches your server's expected field name
+        'original_image', // Make sure this matches Django's expected field name
         webImageBytes,
-        filename: 'bill_image.jpg', // Provide a filename
-        // contentType: MediaType('image', 'jpeg'), // Uncomment and import dart:mime if needed
+        filename: 'bill_image_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
       request.files.add(multipartFile);
+      print(
+        'Image file added successfully. Total files: ${request.files.length}',
+      );
     } catch (e) {
+      print('Error adding image file: $e');
       throw Exception('Failed to add image to request: ${e.toString()}');
     }
 
+    // Debug output
+    print('Fields being sent: ${request.fields.keys.toList()}');
+    print('Files being sent: ${request.files.map((f) => f.field).toList()}');
+
     try {
+      print('Sending request...');
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: $responseBody');
 
       if (response.statusCode == 201) {
         final data = json.decode(responseBody);
@@ -487,6 +518,7 @@ class BillRepository {
 
       throw Exception('$errorMessage (Status: ${response.statusCode})');
     } catch (e) {
+      print('Request error: $e');
       if (e is Exception) {
         rethrow;
       }
@@ -494,6 +526,7 @@ class BillRepository {
     }
   }
 
+  // Fixed Mobile implementation - ensure image is properly added
   Future<Bill> _createBillForMobile({
     required String owner,
     required String category,
@@ -512,6 +545,10 @@ class BillRepository {
       throw Exception('Image file does not exist');
     }
 
+    print('Creating multipart request for mobile...');
+    print('Image file path: ${imageFile.path}');
+    print('Image file exists: ${await imageFile.exists()}');
+
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/bills/'),
@@ -519,6 +556,7 @@ class BillRepository {
 
     request.headers['Authorization'] = 'Bearer $token';
 
+    // Add basic form fields
     request.fields['owner'] = owner;
     request.fields['category'] = category;
     request.fields['amount'] = amount.toString();
@@ -529,26 +567,53 @@ class BillRepository {
       request.fields['consumption'] = consumption.toString();
     }
 
-    if (items != null) {
-      request.fields['items'] = jsonEncode(items);
+    // Handle items for purchase bills - Django expects nested form data
+    if (category == 'purchase' && items != null && items.isNotEmpty) {
+      // Send items count first (some Django setups need this)
+      request.fields['items-TOTAL_FORMS'] = items.length.toString();
+      request.fields['items-INITIAL_FORMS'] = '0';
+      request.fields['items-MIN_NUM_FORMS'] = '0';
+      request.fields['items-MAX_NUM_FORMS'] = '1000';
+
+      // Send each item as nested form data
+      for (int i = 0; i < items.length; i++) {
+        final item = items[i];
+        // Django formset format
+        request.fields['items-$i-title'] = item['name']?.toString() ?? '';
+        request.fields['items-$i-quantity'] =
+            item['quantity']?.toString() ?? '0';
+        request.fields['items-$i-unit_price'] =
+            item['price']?.toString() ?? '0';
+      }
     }
 
-    // Add the image file with correct field name
+    // CRITICAL: Add the image file
     try {
+      print('Adding image file to request...');
       final multipartFile = await http.MultipartFile.fromPath(
-        'original_image', // Make sure this matches your server's expected field name
+        'original_image', // Make sure this matches Django's expected field name
         imageFile.path,
-        // You can also specify the content type if needed:
-        // contentType: MediaType('image', 'jpeg'), // or 'png' depending on your image
       );
       request.files.add(multipartFile);
+      print(
+        'Image file added successfully. Total files: ${request.files.length}',
+      );
     } catch (e) {
+      print('Error adding image file: $e');
       throw Exception('Failed to add image file to request: ${e.toString()}');
     }
 
+    // Debug output
+    print('Fields being sent: ${request.fields.keys.toList()}');
+    print('Files being sent: ${request.files.map((f) => f.field).toList()}');
+
     try {
+      print('Sending request...');
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: $responseBody');
 
       if (response.statusCode == 201) {
         final data = json.decode(responseBody);
@@ -578,6 +643,7 @@ class BillRepository {
 
       throw Exception('$errorMessage (Status: ${response.statusCode})');
     } catch (e) {
+      print('Request error: $e');
       if (e is Exception) {
         rethrow;
       }

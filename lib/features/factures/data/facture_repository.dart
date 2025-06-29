@@ -26,7 +26,7 @@ class FactureRepository {
 
   Future<FacturePaginationResult> fetchFactures({
     int page = 1,
-    int pageSize = 6,
+    int pageSize = 10,
     String? searchQuery,
     String? statusFilter,
   }) async {

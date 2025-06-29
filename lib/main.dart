@@ -242,7 +242,6 @@ Future<void> _initializeStripe(AuthRepository authRepository) async {
     await StripeService.instance.initialize(authRepository: authRepository);
     isStripeAvailable = true;
   } catch (e) {
-    print('Failed to initialize Stripe: $e');
     isStripeAvailable = false;
   }
 }

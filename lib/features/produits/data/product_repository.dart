@@ -25,17 +25,18 @@ class ProductRepository {
 
   Future<ProductPaginationResult> fetchProducts({
     int page = 1,
-    int pageSize = 6,
+    int pageSize = 10, 
     String? searchQuery,
   }) async {
     try {
       final token = await authRepo.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      // Build query parameters
       final queryParams = {
         'page': page.toString(),
         'page_size': pageSize.toString(),
+        'ordering':
+            '-created_at',
       };
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -43,10 +44,8 @@ class ProductRepository {
         if (['pending', 'doing', 'done'].contains(statusQuery)) {
           queryParams['status'] = statusQuery;
         } else if (searchQuery.contains('/')) {
-          // If query contains /, treat as date search
           queryParams['end_time'] = searchQuery;
         } else {
-          // Default to client search
           queryParams['client'] = searchQuery;
         }
       }
@@ -73,8 +72,20 @@ class ProductRepository {
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? 0;
         } else {
-          // Handle non-paginated response with manual pagination
+          // Handle non-paginated response with manual pagination and sorting
           final allData = responseData as List<dynamic>;
+
+          // Sort by created_at field (newest first) - adjust field name as needed
+          allData.sort((a, b) {
+            final dateA =
+                DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+                DateTime(1970);
+            final dateB =
+                DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+                DateTime(1970);
+            return dateB.compareTo(dateA); // Descending order (newest first)
+          });
+
           totalCount = allData.length;
 
           // Calculate start and end indices for current page
@@ -118,7 +129,9 @@ class ProductRepository {
       if (token == null) throw Exception('Not authenticated');
 
       final resp = await http.get(
-        Uri.parse('$baseUrl/api/products/'),
+        Uri.parse(
+          '$baseUrl/api/products/?ordering=-created_at',
+        ), // Add sorting here too
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -261,7 +274,9 @@ class ProductRepository {
       if (token == null) throw Exception('Not authenticated');
 
       final resp = await http.get(
-        Uri.parse('$baseUrl/api/products/client/$clientId/'),
+        Uri.parse(
+          '$baseUrl/api/products/client/$clientId/?ordering=-created_at',
+        ), // Add sorting here too
         headers: {'Authorization': 'Bearer $token'},
       );
 

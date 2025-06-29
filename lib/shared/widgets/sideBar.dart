@@ -33,12 +33,12 @@ class _SidebarState extends State<Sidebar> {
     },
     {'label': 'Clients', 'icon': Icons.people, 'route': '/clients'},
     {'label': 'Produits', 'icon': Icons.shopping_bag, 'route': '/produits'},
-    {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
     {
       'label': 'Notifications',
       'icon': Icons.notifications,
       'route': '/notifications',
     },
+    {'label': 'Énergie', 'icon': Icons.bolt, 'route': '/energie'},
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
@@ -79,23 +79,25 @@ class _SidebarState extends State<Sidebar> {
 
     List<Map<String, dynamic>> organizedItems = [];
 
+    // Always add dashboard first
     if (isAdmin || isEmployee || isAccountant || isClient) {
       organizedItems.add(
         _allItems.firstWhere((item) => item['route'] == '/dashboard'),
       );
     }
 
-    final itemsToCheck = [
+    // Define the order: employees, comptables, clients, produits, notifications, energie, parametres
+    final itemsOrder = [
       '/employees',
       '/comptables',
       '/clients',
       '/produits',
-      '/energie',
       '/notifications',
-      '/parametres',
+      '/energie',
+      '/parametres', // Paramètres will be last
     ];
 
-    for (String route in itemsToCheck) {
+    for (String route in itemsOrder) {
       bool hasAccess = false;
 
       switch (route) {
@@ -109,7 +111,7 @@ class _SidebarState extends State<Sidebar> {
           hasAccess = isAdmin || isEmployee;
           break;
         case '/produits':
-          hasAccess = isAdmin || isEmployee || isClient;
+          hasAccess = isAdmin || isEmployee || isClient; // Accountant removed
           break;
         case '/energie':
           hasAccess = isAdmin;
@@ -166,6 +168,30 @@ class _SidebarState extends State<Sidebar> {
     }
 
     return '$baseUrl/$imageUrl';
+  }
+
+  Widget _buildFacturesSection() {
+    final String? role = AuthRepository.currentRole;
+    bool isClient = role == 'CLIENT';
+
+    if (isClient) {
+      // For clients, show a direct menu item that goes to client factures
+      return _SidebarItem(
+        label: 'Factures',
+        icon: Icons.receipt,
+        route: '/factures/client',
+        selectedRoute: _selectedRoute,
+        onTap: () => _onItemTap('/factures/client'),
+      );
+    } else {
+      // For admin and accountant, show dropdown
+      return _FacturesDropdown(
+        isExpanded: _isFacturesExpanded,
+        selectedRoute: _selectedRoute,
+        onToggle: _toggleFacturesDropdown,
+        onItemTap: _onItemTap,
+      );
+    }
   }
 
   Widget _buildProfileAvatar(String? profileImageUrl) {
@@ -302,6 +328,63 @@ class _SidebarState extends State<Sidebar> {
         final organizedItems = _getOrganizedItems();
         final hasFacturesAccess = _hasFacturesAccess();
 
+        // Separate items to place Factures and Paramètres in correct order
+        final List<Widget> menuItems = [];
+
+        // Add all items except Energie and Paramètres first
+        for (var item in organizedItems) {
+          if (item['route'] != '/energie' && item['route'] != '/parametres') {
+            menuItems.add(
+              _SidebarItem(
+                label: item['label'] as String,
+                icon: item['icon'] as IconData,
+                route: item['route'] as String,
+                selectedRoute: _selectedRoute,
+                onTap: () => _onItemTap(item['route'] as String),
+              ),
+            );
+          }
+        }
+
+        // Add Factures section if user has access (after other items, before Energie)
+        if (hasFacturesAccess) {
+          menuItems.add(_buildFacturesSection());
+        }
+
+        // Add Energie if user has access
+        final energieItem =
+            organizedItems
+                .where((item) => item['route'] == '/energie')
+                .firstOrNull;
+        if (energieItem != null) {
+          menuItems.add(
+            _SidebarItem(
+              label: energieItem['label'] as String,
+              icon: energieItem['icon'] as IconData,
+              route: energieItem['route'] as String,
+              selectedRoute: _selectedRoute,
+              onTap: () => _onItemTap(energieItem['route'] as String),
+            ),
+          );
+        }
+
+        // Add Paramètres last if user has access
+        final parametresItem =
+            organizedItems
+                .where((item) => item['route'] == '/parametres')
+                .firstOrNull;
+        if (parametresItem != null) {
+          menuItems.add(
+            _SidebarItem(
+              label: parametresItem['label'] as String,
+              icon: parametresItem['icon'] as IconData,
+              route: parametresItem['route'] as String,
+              selectedRoute: _selectedRoute,
+              onTap: () => _onItemTap(parametresItem['route'] as String),
+            ),
+          );
+        }
+
         return Container(
           width: 260,
           color: AppColors.mainColor,
@@ -317,40 +400,7 @@ class _SidebarState extends State<Sidebar> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        // Show items in organized order
-                        ...organizedItems.map((item) {
-                          // Insert Factures dropdown after Produits if user has access
-                          if (item['route'] == '/produits' &&
-                              hasFacturesAccess) {
-                            return Column(
-                              children: [
-                                _SidebarItem(
-                                  label: item['label'] as String,
-                                  icon: item['icon'] as IconData,
-                                  route: item['route'] as String,
-                                  selectedRoute: _selectedRoute,
-                                  onTap:
-                                      () => _onItemTap(item['route'] as String),
-                                ),
-                                _FacturesDropdown(
-                                  isExpanded: _isFacturesExpanded,
-                                  selectedRoute: _selectedRoute,
-                                  onToggle: _toggleFacturesDropdown,
-                                  onItemTap: _onItemTap,
-                                ),
-                              ],
-                            );
-                          } else {
-                            return _SidebarItem(
-                              label: item['label'] as String,
-                              icon: item['icon'] as IconData,
-                              route: item['route'] as String,
-                              selectedRoute: _selectedRoute,
-                              onTap: () => _onItemTap(item['route'] as String),
-                            );
-                          }
-                        }),
-
+                        ...menuItems,
                         const SizedBox(height: 16),
                         const _LogoutButton(),
                         const SizedBox(height: 16),
@@ -481,9 +531,25 @@ class _FacturesDropdown extends StatelessWidget {
     {'label': 'Facture d\'Entreprise', 'route': '/factures/entreprise'},
   ];
 
+  List<Map<String, String>> _getFilteredFactureItems() {
+    final String? role = AuthRepository.currentRole;
+    bool isClient = role == 'CLIENT';
+
+    if (isClient) {
+      // Clients can only access 'Facture Client'
+      return _factureItems
+          .where((item) => item['route'] == '/factures/client')
+          .toList();
+    } else {
+      // Admin and Accountant can access both
+      return _factureItems;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasSelectedFacture = selectedRoute?.startsWith('/factures/') ?? false;
+    final filteredItems = _getFilteredFactureItems();
 
     return Column(
       children: [
@@ -541,7 +607,7 @@ class _FacturesDropdown extends StatelessWidget {
           secondChild: Column(
             mainAxisSize: MainAxisSize.min,
             children:
-                _factureItems
+                filteredItems
                     .map(
                       (item) => _FactureSubItem(
                         label: item['label'] as String,

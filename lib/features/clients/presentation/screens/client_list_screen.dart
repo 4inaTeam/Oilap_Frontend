@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/features/clients/presentation/screens/client_profile_screen.dart';
-import 'package:oilab_frontend/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
@@ -87,9 +86,11 @@ class __ClientListViewState extends State<_ClientListView>
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return AppLayout(
+      currentRoute: '/clients', 
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
@@ -98,7 +99,6 @@ class __ClientListViewState extends State<_ClientListView>
             padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Column(
               children: [
-                _AppBar(isMobile: isMobile),
                 SizedBox(height: isMobile ? 12 : 16),
                 _SearchSection(
                   controller: _searchController,
@@ -110,7 +110,7 @@ class __ClientListViewState extends State<_ClientListView>
                 Expanded(
                   child: _ClientContent(
                     isMobile: isMobile,
-                    onRefresh: _refreshData, // Pass the refresh callback
+                    onRefresh: _refreshData,
                   ),
                 ),
                 _PaginationFooter(
@@ -122,43 +122,6 @@ class __ClientListViewState extends State<_ClientListView>
           );
         },
       ),
-    );
-  }
-}
-
-class _AppBar extends StatelessWidget {
-  final bool isMobile;
-
-  const _AppBar({required this.isMobile});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (!isMobile) ...[
-          IconButton(
-            icon: const Icon(Icons.arrow_back, size: 28),
-            onPressed:
-                () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        Expanded(
-          child: Text(
-            'Clients',
-            style: TextStyle(
-              fontSize: isMobile ? 20 : 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.notifications_none),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 }

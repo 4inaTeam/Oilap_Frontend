@@ -5,6 +5,7 @@ import '../../data/product_repository.dart';
 
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
   final ProductRepository repo;
+  static const int defaultPageSize = 10;
 
   ProductBloc(this.repo) : super(ProductInitial()) {
     on<LoadProducts>((event, emit) async {
@@ -93,18 +94,18 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           price: event.price,
           status: 'pending',
           clientCin: event.sku,
-          estimationTime: event.estimationTime ?? 15, // Default 15 minutes
+          estimationTime: event.estimationTime ?? 15,
         );
         emit(ProductAddSuccess());
 
-        final result = await repo.fetchProducts(page: 1, pageSize: 8);
+        final result = await repo.fetchProducts(page: 1, pageSize: defaultPageSize); 
         emit(
           ProductLoadSuccess(
             products: result.products,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
             totalProducts: result.totalCount,
-            pageSize: 8,
+            pageSize: defaultPageSize, 
           ),
         );
       } catch (err) {
@@ -125,14 +126,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           estimationTime: event.estimationTime,
         );
 
-        final result = await repo.fetchProducts(page: 1, pageSize: 6);
+        final result = await repo.fetchProducts(page: 1, pageSize: defaultPageSize); 
         emit(
           ProductLoadSuccess(
             products: result.products,
             currentPage: 1,
             totalPages: result.totalPages,
             totalProducts: result.totalCount,
-            pageSize: 6,
+            pageSize: defaultPageSize,
           ),
         );
       } catch (e) {
@@ -251,7 +252,6 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         try {
           await repo.cancelProduct(event.product);
 
-          // Fetch updated products list
           final result = await repo.fetchProducts(
             page: currentState.currentPage,
             pageSize: currentState.pageSize,

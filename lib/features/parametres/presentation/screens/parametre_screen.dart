@@ -9,7 +9,6 @@ import 'package:oilab_frontend/core/models/user_model.dart';
 import '../../presentation/bloc/profile_bloc.dart';
 import '../../presentation/bloc/profile_event.dart';
 import '../../presentation/bloc/profile_state.dart';
-import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 
@@ -37,6 +36,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
   bool _obscureConfirmPassword = true;
 
   User? _currentUser;
+  bool _hasNewImage = false; // Track if user picked a new image
 
   @override
   void initState() {
@@ -103,6 +103,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
         }
       },
       child: AppLayout(
+        currentRoute: "/parametres",
         child: Column(
           children: [
             Container(
@@ -118,56 +119,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                   ),
                 ],
               ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.accentGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: AppColors.accentGreen,
-                          size: 20,
-                        ),
-                        onPressed:
-                            () => Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const DashboardScreen(),
-                              ),
-                            ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Text(
-                      'Mon Profil',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D3748),
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.notifications_none,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {},
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
-
             Expanded(
               child: BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {
@@ -188,7 +140,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
                         children: [
                           _buildProfilePictureSection(),
                           const SizedBox(height: 32),
-
                           _buildSectionCard(
                             title: 'Informations personnelles',
                             icon: Icons.person_outline,
@@ -219,9 +170,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 24),
-
                           _buildSectionCard(
                             title: 'Informations de contact',
                             icon: Icons.contact_mail_outlined,
@@ -240,9 +189,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 24),
-
                           _buildSectionCard(
                             title: 'Sécurité',
                             icon: Icons.security_outlined,
@@ -271,7 +218,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 32),
                         ],
                       ),
@@ -280,7 +226,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
                 },
               ),
             ),
-
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -378,19 +323,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                     ],
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: 60,
-                  backgroundImage: _getProfileImage(),
-                  backgroundColor: Colors.grey[100],
-                  child:
-                      _getProfileImage() == null
-                          ? Icon(
-                            Icons.person,
-                            size: 60,
-                            color: Colors.grey[400],
-                          )
-                          : null,
-                ),
+                child: _buildCircleAvatar(),
               ),
               Positioned(
                 bottom: 4,
@@ -435,23 +368,102 @@ class _ParametresScreenState extends State<ParametresScreen> {
     );
   }
 
+  Widget _buildCircleAvatar() {
+    final imageProvider = _getProfileImage();
+
+    if (imageProvider != null) {
+      return CircleAvatar(
+        radius: 60,
+        backgroundColor: Colors.grey[100],
+        child: ClipOval(
+          child: Image(
+            image: imageProvider,
+            width: 120,
+            height: 120,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              // Log the error for debugging
+              print('Error loading profile image: $error');
+
+              // Show default avatar on error
+              return Container(
+                width: 120,
+                height: 120,
+                color: Colors.grey[100],
+                child: Icon(Icons.person, size: 60, color: Colors.grey[400]),
+              );
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+
+              return Container(
+                width: 120,
+                height: 120,
+                color: Colors.grey[100],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.accentGreen,
+                    value:
+                        loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    // Default avatar when no image
+    return CircleAvatar(
+      radius: 60,
+      backgroundColor: Colors.grey[100],
+      child: Icon(Icons.person, size: 60, color: Colors.grey[400]),
+    );
+  }
+
   ImageProvider? _getProfileImage() {
+    // Priority: newly picked image > current user's profile photo
     if (kIsWeb) {
-      if (_pickedImageBytes != null) {
+      if (_hasNewImage && _pickedImageBytes != null) {
         return MemoryImage(_pickedImageBytes!);
-      } else if (_currentUser?.profilePhotoUrl != null &&
-          _currentUser!.profilePhotoUrl!.isNotEmpty) {
+      } else if (!_hasNewImage &&
+          _currentUser?.profilePhotoUrl != null &&
+          _currentUser!.profilePhotoUrl!.isNotEmpty &&
+          _isValidImageUrl(_currentUser!.profilePhotoUrl!)) {
         return NetworkImage(_currentUser!.profilePhotoUrl!);
       }
     } else {
-      if (_pickedImage != null) {
+      if (_hasNewImage && _pickedImage != null) {
         return FileImage(_pickedImage!);
-      } else if (_currentUser?.profilePhotoUrl != null &&
-          _currentUser!.profilePhotoUrl!.isNotEmpty) {
+      } else if (!_hasNewImage &&
+          _currentUser?.profilePhotoUrl != null &&
+          _currentUser!.profilePhotoUrl!.isNotEmpty &&
+          _isValidImageUrl(_currentUser!.profilePhotoUrl!)) {
         return NetworkImage(_currentUser!.profilePhotoUrl!);
       }
     }
     return null;
+  }
+
+  bool _isValidImageUrl(String url) {
+    final lowercaseUrl = url.toLowerCase();
+    final imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+
+    bool hasImageExtension = imageExtensions.any(
+      (ext) => lowercaseUrl.endsWith(ext),
+    );
+
+    bool hasValidProtocol =
+        url.startsWith('http://') || url.startsWith('https://');
+
+    return hasValidProtocol &&
+        (hasImageExtension ||
+            lowercaseUrl.contains('/api/') ||
+            lowercaseUrl.contains('image'));
   }
 
   Widget _buildSectionCard({
@@ -652,6 +664,13 @@ class _ParametresScreenState extends State<ParametresScreen> {
     _cinCtrl.text = user.cin;
     _passCtrl.clear();
     _confirmCtrl.clear();
+
+    // Reset image picking state when loading user data
+    setState(() {
+      _hasNewImage = false;
+      _pickedImage = null;
+      _pickedImageBytes = null;
+    });
   }
 
   void _clearFields() {
@@ -669,6 +688,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
     setState(() {
       _pickedImage = null;
       _pickedImageBytes = null;
+      _hasNewImage = false;
     });
   }
 
@@ -682,7 +702,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
       );
 
       if (picked != null) {
-        setState(() {});
+        setState(() {
+          _hasNewImage = true; // Mark that user picked a new image
+        });
 
         if (kIsWeb) {
           final bytes = await picked.readAsBytes();
@@ -696,12 +718,14 @@ class _ParametresScreenState extends State<ParametresScreen> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la sélection de l\'image: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -729,6 +753,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
       );
       return;
     }
+
     context.read<ProfileBloc>().add(
       UpdateProfile(
         name: _nomCtrl.text.trim(),
@@ -736,8 +761,8 @@ class _ParametresScreenState extends State<ParametresScreen> {
         cin: _cinCtrl.text.trim(),
         tel: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         password: _passCtrl.text.isEmpty ? null : _passCtrl.text,
-        profilePhoto: _pickedImage, 
-        profilePhotoBytes: _pickedImageBytes, 
+        profilePhoto: _hasNewImage ? _pickedImage : null,
+        profilePhotoBytes: _hasNewImage ? _pickedImageBytes : null,
       ),
     );
   }

@@ -57,8 +57,7 @@ class _SignInViewState extends State<_SignInView> {
               MaterialPageRoute(builder: (_) => const DashboardScreen()),
               (route) => false,
             );
-          }
-          else if (state is AuthLoadFailure) {
+          } else if (state is AuthLoadFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text(

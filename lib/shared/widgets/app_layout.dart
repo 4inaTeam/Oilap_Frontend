@@ -14,6 +14,7 @@ class AppLayout extends StatelessWidget {
   final VoidCallback? onUserProfileTap;
   final Function(String)? onSearchResult;
   final List<String>? searchData;
+  final String? currentRoute; // Add this parameter
 
   const AppLayout({
     Key? key,
@@ -22,6 +23,7 @@ class AppLayout extends StatelessWidget {
     this.onUserProfileTap,
     this.onSearchResult,
     this.searchData,
+    this.currentRoute, // Add this parameter
   }) : super(key: key);
 
   static const desktopBreakpoint = 800.0;
@@ -36,24 +38,27 @@ class AppLayout extends StatelessWidget {
         onUserProfileTap: onUserProfileTap,
         onSearchResult: onSearchResult,
         searchData: searchData,
+        currentRoute: currentRoute, // Pass the route
       );
     } else {
       return _MobileScaffold(
         child: child,
         onSearchResult: onSearchResult,
         searchData: searchData,
+        currentRoute: currentRoute, // Pass the route
       );
     }
   }
 }
 
-// Updated _DesktopScaffold - now uses dynamic header without title parameter
+// Updated _DesktopScaffold to accept and pass currentRoute
 class _DesktopScaffold extends StatelessWidget {
   final Widget child;
   final String? userName;
   final VoidCallback? onUserProfileTap;
   final Function(String)? onSearchResult;
   final List<String>? searchData;
+  final String? currentRoute; // Add this parameter
 
   const _DesktopScaffold({
     required this.child,
@@ -61,6 +66,7 @@ class _DesktopScaffold extends StatelessWidget {
     this.onUserProfileTap,
     this.onSearchResult,
     this.searchData,
+    this.currentRoute, // Add this parameter
   });
 
   @override
@@ -72,8 +78,11 @@ class _DesktopScaffold extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                // Dynamic header that automatically detects the route and shows appropriate title
-                const AppHeader(showSearch: true),
+                // Pass the currentRoute to AppHeader
+                AppHeader(
+                  showSearch: true,
+                  currentRoute: currentRoute, // Pass the route explicitly
+                ),
                 Expanded(child: child),
                 const FooterWidget(),
               ],
@@ -85,16 +94,18 @@ class _DesktopScaffold extends StatelessWidget {
   }
 }
 
-// Updated _MobileScaffold with dynamic title
+// Updated _MobileScaffold to accept currentRoute and use it
 class _MobileScaffold extends StatelessWidget {
   final Widget child;
   final Function(String)? onSearchResult;
   final List<String>? searchData;
+  final String? currentRoute; // Add this parameter
 
   const _MobileScaffold({
     required this.child,
     this.onSearchResult,
     this.searchData,
+    this.currentRoute, // Add this parameter
   });
 
   // Map routes to their display titles for mobile
@@ -112,11 +123,14 @@ class _MobileScaffold extends StatelessWidget {
   };
 
   String _getDynamicTitle(BuildContext context) {
-    // Get current route
-    final currentRoute = ModalRoute.of(context)?.settings.name;
+    // Use the passed currentRoute first
+    if (currentRoute != null) {
+      return _routeTitles[currentRoute] ?? 'Dashboard';
+    }
 
-    // Return the mapped title or default
-    return _routeTitles[currentRoute] ?? 'Dashboard';
+    // Fallback: Get current route from context
+    final routeFromContext = ModalRoute.of(context)?.settings.name;
+    return _routeTitles[routeFromContext] ?? 'Dashboard';
   }
 
   @override

@@ -7,7 +7,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
   final FactureRepository factureRepository;
 
   int _currentPage = 1;
-  static const int _pageSize = 6;
+  static const int _pageSize = 10;
 
   // Store current filters to maintain them during pagination
   String? _currentSearchQuery;

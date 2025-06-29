@@ -62,8 +62,7 @@ class _BillAddDialogState extends State<BillAddDialog> {
   bool get _isUtilityBill =>
       _selectedCategory == 'electricity' || _selectedCategory == 'water';
   bool get _isPurchaseBill => _selectedCategory == 'purchase';
-  bool get _requiresImage =>
-      _isUtilityBill || _isPurchaseBill; 
+  bool get _requiresImage => _isUtilityBill || _isPurchaseBill;
 
   bool get _hasValidImage {
     if (kIsWeb) {
@@ -95,6 +94,10 @@ class _BillAddDialogState extends State<BillAddDialog> {
             message: 'Facture de $billOwner a été ajoutée avec succès',
           ).then((_) {
             context.read<BillBloc>().add(LoadBills());
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/factures/entreprise', // Your bill list route
+              (route) => false, // Remove all previous routes
+            );
           });
         }
 
@@ -243,18 +246,74 @@ class _BillAddDialogState extends State<BillAddDialog> {
       return;
     }
 
-    // Validate items for purchase bills
-    if (_isPurchaseBill && _items.isEmpty) {
-      showValidationError(
-        context,
-        'Au moins un article est requis pour les factures d\'achat.',
-      );
-      return;
+    // Enhanced validation for items for purchase bills
+    if (_isPurchaseBill) {
+      print('Is purchase bill: $_isPurchaseBill');
+      print('Items list: $_items');
+      print('Items length: ${_items.length}');
+
+      if (_items.isEmpty) {
+        showValidationError(
+          context,
+          'Au moins un article est requis pour les factures d\'achat.',
+        );
+        return;
+      }
+
+      // Validate each item has required fields
+      for (int i = 0; i < _items.length; i++) {
+        final item = _items[i];
+        print('Item $i: $item');
+
+        if (item['name'] == null || item['name'].toString().trim().isEmpty) {
+          showValidationError(
+            context,
+            'Le nom de l\'article ${i + 1} est requis.',
+          );
+          return;
+        }
+
+        if (item['quantity'] == null ||
+            item['quantity'].toString().trim().isEmpty) {
+          showValidationError(
+            context,
+            'La quantité de l\'article ${i + 1} est requise.',
+          );
+          return;
+        }
+
+        if (item['price'] == null || item['price'].toString().trim().isEmpty) {
+          showValidationError(
+            context,
+            'Le prix de l\'article ${i + 1} est requis.',
+          );
+          return;
+        }
+
+        // Validate numeric values
+        final quantity = double.tryParse(item['quantity'].toString());
+        final price = double.tryParse(item['price'].toString());
+
+        if (quantity == null || quantity <= 0) {
+          showValidationError(
+            context,
+            'La quantité de l\'article ${i + 1} doit être un nombre positif.',
+          );
+          return;
+        }
+
+        if (price == null || price <= 0) {
+          showValidationError(
+            context,
+            'Le prix de l\'article ${i + 1} doit être un nombre positif.',
+          );
+          return;
+        }
+      }
     }
 
     // Additional validation for image file accessibility (mobile only)
     if (!kIsWeb && _selectedImage != null) {
-      // Check if file exists and is accessible
       try {
         if (!_selectedImage!.existsSync()) {
           showValidationError(
@@ -279,6 +338,12 @@ class _BillAddDialogState extends State<BillAddDialog> {
     }
 
     setState(() => _submitted = true);
+
+    // Debug: Print what we're sending to the repository
+    print('Sending to repository:');
+    print('Category: $_selectedCategory');
+    print('Items: $_items');
+    print('Is purchase bill: $_isPurchaseBill');
 
     context.read<BillBloc>().add(
       CreateBill(
@@ -596,6 +661,11 @@ class _BillAddDialogState extends State<BillAddDialog> {
   }
 
   void _showAddItemDialog() {
+    // Clear controllers before showing dialog
+    _itemNameCtr.clear();
+    _itemQuantityCtr.clear();
+    _itemPriceCtr.clear();
+
     showDialog(
       context: context,
       builder:
@@ -609,18 +679,44 @@ class _BillAddDialogState extends State<BillAddDialog> {
                   decoration: const InputDecoration(
                     labelText: 'Nom de l\'article',
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Le nom est requis';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _itemQuantityCtr,
                   decoration: const InputDecoration(labelText: 'Quantité'),
                   keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'La quantité est requise';
+                    }
+                    final quantity = double.tryParse(value);
+                    if (quantity == null || quantity <= 0) {
+                      return 'Quantité invalide';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _itemPriceCtr,
                   decoration: const InputDecoration(labelText: 'Prix unitaire'),
                   keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Le prix est requis';
+                    }
+                    final price = double.tryParse(value);
+                    if (price == null || price <= 0) {
+                      return 'Prix invalide';
+                    }
+                    return null;
+                  },
                 ),
               ],
             ),
@@ -636,20 +732,42 @@ class _BillAddDialogState extends State<BillAddDialog> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (_itemNameCtr.text.isNotEmpty &&
-                      _itemQuantityCtr.text.isNotEmpty &&
-                      _itemPriceCtr.text.isNotEmpty) {
+                  // Validate all fields before adding
+                  if (_itemNameCtr.text.trim().isNotEmpty &&
+                      _itemQuantityCtr.text.trim().isNotEmpty &&
+                      _itemPriceCtr.text.trim().isNotEmpty) {
+                    // Validate numeric values
+                    final quantity = double.tryParse(
+                      _itemQuantityCtr.text.trim(),
+                    );
+                    final price = double.tryParse(_itemPriceCtr.text.trim());
+
+                    if (quantity == null || quantity <= 0) {
+                      showValidationError(context, 'Quantité invalide');
+                      return;
+                    }
+
+                    if (price == null || price <= 0) {
+                      showValidationError(context, 'Prix invalide');
+                      return;
+                    }
+
                     setState(() {
                       _items.add({
-                        'name': _itemNameCtr.text,
-                        'quantity': int.parse(_itemQuantityCtr.text),
-                        'price': double.parse(_itemPriceCtr.text),
+                        'name': _itemNameCtr.text.trim(),
+                        'quantity': quantity, // Store as number, not string
+                        'price': price, // Store as number, not string
                       });
                     });
+
+                    print('Added item: ${_items.last}');
+
                     _itemNameCtr.clear();
                     _itemQuantityCtr.clear();
                     _itemPriceCtr.clear();
                     Navigator.of(context).pop();
+                  } else {
+                    showValidationError(context, 'Tous les champs sont requis');
                   }
                 },
                 child: const Text('Ajouter'),
