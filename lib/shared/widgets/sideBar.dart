@@ -25,6 +25,11 @@ class _SidebarState extends State<Sidebar> {
       'icon': Icons.dashboard,
       'route': '/dashboard',
     },
+    {
+      'label': 'Tableau de bord',
+      'icon': Icons.account_balance,
+      'route': '/comptableDashboard',
+    },
     {'label': 'Employés', 'icon': Icons.group, 'route': '/employees'},
     {
       'label': 'Comptables',
@@ -69,6 +74,8 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
+  // In sidebar.dart - Update the _getOrganizedItems method
+
   List<Map<String, dynamic>> _getOrganizedItems() {
     final String? role = AuthRepository.currentRole;
 
@@ -79,14 +86,24 @@ class _SidebarState extends State<Sidebar> {
 
     List<Map<String, dynamic>> organizedItems = [];
 
-    // Always add dashboard first
-    if (isAdmin || isEmployee || isAccountant || isClient) {
+    if (isAccountant) {
+      organizedItems.add(
+        _allItems.firstWhere((item) => item['route'] == '/comptableDashboard'),
+      );
+    } else if (isClient) {
+      organizedItems.add(
+        _allItems.firstWhere((item) => item['route'] == '/produits'),
+      );
+    } else if (isEmployee) {
+      organizedItems.add(
+        _allItems.firstWhere((item) => item['route'] == '/clients'),
+      );
+    } else if (isAdmin) {
       organizedItems.add(
         _allItems.firstWhere((item) => item['route'] == '/dashboard'),
       );
     }
 
-    // Define the order: employees, comptables, clients, produits, notifications, energie, parametres
     final itemsOrder = [
       '/employees',
       '/comptables',
@@ -94,11 +111,16 @@ class _SidebarState extends State<Sidebar> {
       '/produits',
       '/notifications',
       '/energie',
-      '/parametres', // Paramètres will be last
+      '/parametres',
     ];
 
     for (String route in itemsOrder) {
       bool hasAccess = false;
+      bool isAlreadyAdded = organizedItems.any(
+        (item) => item['route'] == route,
+      );
+
+      if (isAlreadyAdded) continue;
 
       switch (route) {
         case '/employees':
@@ -108,10 +130,10 @@ class _SidebarState extends State<Sidebar> {
           hasAccess = isAdmin;
           break;
         case '/clients':
-          hasAccess = isAdmin || isEmployee;
+          hasAccess = isAdmin || isAccountant;
           break;
         case '/produits':
-          hasAccess = isAdmin || isEmployee || isClient; // Accountant removed
+          hasAccess = isAdmin || isEmployee;
           break;
         case '/energie':
           hasAccess = isAdmin;
@@ -242,13 +264,17 @@ class _SidebarState extends State<Sidebar> {
 
         if (state is AuthUserLoadSuccess) {
           avatar = _buildProfileAvatar(state.user.profilePhotoUrl);
-          header = Text(
-            state.user.name.isNotEmpty ? state.user.name : 'Utilisateur',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+          header = Column(
+            children: [
+              Text(
+                state.user.name.isNotEmpty ? state.user.name : 'Utilisateur',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           );
         } else if (state is AuthUserLoadFailure) {
           avatar = const CircleAvatar(

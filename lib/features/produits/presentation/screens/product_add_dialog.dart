@@ -25,10 +25,8 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   bool _clientExists = false;
   final Map<String, String> _errors = {};
 
-  // Quality dropdown value
   String _selectedQuality = 'moyenne';
 
-  // Quality options matching the backend
   final List<Map<String, String>> _qualityOptions = [
     {'value': 'excellente', 'label': 'Excellente'},
     {'value': 'bonne', 'label': 'Bonne'},
@@ -47,13 +45,16 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   Future<void> _checkClientExists(String cin) async {
     if (cin.isEmpty) return;
 
+    if (!mounted) return;
     setState(() => _isCheckingClient = true);
 
     try {
       final exists = await context.read<ClientBloc>().checkClientExists(cin);
+
+      if (!mounted) return;
       setState(() => _clientExists = exists);
 
-      if (!exists) {
+      if (!exists && mounted) {
         final shouldCreateClient = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -76,16 +77,20 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
               ),
         );
 
-        if (shouldCreateClient == true) {
+        if (shouldCreateClient == true && mounted) {
           await showDialog(
             context: context,
             builder: (context) => ClientAddDialog(initialCin: cin),
           );
-          _checkClientExists(cin);
+          if (mounted) {
+            _checkClientExists(cin);
+          }
         }
       }
     } finally {
-      setState(() => _isCheckingClient = false);
+      if (mounted) {
+        setState(() => _isCheckingClient = false);
+      }
     }
   }
 
@@ -251,9 +256,11 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                 );
               }).toList(),
           onChanged: (value) {
-            setState(() {
-              _selectedQuality = value!;
-            });
+            if (mounted) {
+              setState(() {
+                _selectedQuality = value!;
+              });
+            }
           },
         ),
       ],
@@ -283,7 +290,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
         const SizedBox(height: 4),
         FocusScope(
           onFocusChange: (hasFocus) {
-            if (!hasFocus) {
+            if (!hasFocus && mounted) {
               setState(() {
                 final error = _validateField(
                   label == 'CIN Client' ? 'cin' : fieldName,
@@ -346,15 +353,17 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       'cin': _clientCinController.text.trim(),
     };
 
-    setState(() {
-      _errors.clear();
-      fields.forEach((key, value) {
-        final error = _validateField(key, value);
-        if (error != null) {
-          _errors[key] = error;
-        }
+    if (mounted) {
+      setState(() {
+        _errors.clear();
+        fields.forEach((key, value) {
+          final error = _validateField(key, value);
+          if (error != null) {
+            _errors[key] = error;
+          }
+        });
       });
-    });
+    }
 
     if (_errors.isNotEmpty) {
       return;
@@ -370,17 +379,14 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       return;
     }
 
-    // Note: Price is calculated automatically by the backend based on quality
-    // estimation_time defaults to 15 minutes in the backend
-    // payement defaults to 'unpaid' in the backend
     context.read<ProductBloc>().add(
       CreateProduct(
         quality: _selectedQuality,
         origine: fields['origine']!,
-        price: 0.0, // Will be calculated by backend
+        price: 0.0,
         quantity: double.parse(fields['quantity']!),
         clientCin: fields['cin']!,
-        estimationTime: 15, // Default value, backend will handle this
+        estimationTime: 15,
       ),
     );
   }

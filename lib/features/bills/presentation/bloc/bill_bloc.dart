@@ -248,8 +248,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
         }
       }
     });
-
-    // Load a specific bill by ID
     on<LoadBillById>((event, emit) async {
       emit(BillLoading());
       try {
@@ -260,7 +258,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Clear current state
     on<ClearBillState>((event, emit) {
       emit(BillInitial());
     });

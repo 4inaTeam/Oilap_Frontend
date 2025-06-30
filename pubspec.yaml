@@ -86,6 +86,7 @@ flutter:
     - assets/images/WhatsApp.png
     - assets/images/Verified.png
     - assets/images/Group.png
+    - assets/images/Card.png
     - assets/icons/mask.png
     - assets/icons/Vector.png
     - assets/icons/logout_account_exit_door.png

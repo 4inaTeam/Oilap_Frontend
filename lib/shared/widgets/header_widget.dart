@@ -25,6 +25,7 @@ class AppHeader extends StatelessWidget {
 
   static const Map<String, String> _routeTitles = {
     '/dashboard': 'Dashboard',
+    '/comptableDashboard': 'Dashboard',
     '/employees': 'Employés',
     '/comptables': 'Comptables',
     '/clients': 'Clients',
@@ -45,7 +46,7 @@ class AppHeader extends StatelessWidget {
   static const Map<String, String> _backNavigationMap = {
     '/factures/client/detail': '/factures/client',
     '/factures/entreprise/detail': '/factures/entreprise',
-    '/factures/entreprise/ajouter': '/factures/entreprise', // Added this line
+    '/factures/entreprise/ajouter': '/factures/entreprise',
     '/clients/detail': '/clients',
     '/produits/detail': '/produits',
   };
@@ -55,26 +56,40 @@ class AppHeader extends StatelessWidget {
 
     // Use explicit currentRoute parameter first
     if (currentRoute != null) {
-      return _routeTitles[currentRoute] ?? 'Tableau de bord';
+      return _routeTitles[currentRoute] ?? _getDefaultDashboardTitle();
     }
 
     // Fallback: try multiple methods to get route
     final route = ModalRoute.of(context)?.settings.name;
     print('Current route: $route'); // Debug print
 
-    // If still null, default to dashboard
+    // If still null, default to appropriate dashboard
     if (route == null) {
-      return 'Tableau de bord'; // Default to dashboard title
+      return _getDefaultDashboardTitle();
     }
 
-    return _routeTitles[route] ?? 'Tableau de bord';
+    return _routeTitles[route] ?? _getDefaultDashboardTitle();
+  }
+
+  String _getDefaultDashboardTitle() {
+    final String? role = AuthRepository.currentRole;
+
+    if (role == 'ACCOUNTANT') {
+      return 'Tableau de bord Comptable';
+    } else if (role == 'CLIENT') {
+      return 'Produits';
+    } else if (role == 'EMPLOYEE') {
+      return 'Clients';
+    } else {
+      return 'Tableau de bord';
+    }
   }
 
   bool _shouldShowBackArrow(BuildContext context) {
     if (showBackArrow) return true;
 
     if (currentRoute != null) {
-      return currentRoute != '/dashboard';
+      return !_isMainDashboard(currentRoute!);
     }
 
     final route = ModalRoute.of(context)?.settings.name;
@@ -83,14 +98,28 @@ class AppHeader extends StatelessWidget {
       return false;
     }
 
-    return route != '/dashboard';
+    return !_isMainDashboard(route);
+  }
+
+  bool _isMainDashboard(String route) {
+    final String? role = AuthRepository.currentRole;
+
+    if (role == 'ACCOUNTANT') {
+      return route == '/comptableDashboard';
+    } else if (role == 'CLIENT') {
+      return route == '/produits';
+    } else if (role == 'EMPLOYEE') {
+      return route == '/clients';
+    } else {
+      return route == '/dashboard';
+    }
   }
 
   bool _shouldShowSearch(BuildContext context) {
     if (!showSearch) return false;
 
     if (currentRoute != null) {
-      return currentRoute == '/dashboard';
+      return _isMainDashboard(currentRoute!);
     }
 
     final route = ModalRoute.of(context)?.settings.name;
@@ -99,7 +128,7 @@ class AppHeader extends StatelessWidget {
       return true; // Default to showing search when route is unknown
     }
 
-    return route == '/dashboard';
+    return _isMainDashboard(route);
   }
 
   bool _shouldShowNotifications() {
@@ -114,20 +143,26 @@ class AppHeader extends StatelessWidget {
       return;
     }
 
-    // Get current route
     String? route = currentRoute ?? ModalRoute.of(context)?.settings.name;
 
     if (route != null && _backNavigationMap.containsKey(route)) {
-      // Navigate to specific parent route based on hierarchy
       String parentRoute = _backNavigationMap[route]!;
       Navigator.pushNamedAndRemoveUntil(context, parentRoute, (route) => false);
     } else {
-      // For all other pages, go back to dashboard
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/dashboard',
-        (route) => false,
-      );
+      final String? role = AuthRepository.currentRole;
+      String mainRoute;
+
+      if (role == 'ACCOUNTANT') {
+        mainRoute = '/comptableDashboard';
+      } else if (role == 'CLIENT') {
+        mainRoute = '/produits';
+      } else if (role == 'EMPLOYEE') {
+        mainRoute = '/clients';
+      } else {
+        mainRoute = '/dashboard';
+      }
+
+      Navigator.pushNamedAndRemoveUntil(context, mainRoute, (route) => false);
     }
   }
 

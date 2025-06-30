@@ -10,12 +10,11 @@ import '../../../../shared/widgets/app_layout.dart';
 import '../../../bills/data/bill_repository.dart';
 import '../../../auth/data/auth_repository.dart';
 
-// Platform-specific imports
 import 'dart:io' as io;
 import 'package:path_provider/path_provider.dart';
 
-// Web-only imports
-import 'dart:html' as html;
+import '../helper/web_download_stub.dart'
+    if (dart.library.html) '../helper/web_download_real.dart';
 
 class BillDetailScreen extends StatefulWidget {
   final String? imageUrl;
@@ -150,7 +149,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         final contentType = response.headers['content-type'];
         if (contentType != null && contentType.contains('application/pdf')) {
           if (kIsWeb) {
-            _downloadFileWeb(response.bodyBytes, 'facture_$billId.pdf');
+            WebDownloadHelper.downloadFile(
+              response.bodyBytes,
+              'facture_$billId.pdf',
+            );
           } else {
             await _downloadFileMobile(response.bodyBytes, billId);
           }
@@ -172,37 +174,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       }
     } catch (e) {
       _showErrorMessage('Erreur: $e');
-    }
-  }
-
-  void _downloadFileWeb(Uint8List bytes, String filename) {
-    if (kIsWeb) {
-      try {
-        // Create a blob with the PDF data
-        final blob = html.Blob([bytes], 'application/pdf');
-
-        // Create a download URL
-        final url = html.Url.createObjectUrlFromBlob(blob);
-
-        // Create an anchor element and trigger download
-        final anchor =
-            html.AnchorElement(href: url)
-              ..setAttribute('download', filename)
-              ..style.display = 'none';
-
-        // Add to DOM, click, and remove
-        html.document.body?.children.add(anchor);
-        anchor.click();
-        html.document.body?.children.remove(anchor);
-
-        // Clean up the URL
-        html.Url.revokeObjectUrl(url);
-
-        print('Web download triggered for: $filename');
-      } catch (e) {
-        print('Error in web download: $e');
-        throw Exception('Erreur lors du téléchargement web: $e');
-      }
     }
   }
 
@@ -263,6 +234,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       ),
     );
   }
+
   Widget _buildDownloadButton() {
     return Container(
       margin: const EdgeInsets.only(top: 16, right: 16),

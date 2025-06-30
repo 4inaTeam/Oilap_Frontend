@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_detail_screen.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_list_screen.dart';
+import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboardAccounatant_screen.dart';
 import 'package:oilab_frontend/features/energie/presentation/screens/energie_list_screen.dart';
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
@@ -61,13 +62,28 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const SignInScreen());
 
       case '/dashboard':
-        if (isAdmin || isEmployee || isAccountant || isClient) {
+        if (isAdmin) {
           return MaterialPageRoute(builder: (_) => const DashboardScreen());
+        } else if (isEmployee) {
+          // Redirect employees to clients page instead of dashboard
+          return MaterialPageRoute(builder: (_) => const ClientListScreen());
+        } else if (isAccountant) {
+          // Redirect accountants to their specific dashboard
+          return MaterialPageRoute(builder: (_) => const AccountantScreen());
+        } else if (isClient) {
+          // Redirect clients to products page instead of dashboard
+          return MaterialPageRoute(builder: (_) => const ProductListScreen());
+        }
+        break;
+
+      case '/comptableDashboard':
+        if (isAccountant) {
+          return MaterialPageRoute(builder: (_) => const AccountantScreen());
         }
         break;
 
       case '/clients':
-        if (isAdmin || isEmployee) {
+        if (isAdmin || isEmployee || isAccountant) {
           return MaterialPageRoute(builder: (_) => const ClientListScreen());
         }
         break;
@@ -203,14 +219,35 @@ class AppRouter {
         break;
     }
 
+    // If no route matches, show access denied
     return MaterialPageRoute(
       builder:
-          (_) => const Scaffold(
-            body: Center(
-              child: Text(
-                'Accès refusé. Vous n\'avez pas la permission pour cette page.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+          (_) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Accès refusé'),
+              backgroundColor: Colors.red,
+            ),
+            body: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.lock, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text(
+                    'Accès refusé',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Vous n\'avez pas la permission pour cette page.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ],
               ),
             ),
           ),

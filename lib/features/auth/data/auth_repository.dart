@@ -43,12 +43,24 @@ class AuthRepository {
         'authorities',
         'permissions',
         'groups',
+        'scope',
+        'user_type',
+        'type',
       ];
 
       for (String field in possibleRoleFields) {
         if (payloadMap.containsKey(field)) {
-          role = payloadMap[field] as String?;
-          if (role != null) break;
+          final value = payloadMap[field];
+          if (value != null) {
+            if (value is String) {
+              role = value;
+            } else if (value is List && value.isNotEmpty) {
+              role = value.first.toString();
+            }
+            if (role != null && role.isNotEmpty) {
+              break;
+            }
+          }
         }
       }
 
@@ -183,9 +195,23 @@ class AuthRepository {
 
       await _ts.saveTokens(accessToken, refreshToken);
 
+      // IMPORTANT: Update static variables immediately after login
       currentToken = accessToken;
       currentRole = extractRoleFromToken(accessToken);
       currentUserId = extractUserIdFromToken(accessToken);
+
+      // If role is not in token, check if it's in the login response
+      if (currentRole == null && data.containsKey('user')) {
+        final userData = data['user'] as Map<String, dynamic>?;
+        if (userData != null && userData.containsKey('role')) {
+          currentRole = userData['role'] as String?;
+        }
+      }
+
+      // Still null? Check top level of response
+      if (currentRole == null && data.containsKey('role')) {
+        currentRole = data['role'] as String?;
+      }
     } else {
       throw Exception('Auth failed (${res.statusCode}): ${res.body}');
     }
@@ -255,8 +281,12 @@ class AuthRepository {
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
 
+        // Update role from user data if available (this might be more accurate than token)
         if (json.containsKey('role')) {
-          currentRole = json['role'] as String?;
+          final userRole = json['role'] as String?;
+          if (userRole != null) {
+            currentRole = userRole;
+          }
         }
 
         if (json.containsKey('id')) {

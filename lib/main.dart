@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:oilab_frontend/app.dart';
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:oilab_frontend/features/auth/presentation/bloc/auth_event.dart';
 import 'package:oilab_frontend/features/auth/presentation/bloc/password_reset_bloc.dart';
 import 'package:oilab_frontend/features/clients/data/client_repository.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
@@ -52,6 +53,7 @@ Future<void> main() async {
       sharedPreferences: sharedPreferences,
     );
 
+    // IMPORTANT: Initialize authentication state
     await authRepository.initializeAuth();
 
     await _initializeStripe(authRepository);
@@ -132,7 +134,10 @@ Future<void> main() async {
         child: MultiBlocProvider(
           providers: [
             BlocProvider<AuthBloc>(
-              create: (ctx) => AuthBloc(ctx.read<AuthRepository>()),
+              create:
+                  (ctx) =>
+                      AuthBloc(ctx.read<AuthRepository>())
+                        ..add(AuthInitialized()), // Trigger initialization
             ),
             BlocProvider<PasswordResetBloc>(
               create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),

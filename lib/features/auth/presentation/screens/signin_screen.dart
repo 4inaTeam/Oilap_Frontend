@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
+import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboardAccounatant_screen.dart';
+import 'package:oilab_frontend/features/produits/presentation/screens/product_list_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/footer_widget.dart';
+import '../../data/auth_repository.dart';
 
 import '../screens/passwordForget.dart';
 import '../bloc/auth_bloc.dart';
@@ -29,6 +33,7 @@ class _SignInViewState extends State<_SignInView> {
   final _identifierCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  bool _hasNavigated = false;
 
   void _onSubmit() {
     if (!_formKey.currentState!.validate()) return;
@@ -38,6 +43,41 @@ class _SignInViewState extends State<_SignInView> {
         _passwordCtrl.text.trim(),
       ),
     );
+  }
+
+
+  void _navigateBasedOnRole() {
+    if (_hasNavigated) return;
+
+    final String? role = AuthRepository.currentRole;
+
+    if (role == null) {
+      return;
+    }
+
+    _hasNavigated = true;
+
+    if (role == 'ACCOUNTANT') {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AccountantScreen()),
+        (route) => false,
+      );
+    } else if (role == 'CLIENT') {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const ProductListScreen()),
+        (route) => false,
+      );
+    } else if (role == 'EMPLOYEE') {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const ClientListScreen()),
+        (route) => false,
+      );
+    } else {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -51,12 +91,9 @@ class _SignInViewState extends State<_SignInView> {
       backgroundColor: Colors.white,
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthLoadSuccess) {
-            context.read<AuthBloc>().add(AuthUserRequested());
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const DashboardScreen()),
-              (route) => false,
-            );
+          if (state is AuthUserLoadSuccess) {
+            _navigateBasedOnRole();
+          } else if (state is AuthLoadSuccess) {
           } else if (state is AuthLoadFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -178,7 +215,8 @@ class _SignInViewState extends State<_SignInView> {
                                 child: BlocBuilder<AuthBloc, AuthState>(
                                   builder: (_, state) {
                                     final inProgress =
-                                        state is AuthLoadInProgress;
+                                        state is AuthLoadInProgress ||
+                                        state is AuthUserLoadInProgress;
                                     return ElevatedButton(
                                       onPressed: inProgress ? null : _onSubmit,
                                       style: ElevatedButton.styleFrom(
@@ -244,5 +282,12 @@ class _SignInViewState extends State<_SignInView> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _identifierCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
   }
 }

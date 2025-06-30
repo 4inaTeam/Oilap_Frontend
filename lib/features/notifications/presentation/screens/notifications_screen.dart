@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:oilab_frontend/features/notifications/data/notification_repository.dart';
 import 'package:oilab_frontend/features/notifications/presentation/bloc/notification_event.dart';
@@ -16,88 +15,67 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
+  bool _isDisposed = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         context.read<NotificationBloc>().add(LoadNotifications(refresh: true));
       }
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AppLayout(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-
-          return Padding(
-            padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Column(
-              children: [
-                _AppBar(isMobile: isMobile),
-                SizedBox(height: isMobile ? 12 : 16),
-                Expanded(child: _NotificationContent(isMobile: isMobile)),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
-}
-
-class _AppBar extends StatelessWidget {
-  final bool isMobile;
-
-  const _AppBar({required this.isMobile});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back, size: 28),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'Notifications',
-            style: TextStyle(
-              fontSize: isMobile ? 20 : 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        BlocBuilder<NotificationBloc, NotificationState>(
-          builder: (context, state) {
-            if (state is NotificationLoaded && state.unreadCount > 0) {
-              return TextButton.icon(
-                onPressed: () {
-                  context.read<NotificationBloc>().add(MarkAllNotificationsAsRead());
-                },
-                icon: const Icon(Icons.done_all, size: 20),
-                label: const Text('Tout marquer comme lu'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.mainColor,
-                ),
-              );
-            }
-            return const SizedBox.shrink();
+    return WillPopScope(
+      onWillPop: () async {
+        // Safely handle back navigation
+        _isDisposed = true;
+        return true;
+      },
+      child: AppLayout(
+        currentRoute: '/notifications',
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+
+            return Padding(
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
+              child: Column(
+                children: [
+                  SizedBox(height: isMobile ? 12 : 16),
+                  Expanded(
+                    child: _NotificationContent(
+                      isMobile: isMobile,
+                      isDisposed: () => _isDisposed,
+                    ),
+                  ),
+                ],
+              ),
+            );
           },
         ),
-      ],
+      ),
     );
   }
 }
 
 class _NotificationContent extends StatelessWidget {
   final bool isMobile;
+  final bool Function() isDisposed;
 
-  const _NotificationContent({required this.isMobile});
+  const _NotificationContent({
+    required this.isMobile,
+    required this.isDisposed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +92,11 @@ class _NotificationContent extends StatelessWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<NotificationBloc>().add(LoadNotifications(refresh: true));
+              if (!isDisposed()) {
+                context.read<NotificationBloc>().add(
+                  LoadNotifications(refresh: true),
+                );
+              }
             },
             child: ListView.builder(
               itemCount: state.notifications.length,
@@ -124,6 +106,7 @@ class _NotificationContent extends StatelessWidget {
                   notification: notification,
                   isMobile: isMobile,
                   onTap: () => _handleNotificationTap(context, notification),
+                  isDisposed: isDisposed,
                 );
               },
             ),
@@ -134,7 +117,11 @@ class _NotificationContent extends StatelessWidget {
           return _ErrorState(
             message: state.message,
             onRetry: () {
-              context.read<NotificationBloc>().add(LoadNotifications(refresh: true));
+              if (!isDisposed()) {
+                context.read<NotificationBloc>().add(
+                  LoadNotifications(refresh: true),
+                );
+              }
             },
           );
         }
@@ -144,10 +131,23 @@ class _NotificationContent extends StatelessWidget {
     );
   }
 
-  void _handleNotificationTap(BuildContext context, NotificationModel notification) {
+  void _handleNotificationTap(
+    BuildContext context,
+    NotificationModel notification,
+  ) {
+    // Check if widget is still mounted before performing actions
+    if (isDisposed()) return;
+
     // Mark as read if not already read
     if (!notification.isRead) {
-      context.read<NotificationBloc>().add(MarkNotificationAsRead(notification.id));
+      try {
+        context.read<NotificationBloc>().add(
+          MarkNotificationAsRead(notification.id),
+        );
+      } catch (e) {
+        // Silently handle bloc access errors if widget is disposed
+        return;
+      }
     }
 
     // Handle navigation based on notification type
@@ -165,9 +165,11 @@ class _NotificationContent extends StatelessWidget {
         }
         break;
       case 'test':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Test notification received')),
-        );
+        if (!isDisposed()) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Test notification received')),
+          );
+        }
         break;
       default:
         // Handle other notification types
@@ -176,18 +178,25 @@ class _NotificationContent extends StatelessWidget {
   }
 
   void _showFactureDialog(BuildContext context, String factureId) {
+    if (isDisposed()) return;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Facture Notification'),
-        content: Text('Navigate to facture with ID: $factureId'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Facture Notification'),
+            content: Text('Navigate to facture with ID: $factureId'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: const Text('OK'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -196,11 +205,13 @@ class _NotificationItem extends StatelessWidget {
   final NotificationModel notification;
   final bool isMobile;
   final VoidCallback onTap;
+  final bool Function() isDisposed;
 
   const _NotificationItem({
     required this.notification,
     required this.isMobile,
     required this.onTap,
+    required this.isDisposed,
   });
 
   @override
@@ -220,7 +231,8 @@ class _NotificationItem extends StatelessWidget {
         title: Text(
           notification.title,
           style: TextStyle(
-            fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
+            fontWeight:
+                notification.isRead ? FontWeight.normal : FontWeight.bold,
             fontSize: isMobile ? 14 : 16,
           ),
         ),
@@ -244,17 +256,23 @@ class _NotificationItem extends StatelessWidget {
             ),
           ],
         ),
-        trailing: notification.isRead 
-            ? null 
-            : Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
+        trailing:
+            notification.isRead
+                ? null
+                : Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-        onTap: onTap,
+        onTap: () {
+          // Check if the widget is still valid before handling tap
+          if (!isDisposed()) {
+            onTap();
+          }
+        },
       ),
     );
   }
@@ -316,11 +334,7 @@ class _EmptyNotificationsState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.notifications_none,
-            size: 64,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.notifications_none, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             'Aucune notification',
@@ -333,10 +347,7 @@ class _EmptyNotificationsState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Vous n\'avez pas encore reçu de notifications',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             textAlign: TextAlign.center,
           ),
         ],
@@ -349,10 +360,7 @@ class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -360,11 +368,7 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red.shade400,
-          ),
+          Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
           const SizedBox(height: 16),
           Text(
             'Erreur',
@@ -377,17 +381,11 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: onRetry,
-            child: const Text('Réessayer'),
-          ),
+          ElevatedButton(onPressed: onRetry, child: const Text('Réessayer')),
         ],
       ),
     );

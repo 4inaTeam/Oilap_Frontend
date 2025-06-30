@@ -26,6 +26,26 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
   final String _role = 'CLIENT';
   bool _submitted = false;
 
+  // Country code selection
+  String _selectedCountryCode = '+216'; // Default to Tunisia
+  final List<Map<String, String>> _countryCodes = [
+    {'code': '+216', 'country': 'Tunisia', 'flag': '🇹🇳', 'phoneLength': '8'},
+    {'code': '+33', 'country': 'France', 'flag': '🇫🇷', 'phoneLength': '10'},
+    {'code': '+49', 'country': 'Germany', 'flag': '🇩🇪', 'phoneLength': '11'},
+    {
+      'code': '+1',
+      'country': 'USA/Canada',
+      'flag': '🇺🇸',
+      'phoneLength': '10',
+    },
+    {'code': '+44', 'country': 'UK', 'flag': '🇬🇧', 'phoneLength': '10'},
+    {'code': '+39', 'country': 'Italy', 'flag': '🇮🇹', 'phoneLength': '10'},
+    {'code': '+34', 'country': 'Spain', 'flag': '🇪🇸', 'phoneLength': '9'},
+    {'code': '+212', 'country': 'Morocco', 'flag': '🇲🇦', 'phoneLength': '9'},
+    {'code': '+213', 'country': 'Algeria', 'flag': '🇩🇿', 'phoneLength': '9'},
+    {'code': '+20', 'country': 'Egypt', 'flag': '🇪🇬', 'phoneLength': '10'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +63,17 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
     _passwordCtr.dispose();
     _confirmPasswordCtr.dispose();
     super.dispose();
+  }
+
+  String get _fullPhoneNumber =>
+      '$_selectedCountryCode${_phoneCtr.text.trim()}';
+
+  int get _expectedPhoneLength {
+    final country = _countryCodes.firstWhere(
+      (c) => c['code'] == _selectedCountryCode,
+      orElse: () => {'phoneLength': '8'},
+    );
+    return int.tryParse(country['phoneLength'] ?? '8') ?? 8;
   }
 
   @override
@@ -149,7 +180,8 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
                                       email: _emailCtr.text.trim(),
                                       password: _passwordCtr.text,
                                       cin: _cinCtr.text.trim(),
-                                      tel: _phoneCtr.text.trim(),
+                                      tel:
+                                          _fullPhoneNumber, // Send full phone number with country code
                                       role: _role,
                                     ),
                                   );
@@ -236,14 +268,179 @@ class _ClientAddDialogState extends State<ClientAddDialog> {
             (v) => v == null || !v.contains('@') ? 'Email invalide' : null,
       ),
       const SizedBox(height: 12),
-      TextFormField(
-        controller: _phoneCtr,
-        decoration: const InputDecoration(labelText: 'Téléphone'),
-        keyboardType: TextInputType.phone,
-        validator:
-            (v) => v == null || v.length != 8 ? '8 chiffres requis' : null,
-      ),
+      _buildPhoneField(),
       const SizedBox(height: 12),
     ],
   );
+
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Téléphone',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            // Country Code Dropdown
+            Container(
+              width: 120,
+              height: 56,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  bottomLeft: Radius.circular(4),
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCountryCode,
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, size: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  items:
+                      _countryCodes.map((country) {
+                        return DropdownMenuItem<String>(
+                          value: country['code'],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                country['flag']!,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  country['code']!,
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedCountryCode = value;
+                        _phoneCtr.clear(); // Clear phone when country changes
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+            // Phone Number Input
+            Expanded(
+              child: TextFormField(
+                controller: _phoneCtr,
+                decoration: InputDecoration(
+                  hintText: 'Ex: ${_getPhoneExample()}',
+                  border: OutlineInputBorder(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(4),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(4),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(4),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 16,
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Requis';
+                  if (v.length != _expectedPhoneLength) {
+                    return '$_expectedPhoneLength chiffres requis';
+                  }
+                  if (!RegExp(r'^[0-9]+$').hasMatch(v)) {
+                    return 'Numéros uniquement';
+                  }
+                  return null;
+                },
+                onChanged: (value) {
+                  // Remove any non-digit characters
+                  final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (digitsOnly != value) {
+                    _phoneCtr.value = _phoneCtr.value.copyWith(
+                      text: digitsOnly,
+                      selection: TextSelection.collapsed(
+                        offset: digitsOnly.length,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+        // Show full phone number preview
+        if (_phoneCtr.text.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Numéro complet: $_fullPhoneNumber',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _getPhoneExample() {
+    switch (_selectedCountryCode) {
+      case '+216':
+        return '12345678';
+      case '+33':
+        return '0123456789';
+      case '+49':
+        return '01234567890';
+      case '+1':
+        return '1234567890';
+      case '+44':
+        return '1234567890';
+      case '+39':
+        return '1234567890';
+      case '+34':
+        return '123456789';
+      case '+212':
+        return '123456789';
+      case '+213':
+        return '123456789';
+      case '+20':
+        return '1234567890';
+      default:
+        return '12345678';
+    }
+  }
 }

@@ -4,6 +4,7 @@ import 'package:oilab_frontend/features/notifications/presentation/bloc/notifica
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
+import '../../features/auth/data/auth_repository.dart';
 import 'sidebar.dart';
 import 'footer_widget.dart';
 import 'header_widget.dart';
@@ -105,12 +106,12 @@ class _MobileScaffold extends StatelessWidget {
     required this.child,
     this.onSearchResult,
     this.searchData,
-    this.currentRoute, // Add this parameter
+    this.currentRoute,
   });
 
-  // Map routes to their display titles for mobile
   static const Map<String, String> _routeTitles = {
     '/dashboard': 'Tableau de bord',
+    '/comptableDashboard': 'Tableau de bord Comptable',
     '/employees': 'Employés',
     '/comptables': 'Comptables',
     '/clients': 'Clients',
@@ -125,12 +126,26 @@ class _MobileScaffold extends StatelessWidget {
   String _getDynamicTitle(BuildContext context) {
     // Use the passed currentRoute first
     if (currentRoute != null) {
-      return _routeTitles[currentRoute] ?? 'Dashboard';
+      return _routeTitles[currentRoute] ?? _getDefaultDashboardTitle();
     }
 
     // Fallback: Get current route from context
     final routeFromContext = ModalRoute.of(context)?.settings.name;
-    return _routeTitles[routeFromContext] ?? 'Dashboard';
+    return _routeTitles[routeFromContext] ?? _getDefaultDashboardTitle();
+  }
+
+  String _getDefaultDashboardTitle() {
+    final String? role = AuthRepository.currentRole;
+
+    if (role == 'ACCOUNTANT') {
+      return 'Tableau de bord Comptable';
+    } else if (role == 'CLIENT') {
+      return 'Produits';
+    } else if (role == 'EMPLOYEE') {
+      return 'Clients';
+    } else {
+      return 'Tableau de bord';
+    }
   }
 
   @override

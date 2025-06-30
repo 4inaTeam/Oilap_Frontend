@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_add_dialog.dart';
+import 'package:oilab_frontend/features/produits/presentation/screens/product_add_dialog.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 
-class FactureUploadScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> templates = [
+class FactureUploadScreen extends StatefulWidget {
+  @override
+  State<FactureUploadScreen> createState() => _FactureUploadScreenState();
+}
+
+class _FactureUploadScreenState extends State<FactureUploadScreen> {
+  final List<Map<String, dynamic>> _allTemplates = [
     {
       "title": "Facture d'un client",
       "icon": Icons.add_circle_outline,
-      "category": "purchase",
+      "category": "client",
     },
     {
       "title": "Facture d'achats",
@@ -23,12 +30,71 @@ class FactureUploadScreen extends StatelessWidget {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // Debug print to check current role
+    print('FactureUploadScreen - Current role: ${AuthRepository.currentRole}');
+  }
+
+  void _refreshTemplates() {
+    if (mounted) {
+      setState(() {
+        // Force rebuild to get updated templates
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get templates {
+    // Filter out client invoice for accountants
+    final currentRole = AuthRepository.currentRole;
+    print('Templates getter - Current role: $currentRole'); // Debug print
+
+    if (currentRole != null &&
+        (currentRole.toLowerCase() == 'comptable' ||
+            currentRole.toLowerCase() == 'accountant')) {
+      print('Filtering out client invoice for accountant'); // Debug print
+      return _allTemplates
+          .where((template) => template['category'] != 'client')
+          .toList();
+    }
+
+    print('Showing all templates'); // Debug print
+    return _allTemplates;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh templates when dependencies change (e.g., when user role changes)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshTemplates();
+    });
+  }
+
   void _openBillDialog(BuildContext context, [String? preselectedCategory]) {
     showDialog(
       context: context,
       builder:
           (context) => BillAddDialog(preselectedCategory: preselectedCategory),
     );
+  }
+
+  void _openProductDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ProductAddDialog(),
+    );
+  }
+
+  void _handleTemplateSelection(BuildContext context, String category) {
+    if (category == "client") {
+      // Redirect to product creation for client invoices
+      _openProductDialog(context);
+    } else {
+      // Use the existing bill dialog for other categories
+      _openBillDialog(context, category);
+    }
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -80,7 +146,7 @@ class FactureUploadScreen extends StatelessWidget {
                               ),
                             ),
                             onPressed:
-                                () => _openBillDialog(
+                                () => _handleTemplateSelection(
                                   context,
                                   template['category'],
                                 ),
@@ -187,7 +253,7 @@ class FactureUploadScreen extends StatelessWidget {
                                           size: 16,
                                         ),
                                         onTap:
-                                            () => _openBillDialog(
+                                            () => _handleTemplateSelection(
                                               context,
                                               template['category'],
                                             ),

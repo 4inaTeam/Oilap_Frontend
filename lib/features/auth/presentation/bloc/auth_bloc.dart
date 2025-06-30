@@ -7,38 +7,86 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _repo;
 
   AuthBloc(this._repo) : super(AuthInitial()) {
+    on<AuthInitialized>(_onAuthInitialized);
     on<AuthCheckExistingToken>(_onCheckExistingToken);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthUserRequested>(_onUserRequested);
   }
 
+  Future<void> _onAuthInitialized(
+    AuthInitialized event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      // Check if user has valid tokens
+      final hasValidTokens = await _repo.hasValidTokens();
+
+      if (hasValidTokens) {
+        // Validate the access token
+        final isTokenValid = await _repo.validateAccessToken();
+
+        if (isTokenValid) {
+          // Ensure role is properly set from stored token
+          await _repo.initializeAuth();
+          final token = await _repo.getAccessToken();
+          emit(AuthLoadSuccess(token!));
+
+          // Immediately fetch user data to get role
+          add(AuthUserRequested());
+        } else {
+          // Try to refresh token
+          final newToken = await _repo.refreshAccessToken();
+          if (newToken != null) {
+            emit(AuthLoadSuccess(newToken));
+            add(AuthUserRequested());
+          } else {
+            await _repo.logout();
+            emit(AuthLoggedOut());
+          }
+        }
+      } else {
+        emit(AuthLoggedOut());
+      }
+    } catch (e) {
+      await _repo.logout();
+      emit(AuthLoggedOut());
+    }
+  }
+
   Future<void> _onLoginRequested(
-      AuthLoginRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoadInProgress());
     try {
       await _repo.login(identifier: event.identifier, password: event.password);
-      final token = await _repo.getAccessToken();
 
+      await _repo.initializeAuth();
+
+      final token = await _repo.getAccessToken();
       emit(AuthLoadSuccess(token!));
-      add(AuthUserRequested());
+      try {
+        final user = await _repo.fetchCurrentUser();
+        emit(AuthUserLoadSuccess(user));
+      } catch (userError) {
+        add(AuthUserRequested());
+      }
     } catch (e) {
       emit(AuthLoadFailure(e.toString()));
     }
   }
 
   Future<void> _onCheckExistingToken(
-      AuthCheckExistingToken event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthCheckExistingToken event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoadInProgress());
     try {
       final token = await _repo.getAccessToken();
       if (token != null) {
+        await _repo.initializeAuth();
         emit(AuthLoadSuccess(token));
-        // Automatically fetch user data when we have a valid token
         add(AuthUserRequested());
       } else {
         emit(AuthInitial());
@@ -49,19 +97,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutRequested(
-      AuthLogoutRequested event,
-      Emitter<AuthState> emit,
-      ) async {
+    AuthLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     await _repo.logout();
     emit(AuthLoggedOut());
   }
 
   Future<void> _onUserRequested(
-      AuthUserRequested event,
-      Emitter<AuthState> emit,
-      ) async {
-    // Don't emit loading state if we're already authenticated
-    if (state is! AuthLoadSuccess) {
+    AuthUserRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state is! AuthLoadSuccess && state is! AuthUserLoadSuccess) {
       emit(AuthUserLoadInProgress());
     }
 
@@ -70,9 +117,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthUserLoadSuccess(user));
     } catch (e) {
       final errorMessage = e.toString();
-      print('User fetch error: $errorMessage');
 
-      // If authentication failed completely, logout the user
       if (errorMessage.contains('please login again') ||
           errorMessage.contains('No access token available')) {
         await _repo.logout();
