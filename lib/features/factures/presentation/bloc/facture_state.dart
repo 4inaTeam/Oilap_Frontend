@@ -1,6 +1,10 @@
+import 'package:equatable/equatable.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
 
-abstract class FactureState {}
+abstract class FactureState extends Equatable {
+  @override
+  List<Object?> get props => [];
+}
 
 class FactureInitial extends FactureState {}
 
@@ -14,6 +18,7 @@ class FactureLoaded extends FactureState {
   final int totalCount;
   final int currentPage;
   final int totalPages;
+  final int? currentClientId;
 
   FactureLoaded({
     required this.factures,
@@ -23,6 +28,7 @@ class FactureLoaded extends FactureState {
     this.totalCount = 0,
     this.currentPage = 1,
     this.totalPages = 1,
+    this.currentClientId,
   });
 
   FactureLoaded copyWith({
@@ -33,6 +39,7 @@ class FactureLoaded extends FactureState {
     int? totalCount,
     int? currentPage,
     int? totalPages,
+    int? currentClientId, // Add this parameter
   }) {
     return FactureLoaded(
       factures: factures ?? this.factures,
@@ -42,18 +49,39 @@ class FactureLoaded extends FactureState {
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
+      currentClientId: currentClientId ?? this.currentClientId, // Include in copyWith
     );
   }
+
+  @override
+  List<Object?> get props => [
+        factures,
+        filteredFactures,
+        currentFilter,
+        currentSearch,
+        totalCount,
+        currentPage,
+        totalPages,
+        currentClientId,
+      ];
 }
 
 class FactureDetailLoaded extends FactureState {
   final Facture facture;
+  
   FactureDetailLoaded(this.facture);
+
+  @override
+  List<Object?> get props => [facture];
 }
 
 class FactureError extends FactureState {
   final String message;
+  
   FactureError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }
 
 class FactureDeleting extends FactureState {}
@@ -62,5 +90,9 @@ class FactureDeleted extends FactureState {}
 
 class FacturePdfLoaded extends FactureState {
   final String pdfUrl;
+  
   FacturePdfLoaded(this.pdfUrl);
+
+  @override
+  List<Object?> get props => [pdfUrl];
 }

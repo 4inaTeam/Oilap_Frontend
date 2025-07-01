@@ -9,9 +9,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
   int _currentPage = 1;
   static const int _pageSize = 10;
 
-  // Store current filters to maintain them during pagination
   String? _currentSearchQuery;
   String? _currentStatusFilter;
+  int? _currentClientId; 
 
   FactureBloc({required this.factureRepository}) : super(FactureInitial()) {
     on<LoadFactures>(_onLoadFactures);
@@ -31,10 +31,10 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     _currentPage = event.page;
     _currentSearchQuery = event.searchQuery;
     _currentStatusFilter = event.statusFilter;
+    _currentClientId = event.clientId; 
     await _loadFacturesData(emit);
   }
 
-  // Common method to load factures data
   Future<void> _loadFacturesData(Emitter<FactureState> emit) async {
     try {
       final result = await factureRepository.fetchFactures(
@@ -42,17 +42,17 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
         pageSize: _pageSize,
         searchQuery: _currentSearchQuery,
         statusFilter: _currentStatusFilter,
+        clientId: _currentClientId,
       );
 
-      // Validate that the current page is within bounds
       if (_currentPage > result.totalPages && result.totalPages > 0) {
         _currentPage = result.totalPages;
-        // Retry with the corrected page
         final correctedResult = await factureRepository.fetchFactures(
           page: _currentPage,
           pageSize: _pageSize,
           searchQuery: _currentSearchQuery,
           statusFilter: _currentStatusFilter,
+          clientId: _currentClientId,
         );
 
         emit(
@@ -62,8 +62,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
             totalCount: correctedResult.totalCount,
             currentPage: correctedResult.currentPage,
             totalPages: correctedResult.totalPages,
-            currentSearch: _currentSearchQuery,
-            currentFilter: _currentStatusFilter,
+            currentSearch: _currentSearchQuery, 
+            currentFilter: _currentStatusFilter, 
+            currentClientId: _currentClientId, 
           ),
         );
         return;
@@ -76,8 +77,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
           totalCount: result.totalCount,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
-          currentSearch: _currentSearchQuery,
+          currentSearch: _currentSearchQuery, 
           currentFilter: _currentStatusFilter,
+          currentClientId: _currentClientId,
         ),
       );
     } catch (e) {
@@ -91,7 +93,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     RefreshFactures event,
     Emitter<FactureState> emit,
   ) async {
-    // Keep the current page and filters when refreshing
+    if (event.clientId != null) {
+      _currentClientId = event.clientId;
+    }
     await _loadFacturesData(emit);
   }
 
@@ -99,23 +103,20 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     ChangePage event,
     Emitter<FactureState> emit,
   ) async {
-    // Validate page number
     if (event.page <= 0) {
       emit(FactureError('Numéro de page invalide'));
       return;
     }
 
-    // Check if we're already on this page
     if (event.page == _currentPage) {
       return;
     }
 
-    // Update page and filters
     _currentPage = event.page;
     _currentSearchQuery = event.currentSearchQuery;
     _currentStatusFilter = event.statusFilter;
+    _currentClientId = event.clientId;
 
-    // Show loading only if we're changing pages significantly
     if (state is FactureLoaded) {
       final currentState = state as FactureLoaded;
       if ((event.page - currentState.currentPage).abs() > 1) {
@@ -135,9 +136,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     _currentSearchQuery = event.query.isEmpty ? null : event.query;
-    _currentPage = 1; // Reset to first page when searching
+    _currentClientId = event.clientId;
+    _currentPage = 1;
 
-    // Don't show loading if it's just clearing the search
     if (event.query.isNotEmpty || state is! FactureLoaded) {
       emit(FactureLoading());
     }
@@ -154,7 +155,8 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     Emitter<FactureState> emit,
   ) async {
     _currentStatusFilter = event.status;
-    _currentPage = 1; // Reset to first page when filtering
+    _currentClientId = event.clientId;
+    _currentPage = 1;
 
     emit(FactureLoading());
 
@@ -163,8 +165,6 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     } catch (e) {
       emit(FactureError('Erreur lors du filtrage: ${e.toString()}'));
     }
-
-    // REMOVED: The duplicate add(LoadFactures(...)) call that was causing issues
   }
 
   Future<void> _onLoadFactureDetail(
@@ -203,18 +203,25 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     }
   }
 
-  // Helper method to get current state info
   Map<String, dynamic> getCurrentStateInfo() {
     return {
       'currentPage': _currentPage,
       'pageSize': _pageSize,
       'searchQuery': _currentSearchQuery,
       'statusFilter': _currentStatusFilter,
+      'clientId': _currentClientId,
     };
   }
 
-  // Method to reset pagination state
   void resetPagination() {
+    _currentPage = 1;
+    _currentSearchQuery = null;
+    _currentStatusFilter = null;
+    _currentClientId = null;
+  }
+
+  void clearClientFilter() {
+    _currentClientId = null;
     _currentPage = 1;
     _currentSearchQuery = null;
     _currentStatusFilter = null;

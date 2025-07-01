@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,7 +10,14 @@ import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state
 import 'package:oilab_frontend/core/models/facture_model.dart';
 
 class FactureListScreen extends StatefulWidget {
-  const FactureListScreen({Key? key}) : super(key: key);
+  final int? clientId;
+  final String? clientName;
+  
+  const FactureListScreen({
+    Key? key,
+    this.clientId,
+    this.clientName,
+  }) : super(key: key);
 
   @override
   State<FactureListScreen> createState() => _FactureListScreenState();
@@ -23,10 +29,16 @@ class _FactureListScreenState extends State<FactureListScreen> {
   String _currentSearchQuery = '';
   Timer? _debounce;
 
+  // Track if we're filtering by client
+  bool get _isClientFiltered => widget.clientId != null;
+
   @override
   void initState() {
     super.initState();
-    context.read<FactureBloc>().add(LoadFactures());
+    // Load factures with or without client filter
+    context.read<FactureBloc>().add(
+      LoadFactures(clientId: widget.clientId),
+    );
   }
 
   @override
@@ -41,7 +53,9 @@ class _FactureListScreenState extends State<FactureListScreen> {
     _debounce = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() => _currentSearchQuery = query);
-        context.read<FactureBloc>().add(SearchFactures(query));
+        context.read<FactureBloc>().add(
+          SearchFactures(query, clientId: widget.clientId),
+        );
       }
     });
   }
@@ -50,7 +64,9 @@ class _FactureListScreenState extends State<FactureListScreen> {
     setState(() {
       _selectedStatusFilter = status;
     });
-    context.read<FactureBloc>().add(FilterFacturesByStatus(status));
+    context.read<FactureBloc>().add(
+      FilterFacturesByStatus(status, clientId: widget.clientId),
+    );
   }
 
   void _changePage(int page) {
@@ -80,6 +96,7 @@ class _FactureListScreenState extends State<FactureListScreen> {
           page,
           currentSearchQuery: currentState.currentSearch,
           statusFilter: currentState.currentFilter,
+          clientId: widget.clientId, // Pass client ID for pagination
         ),
       );
     }
@@ -140,8 +157,14 @@ class _FactureListScreenState extends State<FactureListScreen> {
       _selectedStatusFilter = null;
       _currentSearchQuery = '';
     });
-    context.read<FactureBloc>().add(SearchFactures(''));
-    context.read<FactureBloc>().add(FilterFacturesByStatus(null));
+    context.read<FactureBloc>().add(
+      LoadFactures(clientId: widget.clientId),
+    );
+  }
+
+  void _clearClientFilter() {
+    // Navigate back to all factures
+    Navigator.of(context).pushReplacementNamed('/factures/client');
   }
 
   @override
@@ -156,6 +179,16 @@ class _FactureListScreenState extends State<FactureListScreen> {
             padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Column(
               children: [
+                // Client filter indicator - only show when filtering by client
+                if (_isClientFiltered) ...[
+                  _ClientFilterIndicator(
+                    clientName: widget.clientName ?? 'Client ${widget.clientId}',
+                    onClear: _clearClientFilter,
+                    isMobile: isMobile,
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+                ],
+                
                 SizedBox(height: isMobile ? 12 : 16),
                 _SearchSection(
                   controller: _searchController,
@@ -179,6 +212,68 @@ class _FactureListScreenState extends State<FactureListScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// Client Filter Indicator Widget
+class _ClientFilterIndicator extends StatelessWidget {
+  final String clientName;
+  final VoidCallback onClear;
+  final bool isMobile;
+
+  const _ClientFilterIndicator({
+    required this.clientName,
+    required this.onClear,
+    required this.isMobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 16,
+        vertical: isMobile ? 8 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.accentGreen.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.accentGreen.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.person,
+            size: isMobile ? 16 : 18,
+            color: AppColors.accentGreen,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Factures de: $clientName',
+              style: TextStyle(
+                fontSize: isMobile ? 12 : 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.accentGreen,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.close,
+              size: isMobile ? 16 : 18,
+              color: AppColors.accentGreen,
+            ),
+            onPressed: onClear,
+            tooltip: 'Voir toutes les factures',
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(
+              minWidth: isMobile ? 24 : 32,
+              minHeight: isMobile ? 24 : 32,
+            ),
+          ),
+        ],
       ),
     );
   }

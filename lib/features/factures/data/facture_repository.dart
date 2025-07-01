@@ -20,7 +20,7 @@ class FacturePaginationResult {
 
 class FactureRepository {
   final String baseUrl;
-  final AuthRepository authRepo; 
+  final AuthRepository authRepo;
 
   FactureRepository({required this.baseUrl, required this.authRepo});
 
@@ -29,6 +29,7 @@ class FactureRepository {
     int pageSize = 10,
     String? searchQuery,
     String? statusFilter,
+    int? clientId, // Add client ID parameter
   }) async {
     try {
       final token = await authRepo.getAccessToken();
@@ -38,6 +39,11 @@ class FactureRepository {
         'page': page.toString(),
         'page_size': pageSize.toString(),
       };
+
+      // Add client_id if provided
+      if (clientId != null) {
+        queryParams['client_id'] = clientId.toString();
+      }
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
         queryParams['search'] = searchQuery;
@@ -49,6 +55,8 @@ class FactureRepository {
       final uri = Uri.parse(
         '$baseUrl/api/factures/',
       ).replace(queryParameters: queryParams);
+
+      print('Fetching factures from: $uri'); // Debug log
 
       final resp = await http.get(
         uri,
@@ -119,11 +127,9 @@ class FactureRepository {
         },
       );
 
-
       if (resp.statusCode == 200) {
         final data = json.decode(resp.body);
         String? pdfUrl = data['pdf_url'] as String?;
-
 
         if (pdfUrl != null) {
           // If it's already a full Cloudinary URL, return it
@@ -157,17 +163,13 @@ class FactureRepository {
 
   Future<String?> fetchFacturePdfUrlWithFallback(int factureId) async {
     try {
-
       String? pdfUrl = await fetchFacturePdfUrl(factureId);
 
       if (pdfUrl != null) {
-
         final testResponse = await http.head(Uri.parse(pdfUrl));
         if (testResponse.statusCode == 200) {
           return pdfUrl;
         }
-
-        
       }
 
       return null;
@@ -202,6 +204,7 @@ class FactureRepository {
     }
   }
 
+  // Rest of the methods remain unchanged...
   Future<void> createFacture({
     required String type,
     required int productId,

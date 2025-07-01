@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/core/models/user_model.dart';
 import 'package:oilab_frontend/core/models/product_model.dart';
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
@@ -278,20 +279,26 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
   }
 
   Widget _buildProfileSection(User user, double screenWidth) {
+    final currentUserRole = AuthRepository.currentRole?.toLowerCase();
+
+    final shouldShowFacturesButton =
+        currentUserRole != null &&
+        currentUserRole != 'employee' &&
+        currentUserRole != 'employe';
+
     return Column(
       children: [
-        // Factures button - responsive positioning
-        if (_isDesktop(screenWidth))
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [_buildFacturesButton(screenWidth)],
-          )
-        else
-          Center(child: _buildFacturesButton(screenWidth)),
+        if (shouldShowFacturesButton) ...[
+          if (_isDesktop(screenWidth))
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [_buildFacturesButton(screenWidth)],
+            )
+          else
+            Center(child: _buildFacturesButton(screenWidth)),
+          SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
+        ],
 
-        SizedBox(height: _isMobile(screenWidth) ? 12 : 16),
-
-        // Profile avatar and info
         Center(
           child: Column(
             children: [
@@ -334,7 +341,24 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      onPressed: () {},
+      onPressed: () {
+        // Get the current client information from the bloc state
+        final currentState = context.read<ClientBloc>().state;
+        String? clientName;
+
+        if (currentState is ClientProfileLoaded) {
+          clientName = currentState.client.name;
+        }
+
+        // Navigate to facture list with client filter
+        Navigator.of(context).pushNamed(
+          '/factures/client',
+          arguments: {
+            'clientId': widget.clientId,
+            'clientName': clientName ?? 'Client ${widget.clientId}',
+          },
+        );
+      },
     );
   }
 

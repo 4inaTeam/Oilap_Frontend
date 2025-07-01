@@ -106,11 +106,20 @@ class AppRouter {
         }
         break;
 
-      case '/factures/client':
-        if (isAdmin || isAccountant || isClient) {
-          return MaterialPageRoute(builder: (_) => const FactureListScreen());
-        }
-        break;
+
+
+case '/factures/client':
+  if (isAdmin || isAccountant || isClient) {
+    final args = settings.arguments as Map<String, dynamic>?;
+    
+    return MaterialPageRoute(
+      builder: (_) => FactureListScreen(
+        clientId: args?['clientId'] as int?,
+        clientName: args?['clientName'] as String?,
+      ),
+    );
+  }
+  break;
 
       case '/factures/client/detail':
         if (isAdmin || isAccountant || isClient) {
