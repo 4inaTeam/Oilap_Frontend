@@ -10,6 +10,7 @@ import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 
 String _translateStatus(String? status) {
   if (status == null) return 'N/A';
@@ -739,8 +740,8 @@ class _PaginationControls extends StatelessWidget {
   }
 }
 
-void _confirmCancel(BuildContext context, dynamic product) {
-  showDialog(
+Future<void> _confirmCancel(BuildContext context, dynamic product) async {
+  final confirmed = await showDialog<bool>(
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
@@ -749,23 +750,25 @@ void _confirmCancel(BuildContext context, dynamic product) {
         actions: [
           TextButton(
             child: const Text('Non'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
           ),
           TextButton(
             child: const Text('Oui', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              context.read<ProductBloc>().add(CancelProduct(product: product));
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Produit annulé avec succès'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            onPressed: () => Navigator.of(context).pop(true),
           ),
         ],
       );
     },
   );
+
+  if (confirmed == true && context.mounted) {
+    context.read<ProductBloc>().add(CancelProduct(product: product));
+
+    // Show success dialog instead of SnackBar
+    await showSuccessDialog(
+      context,
+      title: 'Produit annulé',
+      message: 'Le produit a été annulé avec succès',
+    );
+  }
 }

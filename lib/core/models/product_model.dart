@@ -73,7 +73,7 @@ class Product extends Equatable {
     'client': client,
     'photo': photo,
     'created_at': createdAt,
-    'end_time': end_time?.toIso8601String(), 
+    'end_time': end_time?.toIso8601String(),
     'estimation_date': estimationDate,
     'client_details': clientDetails,
     'created_by': createdBy,
@@ -83,19 +83,19 @@ class Product extends Equatable {
   Product copyWith({
     int? id,
     String? quality,
-    double? quantity, 
+    double? quantity,
     String? origine,
     double? price,
     String? status,
     String? clientCin,
     int? clientId,
     String? photo,
-    String? createdAt, 
-    DateTime? end_time, 
-    String? estimationDate, 
+    String? createdAt,
+    DateTime? end_time,
+    String? estimationDate,
     String? createdBy,
     int? estimationTime,
-    int? estimation_time, 
+    int? estimation_time,
   }) {
     return Product(
       id: id ?? this.id,
@@ -109,12 +109,11 @@ class Product extends Equatable {
       clientId: clientId ?? this.clientId,
       photo: photo ?? this.photo,
       createdAt: createdAt ?? this.createdAt,
-      end_time: end_time ?? this.end_time, 
+      end_time: end_time ?? this.end_time,
       estimationDate: estimationDate ?? this.estimationDate,
       createdBy: createdBy ?? this.createdBy,
       estimationTime: estimationTime ?? this.estimationTime,
-      estimation_time:
-          estimation_time ?? this.estimation_time, 
+      estimation_time: estimation_time ?? this.estimation_time,
     );
   }
 
@@ -126,6 +125,33 @@ class Product extends Equatable {
     } catch (e) {
       return '-';
     }
+  }
+
+  // Fixed estimation time formatting - this should show time duration, not date
+  String get formattedEstimationTime {
+    final timeValue = estimationTime ?? estimation_time;
+    if (timeValue == null) return '-';
+
+    // If the time is in minutes
+    if (timeValue < 60) {
+      return '$timeValue min';
+    }
+
+    // If the time is in hours (convert minutes to hours)
+    final hours = timeValue / 60;
+    if (hours < 24) {
+      if (hours == hours.toInt()) {
+        return '${hours.toInt()}h';
+      } else {
+        final h = hours.floor();
+        final m = ((hours - h) * 60).round();
+        return '${h}h ${m}min';
+      }
+    }
+
+    // If the time is in days (convert hours to days)
+    final days = hours / 24;
+    return '${days.toStringAsFixed(1)} jours';
   }
 
   String get formattedEstimationDate {
@@ -145,8 +171,9 @@ class Product extends Equatable {
 
   String get formattedQuantity => '$quantity Kg';
 
-  bool get hasEndTime => end_time != null; 
+  bool get hasEndTime => end_time != null;
   bool get hasEstimationDate => estimationDate != null;
+  bool get hasEstimationTime => (estimationTime ?? estimation_time) != null;
 
   @override
   List<Object?> get props => [

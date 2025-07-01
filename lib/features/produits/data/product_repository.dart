@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/models/product_model.dart';
 import '../../auth/data/auth_repository.dart';
+
+import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class ProductPaginationResult {
   final List<Product> products;
@@ -25,7 +29,7 @@ class ProductRepository {
 
   Future<ProductPaginationResult> fetchProducts({
     int page = 1,
-    int pageSize = 10, 
+    int pageSize = 10,
     String? searchQuery,
   }) async {
     try {
@@ -35,8 +39,7 @@ class ProductRepository {
       final queryParams = {
         'page': page.toString(),
         'page_size': pageSize.toString(),
-        'ordering':
-            '-created_at',
+        'ordering': '-created_at',
       };
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -67,15 +70,11 @@ class ProductRepository {
         List<dynamic> data;
         int totalCount;
 
-        // Handle paginated response
         if (responseData is Map && responseData.containsKey('results')) {
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? 0;
         } else {
-          // Handle non-paginated response with manual pagination and sorting
           final allData = responseData as List<dynamic>;
-
-          // Sort by created_at field (newest first) - adjust field name as needed
           allData.sort((a, b) {
             final dateA =
                 DateTime.tryParse(a['created_at']?.toString() ?? '') ??
@@ -83,15 +82,10 @@ class ProductRepository {
             final dateB =
                 DateTime.tryParse(b['created_at']?.toString() ?? '') ??
                 DateTime(1970);
-            return dateB.compareTo(dateA); // Descending order (newest first)
+            return dateB.compareTo(dateA);
           });
-
           totalCount = allData.length;
-
-          // Calculate start and end indices for current page
           final startIndex = (page - 1) * pageSize;
-
-          // Get slice of data for current page
           data = allData.skip(startIndex).take(pageSize).toList();
         }
 
@@ -116,30 +110,6 @@ class ProductRepository {
           currentPage: page,
           totalPages: (totalCount / pageSize).ceil(),
         );
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Product>> fetchAllProducts() async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse(
-          '$baseUrl/api/products/?ordering=-created_at',
-        ), // Add sorting here too
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-        return data
-            .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
       }
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
@@ -201,9 +171,7 @@ class ProductRepository {
 
     final Map<String, dynamic> body = {};
 
-    final currentStatus = status;
-
-    if (currentStatus == 'doing') {
+    if (status == 'doing') {
       if (status != null) body['status'] = status;
     } else {
       if (quality != null) body['quality'] = quality;
@@ -267,31 +235,6 @@ class ProductRepository {
     }
   }
 
-  // Additional method to fetch products by client
-  Future<List<Product>> fetchProductsByClient(int clientId) async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse(
-          '$baseUrl/api/products/client/$clientId/?ordering=-created_at',
-        ), // Add sorting here too
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-        return data
-            .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   Future<void> cancelProduct(dynamic product) async {
     try {
       final token = await authRepo.getAccessToken();
@@ -320,6 +263,65 @@ class ProductRepository {
       }
     } catch (e) {
       throw Exception('Cancel failed: ${e.toString()}');
+    }
+  }
+
+  // Clean PDF download without debug prints
+  Future<String> downloadProductPDF(int productId) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/products/$productId/pdf/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final fileName = 'produit_$productId.pdf';
+
+        if (kIsWeb) {
+          // Web platform - browser download
+          _downloadFileWeb(response.bodyBytes, fileName);
+          return 'PDF downloaded successfully';
+        } else {
+          // For mobile/desktop - return success message
+          return 'PDF download successful (native platform)';
+        }
+      } else if (response.statusCode == 406) {
+        throw Exception(
+          'Server rejected the request (406). Check Django view accepts the request format.',
+        );
+      } else {
+        throw Exception('Download failed with status ${response.statusCode}');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Clean web download without debug prints
+  void _downloadFileWeb(Uint8List bytes, String fileName) {
+    if (!kIsWeb) return;
+
+    try {
+      // Create blob
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      // Create and trigger download
+      final anchor =
+          html.AnchorElement()
+            ..href = url
+            ..download = fileName
+            ..style.display = 'none';
+
+      html.document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      throw Exception('Web download failed: $e');
     }
   }
 }

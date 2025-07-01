@@ -25,3 +25,12 @@ class AuthInitialized extends AuthEvent {
   @override
   List<Object> get props => [];
 }
+
+class AuthUserRefreshRequested extends AuthEvent {
+  final bool forceRefresh;
+
+  AuthUserRefreshRequested({this.forceRefresh = false});
+
+  @override
+  List<Object> get props => [forceRefresh];
+}

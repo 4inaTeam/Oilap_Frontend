@@ -20,7 +20,7 @@ class FacturePaginationResult {
 
 class FactureRepository {
   final String baseUrl;
-  final AuthRepository authRepo;
+  final AuthRepository authRepo; 
 
   FactureRepository({required this.baseUrl, required this.authRepo});
 

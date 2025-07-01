@@ -130,7 +130,7 @@ class _SidebarState extends State<Sidebar> {
           hasAccess = isAdmin;
           break;
         case '/clients':
-          hasAccess = isAdmin || isAccountant;
+          hasAccess = isAdmin || isEmployee;
           break;
         case '/produits':
           hasAccess = isAdmin || isEmployee;

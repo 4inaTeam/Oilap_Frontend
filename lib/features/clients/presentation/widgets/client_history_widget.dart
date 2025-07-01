@@ -74,7 +74,7 @@ class ClientHistoryWidget extends StatelessWidget {
           ),
         ),
       ),
-      // Estimated Time
+      // Estimated Time - Fixed column header
       DataColumn(
         label: Expanded(
           child: Text(
@@ -183,11 +183,13 @@ class ClientHistoryWidget extends StatelessWidget {
           ),
         ),
       ),
+      // Fixed: Use formattedEstimationTime instead of formattedEstimationDate
       DataCell(
         SizedBox(
           width: double.infinity,
           child: Text(
-            product.formattedEstimationDate,
+            product
+                .formattedEstimationTime, // This now shows duration, not date
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: dataFontSize),
           ),

@@ -14,7 +14,7 @@ class UpdateProfile extends ProfileEvent {
   final String? tel;
   final String? password;
   final File? profilePhoto;
-  final Uint8List? profilePhotoBytes; // Add this for web support
+  final Uint8List? profilePhotoBytes; 
 
   UpdateProfile({
     required this.name,

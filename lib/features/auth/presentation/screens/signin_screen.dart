@@ -13,6 +13,8 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
+
 class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
 
@@ -44,7 +46,6 @@ class _SignInViewState extends State<_SignInView> {
       ),
     );
   }
-
 
   void _navigateBasedOnRole() {
     if (_hasNavigated) return;
@@ -80,6 +81,16 @@ class _SignInViewState extends State<_SignInView> {
     }
   }
 
+  Future<void> _showAuthErrorDialog() async {
+    if (!mounted) return;
+
+    await showCustomErrorDialog(
+      context,
+      message: 'Email ou mot de passe incorrect. Veuillez réessayer.',
+      showRetry: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -94,17 +105,10 @@ class _SignInViewState extends State<_SignInView> {
           if (state is AuthUserLoadSuccess) {
             _navigateBasedOnRole();
           } else if (state is AuthLoadSuccess) {
+            // Handle successful authentication without user details
           } else if (state is AuthLoadFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                  'Email ou mot de passe incorrect',
-                  style: TextStyle(color: Colors.white),
-                ),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            // Show custom error dialog instead of SnackBar
+            _showAuthErrorDialog();
           }
         },
         child: Center(

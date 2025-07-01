@@ -12,6 +12,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthUserRequested>(_onUserRequested);
+    on<AuthUserRefreshRequested>(_onUserRefreshRequested); // Add this line
   }
 
   Future<void> _onAuthInitialized(
@@ -112,6 +113,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthUserLoadInProgress());
     }
 
+    try {
+      final user = await _repo.fetchCurrentUser();
+      emit(AuthUserLoadSuccess(user));
+    } catch (e) {
+      final errorMessage = e.toString();
+
+      if (errorMessage.contains('please login again') ||
+          errorMessage.contains('No access token available')) {
+        await _repo.logout();
+        emit(AuthLoggedOut());
+      } else {
+        emit(AuthUserLoadFailure(errorMessage));
+      }
+    }
+  }
+
+  // Add this new method to handle the refresh event
+  Future<void> _onUserRefreshRequested(
+    AuthUserRefreshRequested event,
+    Emitter<AuthState> emit,
+  ) async {
     try {
       final user = await _repo.fetchCurrentUser();
       emit(AuthUserLoadSuccess(user));

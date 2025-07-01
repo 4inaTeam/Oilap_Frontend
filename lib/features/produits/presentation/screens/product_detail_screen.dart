@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import '../bloc/product_bloc.dart';
+import '../bloc/product_event.dart';
+import '../bloc/product_state.dart';
+
 
 class ProductDetailScreen extends StatelessWidget {
   final dynamic product;
@@ -13,190 +17,221 @@ class ProductDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppLayout(
       currentRoute: '/produits/detail',
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 600;
-          return Padding(
-            padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: isMobile ? double.infinity : null,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        iconColor: Colors.white,
-                        backgroundColor: AppColors.accentGreen,
-                        padding: EdgeInsets.symmetric(
-                          vertical: isMobile ? 14 : 12,
-                          horizontal: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Téléchargement en cours...'),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.download, size: 16),
-                      label: Text(
-                        'Télécharger le rapport',
-                        style: const TextStyle(color: Colors.white),
+      child: BlocListener<ProductBloc, ProductState>(
+        listener: (context, state) {
+          // Remove all SnackBar notifications
+          // PDF download will happen silently
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            return Padding(
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: isMobile ? double.infinity : null,
+                      child: BlocBuilder<ProductBloc, ProductState>(
+                        builder: (context, state) {
+                          final isLoading = state is ProductPDFDownloadLoading;
+
+                          return ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              iconColor: Colors.white,
+                              backgroundColor: AppColors.accentGreen,
+                              padding: EdgeInsets.symmetric(
+                                vertical: isMobile ? 14 : 12,
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed:
+                                isLoading
+                                    ? null
+                                    : () {
+                                      // Trigger PDF download
+                                      context.read<ProductBloc>().add(
+                                        DownloadProductPDF(
+                                          productId: product.id,
+                                        ),
+                                      );
+                                    },
+                            icon:
+                                isLoading
+                                    ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                    : const Icon(Icons.download, size: 16),
+                            label: Text(
+                              isLoading
+                                  ? 'Téléchargement...'
+                                  : 'Télécharger PDF',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
-                ),
 
-                SizedBox(height: isMobile ? 16 : 24),
+                  SizedBox(height: isMobile ? 16 : 24),
 
-                // Content section
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Table layout for mobile, card layout for larger screens
-                        if (isMobile) ...[
-                          _buildMobileTable(),
-                          const SizedBox(height: 24),
-                        ] else ...[
-                          // Existing card layout for larger screens
+                  // Content section
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Table layout for mobile, card layout for larger screens
+                          if (isMobile) ...[
+                            _buildMobileTable(),
+                            const SizedBox(height: 24),
+                          ] else ...[
+                            // Existing card layout for larger screens
+                            Card(
+                              elevation: 2,
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  children: [
+                                    // First row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Nom de Client',
+                                            product.clientName ??
+                                                product.client ??
+                                                '-',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Ville',
+                                            product.origine ?? '-',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Second row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Mode de livraison',
+                                            product.quality ?? '-',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Quantité',
+                                            product.quantity != null
+                                                ? '${product.quantity} Kg'
+                                                : '-',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Third row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Temps d\'entrée',
+                                            product.formattedCreatedAt ?? '-',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Sortie',
+                                            product.status?.toLowerCase() ==
+                                                    'done'
+                                                ? 'Oui'
+                                                : 'Non',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Fourth row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildFormField(
+                                            'Prix unitaire',
+                                            product.price != null
+                                                ? '${product.price} DT'
+                                                : '-',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        const Expanded(child: SizedBox()),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          // Status tracking section matching the screenshot
                           Card(
-                            elevation: 2,
+                            elevation: isMobile ? 0 : 2,
                             child: Padding(
-                              padding: const EdgeInsets.all(24),
+                              padding: EdgeInsets.all(isMobile ? 0 : 24),
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // First row
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Nom de Client',
-                                          product.clientName ??
-                                              product.client ??
-                                              '-',
-                                        ),
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      left: isMobile ? 0 : 0,
+                                      bottom: isMobile ? 16 : 24,
+                                      top: isMobile ? 0 : 0,
+                                    ),
+                                    child: const Text(
+                                      'Suivi de commande',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      const SizedBox(width: 24),
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Ville',
-                                          product.origine ?? '-',
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 24),
-
-                                  // Second row
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Mode de livraison',
-                                          product.quality ?? '-',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Quantité',
-                                          product.quantity != null
-                                              ? '${product.quantity} Kg'
-                                              : '-',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  // Third row
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Temps d\'entrée',
-                                          product.formattedCreatedAt ?? '-',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Sortie',
-                                          product.status?.toLowerCase() ==
-                                                  'done'
-                                              ? 'Oui'
-                                              : 'Non',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  // Fourth row
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildFormField(
-                                          'Prix unitaire',
-                                          product.price != null
-                                              ? '${product.price} DT'
-                                              : '-',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      const Expanded(child: SizedBox()),
-                                    ],
-                                  ),
+                                  _buildStatusTracker(),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 24),
                         ],
-
-                        // Status tracking section matching the screenshot
-                        Card(
-                          elevation: isMobile ? 0 : 2,
-                          child: Padding(
-                            padding: EdgeInsets.all(isMobile ? 0 : 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: isMobile ? 0 : 0,
-                                    bottom: isMobile ? 16 : 24,
-                                    top: isMobile ? 0 : 0,
-                                  ),
-                                  child: const Text(
-                                    'Suivi de commande',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                _buildStatusTracker(),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -388,73 +423,5 @@ class ProductDetailScreen extends StatelessWidget {
     }
 
     return Column(children: statusWidgets);
-  }
-}
-
-// Product model remains the same
-class Product {
-  final String? client;
-  final String? clientName;
-  final String? clientCin;
-  final String? quality;
-  final double? quantity;
-  final String? origine;
-  final double? price;
-  final DateTime? createdAt;
-  final DateTime? estimationDate;
-  final int? estimationTime;
-  final DateTime? end_time;
-  final String? createdBy;
-  final String? status;
-  final String? photo;
-
-  Product({
-    this.client,
-    this.clientName,
-    this.clientCin,
-    this.quality,
-    this.quantity,
-    this.origine,
-    this.price,
-    this.createdAt,
-    this.estimationDate,
-    this.estimationTime,
-    this.end_time,
-    this.createdBy,
-    this.status,
-    this.photo,
-  });
-
-  String get formattedCreatedAt => _formatDateTime(createdAt);
-  String get formattedEstimationDate => _formatDateTime(estimationDate);
-  String get formattedEndTime => _formatDateTime(end_time);
-
-  String _formatDateTime(DateTime? date) {
-    if (date == null) return '-';
-    return DateFormat('dd/MM/yyyy HH:mm').format(date);
-  }
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      client: json['client']?.toString(),
-      clientName: json['clientName']?.toString(),
-      clientCin: json['clientCin']?.toString(),
-      quality: json['quality']?.toString(),
-      quantity: double.tryParse(json['quantity']?.toString() ?? ''),
-      origine: json['origine']?.toString(),
-      price: double.tryParse(json['price']?.toString() ?? ''),
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      estimationDate:
-          json['estimationDate'] != null
-              ? DateTime.parse(json['estimationDate'])
-              : null,
-      estimationTime: int.tryParse(json['estimationTime']?.toString() ?? ''),
-      end_time:
-          json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
-      createdBy: json['createdBy']?.toString(),
-      status: json['status']?.toString(),
-      photo: json['photo']?.toString(),
-    );
   }
 }

@@ -15,6 +15,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           page: event.page,
           pageSize: event.pageSize,
           searchQuery: event.searchQuery,
+          ordering: '-id', // Order by ID, newest first
         );
 
         emit(
@@ -39,6 +40,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           page: event.page,
           pageSize: event.pageSize,
           searchQuery: event.query,
+          ordering: '-id', // Maintain ordering during search
         );
 
         emit(
@@ -66,6 +68,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             page: event.page,
             pageSize: currentState.pageSize,
             searchQuery: event.currentSearchQuery,
+            ordering: '-id', // Maintain ordering during pagination
           );
 
           emit(
@@ -97,7 +100,12 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
         );
         emit(ClientAddSuccess());
 
-        final result = await repo.fetchClients(page: 1, pageSize: 8);
+        // After adding, reload the first page to see the new client at the top
+        final result = await repo.fetchClients(
+          page: 1,
+          pageSize: 8,
+          ordering: '-id',
+        );
         emit(
           ClientLoadSuccess(
             clients: result.clients,
@@ -132,6 +140,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             page: currentState.currentPage,
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
+            ordering: '-id',
           );
 
           emit(
@@ -145,7 +154,11 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             ),
           );
         } else {
-          final result = await repo.fetchClients(page: 1, pageSize: 8);
+          final result = await repo.fetchClients(
+            page: 1,
+            pageSize: 8,
+            ordering: '-id',
+          );
           emit(
             ClientLoadSuccess(
               clients: result.clients,
@@ -227,6 +240,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
             page: targetPage,
             pageSize: currentState.pageSize,
             searchQuery: currentState.currentSearchQuery,
+            ordering: '-id',
           );
 
           emit(

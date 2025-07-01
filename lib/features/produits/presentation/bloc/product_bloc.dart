@@ -96,16 +96,22 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           clientCin: event.sku,
           estimationTime: event.estimationTime ?? 15,
         );
+
+        // Emit specific success state first
         emit(ProductAddSuccess());
 
-        final result = await repo.fetchProducts(page: 1, pageSize: defaultPageSize); 
+        // Then load updated products list
+        final result = await repo.fetchProducts(
+          page: 1,
+          pageSize: defaultPageSize,
+        );
         emit(
           ProductLoadSuccess(
             products: result.products,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
             totalProducts: result.totalCount,
-            pageSize: defaultPageSize, 
+            pageSize: defaultPageSize,
           ),
         );
       } catch (err) {
@@ -126,7 +132,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
           estimationTime: event.estimationTime,
         );
 
-        final result = await repo.fetchProducts(page: 1, pageSize: defaultPageSize); 
+        // Emit specific success state first - this is what the dialog listens for
+        emit(ProductCreateSuccess());
+
+        // Then load updated products list
+        final result = await repo.fetchProducts(
+          page: 1,
+          pageSize: defaultPageSize,
+        );
         emit(
           ProductLoadSuccess(
             products: result.products,
@@ -274,6 +287,34 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
               error.toString().replaceAll('Exception:', ''),
             ),
           );
+        }
+      }
+    });
+
+    // New handler for PDF download
+    on<DownloadProductPDF>((event, emit) async {
+      try {
+        // Show loading state for download
+        emit(ProductPDFDownloadLoading());
+
+        final filePath = await repo.downloadProductPDF(event.productId);
+
+        // Emit success with file path
+        emit(ProductPDFDownloadSuccess(filePath: filePath));
+
+        // Return to previous state if it was ProductLoadSuccess
+        if (state is ProductLoadSuccess) {
+          // Keep the previous state
+          final previousState = state as ProductLoadSuccess;
+          emit(previousState);
+        }
+      } catch (error) {
+        emit(ProductPDFDownloadFailure(error.toString()));
+
+        // Return to previous state if it was ProductLoadSuccess
+        if (state is ProductLoadSuccess) {
+          final previousState = state as ProductLoadSuccess;
+          emit(previousState);
         }
       }
     });

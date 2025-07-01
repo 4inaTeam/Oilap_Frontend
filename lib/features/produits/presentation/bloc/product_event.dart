@@ -23,7 +23,11 @@ class SearchProducts extends ProductEvent {
   final int page;
   final int pageSize;
 
-  const SearchProducts({required this.query, this.page = 1, this.pageSize = 10});
+  const SearchProducts({
+    required this.query,
+    this.page = 1,
+    this.pageSize = 10,
+  });
 
   @override
   List<Object> get props => [query, page, pageSize];
@@ -157,4 +161,13 @@ class CancelProduct extends ProductEvent {
 
   @override
   List<Object?> get props => [product];
+}
+
+class DownloadProductPDF extends ProductEvent {
+  final int productId;
+
+  const DownloadProductPDF({required this.productId});
+
+  @override
+  List<Object> get props => [productId];
 }

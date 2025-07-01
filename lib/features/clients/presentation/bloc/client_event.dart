@@ -10,11 +10,7 @@ class LoadClients extends ClientEvent {
   final int pageSize;
   final String? searchQuery;
 
-  LoadClients({
-    this.page = 1,
-    this.pageSize = 6,
-    this.searchQuery,
-  });
+  LoadClients({this.page = 1, this.pageSize = 10, this.searchQuery});
 
   @override
   List<Object?> get props => [page, pageSize, searchQuery];
@@ -25,11 +21,7 @@ class SearchClients extends ClientEvent {
   final int page;
   final int pageSize;
 
-  SearchClients({
-    required this.query,
-    this.page = 1,
-    this.pageSize = 6,
-  });
+  SearchClients({required this.query, this.page = 1, this.pageSize = 10});
 
   @override
   List<Object?> get props => [query, page, pageSize];

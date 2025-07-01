@@ -7,7 +7,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
   final BillRepository repo;
 
   BillBloc(this.repo) : super(BillInitial()) {
-    // Load bills with pagination, search, and filtering
+    // Load bills with pagination, search, and filtering - default pageSize changed to 10
     on<LoadBills>((event, emit) async {
       emit(BillLoading());
       try {
@@ -34,7 +34,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Search bills
+    // Search bills - default pageSize changed to 10
     on<SearchBills>((event, emit) async {
       emit(BillLoading());
       try {
@@ -61,7 +61,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Filter bills by category
+    // Filter bills by category - default pageSize changed to 10
     on<FilterBillsByCategory>((event, emit) async {
       emit(BillLoading());
       try {
@@ -141,15 +141,15 @@ class BillBloc extends Bloc<BillEvent, BillState> {
 
         emit(BillCreateSuccess());
 
-        // Reload bills to show the new bill
-        final result = await repo.fetchBills(page: 1, pageSize: 6);
+        // Reload bills to show the new bill - changed pageSize to 10
+        final result = await repo.fetchBills(page: 1, pageSize: 10);
         emit(
           BillLoadSuccess(
             bills: result.bills,
             currentPage: result.currentPage,
             totalPages: result.totalPages,
             totalBills: result.totalCount,
-            pageSize: 6,
+            pageSize: 10,
           ),
         );
       } catch (error) {
@@ -175,7 +175,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
 
         // Preserve current state when reloading
         int currentPage = 1;
-        int pageSize = 6;
+        int pageSize = 10; // Changed default to 10
         String? searchQuery;
         String? categoryFilter;
 
@@ -248,6 +248,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
         }
       }
     });
+
     on<LoadBillById>((event, emit) async {
       emit(BillLoading());
       try {

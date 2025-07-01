@@ -133,7 +133,6 @@ class AppHeader extends StatelessWidget {
 
   bool _shouldShowNotifications() {
     final String? role = AuthRepository.currentRole;
-    // Show notifications only to clients
     return role == 'CLIENT';
   }
 
@@ -249,7 +248,6 @@ class _SearchBarUI extends StatelessWidget {
   }
 }
 
-// Enhanced Notification Dropdown
 class _NotificationDropdown extends StatefulWidget {
   @override
   State<_NotificationDropdown> createState() => _NotificationDropdownState();

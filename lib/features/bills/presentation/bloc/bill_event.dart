@@ -7,7 +7,6 @@ abstract class BillEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Load bills with pagination and filtering
 class LoadBills extends BillEvent {
   final int page;
   final int pageSize;
@@ -16,7 +15,7 @@ class LoadBills extends BillEvent {
 
   LoadBills({
     this.page = 1,
-    this.pageSize = 6,
+    this.pageSize = 10,
     this.searchQuery,
     this.categoryFilter,
   });
@@ -25,7 +24,6 @@ class LoadBills extends BillEvent {
   List<Object?> get props => [page, pageSize, searchQuery, categoryFilter];
 }
 
-/// Search bills by query
 class SearchBills extends BillEvent {
   final String query;
   final int page;
@@ -35,7 +33,7 @@ class SearchBills extends BillEvent {
   SearchBills({
     required this.query,
     this.page = 1,
-    this.pageSize = 6,
+    this.pageSize = 10,
     this.categoryFilter,
   });
 
@@ -43,7 +41,6 @@ class SearchBills extends BillEvent {
   List<Object?> get props => [query, page, pageSize, categoryFilter];
 }
 
-/// Filter bills by category
 class FilterBillsByCategory extends BillEvent {
   final String? category;
   final int page;
@@ -53,7 +50,7 @@ class FilterBillsByCategory extends BillEvent {
   FilterBillsByCategory({
     this.category,
     this.page = 1,
-    this.pageSize = 6,
+    this.pageSize = 10,
     this.searchQuery,
   });
 
@@ -61,7 +58,6 @@ class FilterBillsByCategory extends BillEvent {
   List<Object?> get props => [category, page, pageSize, searchQuery];
 }
 
-/// Change pagination page
 class ChangePage extends BillEvent {
   final int page;
 
@@ -71,7 +67,6 @@ class ChangePage extends BillEvent {
   List<Object?> get props => [page];
 }
 
-/// Create a new bill with image file or web image bytes
 class CreateBill extends BillEvent {
   final String owner;
   final String category;
@@ -95,18 +90,17 @@ class CreateBill extends BillEvent {
 
   @override
   List<Object?> get props => [
-        owner,
-        category,
-        amount,
-        paymentDate,
-        consumption,
-        items,
-        imageFile,
-        webImage,
-      ];
+    owner,
+    category,
+    amount,
+    paymentDate,
+    consumption,
+    items,
+    imageFile,
+    webImage,
+  ];
 }
 
-/// Update an existing bill (excluding image fields)
 class UpdateBill extends BillEvent {
   final int id;
   final String owner;
@@ -128,17 +122,16 @@ class UpdateBill extends BillEvent {
 
   @override
   List<Object?> get props => [
-        id,
-        owner,
-        category,
-        amount,
-        paymentDate,
-        consumption,
-        items,
-      ];
+    id,
+    owner,
+    category,
+    amount,
+    paymentDate,
+    consumption,
+    items,
+  ];
 }
 
-/// Delete a bill
 class DeleteBill extends BillEvent {
   final int billId;
 
@@ -148,7 +141,6 @@ class DeleteBill extends BillEvent {
   List<Object?> get props => [billId];
 }
 
-/// Load a specific bill by ID
 class LoadBillById extends BillEvent {
   final int id;
 
@@ -158,8 +150,6 @@ class LoadBillById extends BillEvent {
   List<Object?> get props => [id];
 }
 
-/// Clear current bill state
 class ClearBillState extends BillEvent {}
 
-/// Refresh bills (reload current page with current filters)
 class RefreshBills extends BillEvent {}

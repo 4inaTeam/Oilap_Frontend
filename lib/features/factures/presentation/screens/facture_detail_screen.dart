@@ -14,6 +14,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
+// Import the dialog widgets
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
+
 // Platform-specific imports
 import '../helpers/pdf_utils_stub.dart'
     if (dart.library.html) '../helpers/pdf_utils_web.dart'
@@ -145,12 +149,14 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors du chargement du PDF'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur lors du chargement du PDF',
+          showRetry: true,
+          onRetry: () {
+            Navigator.of(context).pop(); // Close dialog
+            _loadPdfController(pdfUrl); // Retry loading
+          },
         );
       }
     }
@@ -164,16 +170,15 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
         'facture_${widget.facture.factureNumber}.pdf',
       );
     } else {
-      // Use URL launcher for mobile/desktop
       final uri = Uri.parse(pdfUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Impossible d\'ouvrir le lien du PDF'),
-            ),
+          showCustomErrorDialog(
+            context,
+            message: 'Impossible d\'ouvrir le lien du PDF',
+            showRetry: false,
           );
         }
       }
@@ -181,17 +186,14 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   }
 
   Future<void> _processPayment() async {
-    // Check if widget is still mounted
     if (!mounted) return;
 
-    // Check if facture is already paid
     if (widget.facture.paymentStatus == 'paid') {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cette facture a déjà été payée'),
-            backgroundColor: Colors.orange,
-          ),
+        showCustomErrorDialog(
+          context,
+          message: 'Cette facture a déjà été payée',
+          showRetry: false,
         );
       }
       return;
@@ -200,13 +202,11 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     // Check if payment amount is valid
     if (widget.facture.finalTotal < AppConfig.minPaymentAmount) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
+        showCustomErrorDialog(
+          context,
+          message:
               'Le montant minimum pour un paiement est de \${AppConfig.minPaymentAmount}. Montant actuel: \${widget.facture.finalTotal}',
-            ),
-            backgroundColor: Colors.red,
-          ),
+          showRetry: false,
         );
       }
       return;
@@ -226,17 +226,24 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       if (!mounted) return;
 
       if (success) {
-        // Use the stored bloc reference instead of context.read
+        // Refresh the facture data
         _factureBloc?.add(GetFacturePdf(widget.factureId));
+
+        // Show our own success dialog with navigation
         _showPaymentSuccessDialog();
       }
+      // Note: If payment fails, StripeService will show its own error dialog
+      // so we don't need to show another one here
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur de paiement: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur de paiement: ${e.toString()}',
+          showRetry: true,
+          onRetry: () {
+            Navigator.of(context).pop(); // Close dialog
+            _processPayment(); // Retry payment
+          },
         );
       }
     } finally {
@@ -251,31 +258,14 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   void _showPaymentSuccessDialog() {
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 28),
-              SizedBox(width: 8),
-              Text('Paiement réussi'),
-            ],
-          ),
-          content: const Text(
-            'Votre paiement a été traité avec succès. La facture a été marquée comme payée.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _goBackToList();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
+    showSuccessDialog(
+      context,
+      title: 'Paiement réussi',
+      message:
+          'Votre paiement a été traité avec succès. La facture a été marquée comme payée.',
+      onContinue: () {
+        Navigator.of(context).pop(); // Close dialog
+        _goBackToList();
       },
     );
   }

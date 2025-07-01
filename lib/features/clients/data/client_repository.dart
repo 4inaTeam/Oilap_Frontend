@@ -26,8 +26,9 @@ class ClientRepository {
 
   Future<ClientPaginationResult> fetchClients({
     int page = 1,
-    int pageSize = 6,
+    int pageSize = 10,
     String? searchQuery,
+    String ordering = '-id', // Default to newest first (higher ID)
   }) async {
     try {
       final token = await authRepo.getAccessToken();
@@ -35,7 +36,8 @@ class ClientRepository {
 
       final queryParams = <String, String>{
         'page': page.toString(),
-        'page_size': '6',
+        'page_size': pageSize.toString(),
+        'ordering': ordering, // Add ordering parameter
       };
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -58,9 +60,29 @@ class ClientRepository {
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
+          // Server-side pagination with ordering
           data = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int? ?? data.length;
+
+          // Convert to User objects and filter for clients only
+          final clients =
+              data
+                  .map((e) {
+                    final userJson = Map<String, dynamic>.from(e);
+                    userJson['username'] = e['name'];
+                    return User.fromJson(userJson);
+                  })
+                  .where((user) => user.role == 'CLIENT')
+                  .toList();
+
+          return ClientPaginationResult(
+            clients: clients,
+            totalCount: totalCount,
+            currentPage: page,
+            totalPages: (totalCount / pageSize).ceil(),
+          );
         } else {
+          // Client-side pagination and ordering
           final allData = responseData as List<dynamic>;
           final allClients =
               allData
@@ -72,6 +94,7 @@ class ClientRepository {
                   .where((user) => user.role == 'CLIENT')
                   .toList();
 
+          // Apply search filter first
           if (searchQuery != null && searchQuery.isNotEmpty) {
             allClients.removeWhere(
               (user) =>
@@ -79,26 +102,60 @@ class ClientRepository {
             );
           }
 
-          totalCount = allClients.length;
-          final startIndex = (page - 1) * 6;
+          // IMPORTANT: Sort by ID descending (newest first) - higher ID means newer
+          allClients.sort((a, b) {
+            if (ordering == '-id') {
+              return b.id.compareTo(a.id); // Descending order (newest first)
+            } else {
+              return a.id.compareTo(b.id); // Ascending order (oldest first)
+            }
+          });
 
-          data =
-              allClients
-                  .skip(startIndex)
-                  .take(6)
-                  .map(
-                    (user) => {
-                      'id': user.id,
-                      'name': user.name,
-                      'email': user.email,
-                      'cin': user.cin,
-                      'tel': user.tel,
-                      'role': user.role,
-                      'profile_photo': user.profilePhotoUrl,
-                      'isActive': user.isActive,
-                    },
-                  )
-                  .toList();
+          totalCount = allClients.length;
+          final startIndex = (page - 1) * pageSize;
+          final endIndex = (startIndex + pageSize).clamp(0, allClients.length);
+
+          // Get the paginated subset
+          final paginatedClients = allClients.sublist(startIndex, endIndex);
+
+          return ClientPaginationResult(
+            clients: paginatedClients,
+            totalCount: totalCount,
+            currentPage: page,
+            totalPages: (totalCount / pageSize).ceil(),
+          );
+        }
+      }
+      throw Exception('Failed with status ${resp.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<User>> fetchAllClients({String ordering = '-id'}) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final queryParams = <String, String>{'ordering': ordering};
+
+      final uri = Uri.parse(
+        '$baseUrl/api/users/get/',
+      ).replace(queryParameters: queryParams);
+
+      final resp = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (resp.statusCode == 200) {
+        final responseData = json.decode(resp.body);
+
+        List<dynamic> data;
+        if (responseData is Map && responseData.containsKey('results')) {
+          data = responseData['results'] as List<dynamic>;
+        } else {
+          data = responseData as List<dynamic>;
         }
 
         final clients =
@@ -106,20 +163,19 @@ class ClientRepository {
                 .map((e) {
                   final userJson = Map<String, dynamic>.from(e);
                   userJson['username'] = e['name'];
-                  return userJson;
+                  return User.fromJson(userJson);
                 })
-                .map((e) => User.fromJson(e))
                 .where((user) => user.role == 'CLIENT')
                 .toList();
 
-        final totalPages = (totalCount / 6).ceil(); // Use fixed page size
+        // Always sort client-side to ensure proper ordering
+        if (ordering == '-id') {
+          clients.sort((a, b) => b.id.compareTo(a.id)); // Newest first
+        } else {
+          clients.sort((a, b) => a.id.compareTo(b.id)); // Oldest first
+        }
 
-        return ClientPaginationResult(
-          clients: clients,
-          totalCount: totalCount,
-          currentPage: page,
-          totalPages: totalPages,
-        );
+        return clients;
       }
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
@@ -127,35 +183,7 @@ class ClientRepository {
     }
   }
 
-  Future<List<User>> fetchAllClients() async {
-    try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final resp = await http.get(
-        Uri.parse('$baseUrl/api/users/get/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (resp.statusCode == 200) {
-        final List<dynamic> data = json.decode(resp.body);
-
-        return data
-            .map((e) {
-              final userJson = Map<String, dynamic>.from(e);
-              userJson['username'] = e['name'];
-              return userJson;
-            })
-            .map((e) => User.fromJson(e))
-            .where((user) => user.role == 'CLIENT')
-            .toList();
-      }
-      throw Exception('Failed with status ${resp.statusCode}');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
+  // Rest of your existing methods remain the same...
   Future<User> getClientById(int clientId) async {
     try {
       final token = await authRepo.getAccessToken();
@@ -369,18 +397,22 @@ class ClientRepository {
     if (token == null) throw Exception('Not authenticated');
 
     final response = await http.get(
-      Uri.parse('$baseUrl/api/users/search/users/$cin/'),
+      Uri.parse('$baseUrl/api/users/search/$cin/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body);
+      final responseData = json.decode(response.body);
+
+      return responseData['user'];
     }
 
     if (response.statusCode == 404) {
       return null;
     }
 
-    throw Exception('Failed to check client');
+    throw Exception(
+      'Failed to check client: ${response.statusCode} - ${response.body}',
+    );
   }
 }

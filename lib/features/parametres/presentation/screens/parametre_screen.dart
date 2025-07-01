@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oilab_frontend/core/models/user_model.dart';
+import 'package:oilab_frontend/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:oilab_frontend/features/auth/presentation/bloc/auth_event.dart';
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 
 import '../../presentation/bloc/profile_bloc.dart';
 import '../../presentation/bloc/profile_event.dart';
@@ -38,6 +42,10 @@ class _ParametresScreenState extends State<ParametresScreen> {
   User? _currentUser;
   bool _hasNewImage = false; // Track if user picked a new image
 
+  // Base URL for constructing full image URLs
+  static const String baseUrl =
+      kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
+
   @override
   void initState() {
     super.initState();
@@ -61,40 +69,30 @@ class _ParametresScreenState extends State<ParametresScreen> {
     return BlocListener<ProfileBloc, ProfileState>(
       listener: (ctx, state) {
         if (state is ProfileUpdated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Profil mis à jour avec succès'),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+          // Show success dialog instead of snackbar
+          showSuccessDialog(
+            context,
+            title: 'Succès',
+            message: 'Profil mis à jour avec succès',
+            onContinue: () {
+              Navigator.of(context).pop(); // Close dialog
+            },
           );
+
+          // Refresh current user in ProfileBloc
           context.read<ProfileBloc>().add(LoadCurrentUser());
+
+          // CRITICAL: Also refresh the AuthBloc to update sidebar avatar instantly
+          context.read<AuthBloc>().add(
+            AuthUserRefreshRequested(forceRefresh: true),
+          );
         }
         if (state is ProfileError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.error, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Erreur: ${state.message}')),
-                ],
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+          // Show error dialog instead of snackbar
+          showCustomErrorDialog(
+            context,
+            message: 'Erreur: ${state.message}',
+            showRetry: false,
           );
         }
         if (state is ProfileLoaded) {
@@ -382,10 +380,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
             height: 120,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
-              // Log the error for debugging
-              print('Error loading profile image: $error');
-
-              // Show default avatar on error
               return Container(
                 width: 120,
                 height: 120,
@@ -427,26 +421,42 @@ class _ParametresScreenState extends State<ParametresScreen> {
 
   ImageProvider? _getProfileImage() {
     // Priority: newly picked image > current user's profile photo
-    if (kIsWeb) {
-      if (_hasNewImage && _pickedImageBytes != null) {
+    if (_hasNewImage) {
+      if (kIsWeb && _pickedImageBytes != null) {
         return MemoryImage(_pickedImageBytes!);
-      } else if (!_hasNewImage &&
-          _currentUser?.profilePhotoUrl != null &&
-          _currentUser!.profilePhotoUrl!.isNotEmpty &&
-          _isValidImageUrl(_currentUser!.profilePhotoUrl!)) {
-        return NetworkImage(_currentUser!.profilePhotoUrl!);
-      }
-    } else {
-      if (_hasNewImage && _pickedImage != null) {
+      } else if (!kIsWeb && _pickedImage != null) {
         return FileImage(_pickedImage!);
-      } else if (!_hasNewImage &&
-          _currentUser?.profilePhotoUrl != null &&
-          _currentUser!.profilePhotoUrl!.isNotEmpty &&
-          _isValidImageUrl(_currentUser!.profilePhotoUrl!)) {
-        return NetworkImage(_currentUser!.profilePhotoUrl!);
       }
     }
+
+    // If no new image picked, show current user's profile photo
+    if (_currentUser?.profilePhotoUrl != null &&
+        _currentUser!.profilePhotoUrl!.isNotEmpty) {
+      final fullImageUrl = _getFullImageUrl(_currentUser!.profilePhotoUrl!);
+
+      if (fullImageUrl != null && _isValidImageUrl(fullImageUrl)) {
+        return NetworkImage(fullImageUrl);
+      }
+    }
+
     return null;
+  }
+
+  String? _getFullImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+
+    // If already a full URL, return as-is
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+
+    // If it's a relative URL, construct full URL
+    if (imageUrl.startsWith('/')) {
+      return '$baseUrl$imageUrl';
+    }
+
+    // If it doesn't start with /, add it
+    return '$baseUrl/$imageUrl';
   }
 
   bool _isValidImageUrl(String url) {
@@ -460,10 +470,14 @@ class _ParametresScreenState extends State<ParametresScreen> {
     bool hasValidProtocol =
         url.startsWith('http://') || url.startsWith('https://');
 
+    // Accept if it has valid protocol and either has image extension or contains /api/ or /media/
     return hasValidProtocol &&
         (hasImageExtension ||
             lowercaseUrl.contains('/api/') ||
-            lowercaseUrl.contains('image'));
+            lowercaseUrl.contains('/media/') ||
+            lowercaseUrl.contains('image') ||
+            lowercaseUrl.contains('photo') ||
+            lowercaseUrl.contains('avatar'));
   }
 
   Widget _buildSectionCard({
@@ -665,7 +679,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
     _passCtrl.clear();
     _confirmCtrl.clear();
 
-    // Reset image picking state when loading user data
     setState(() {
       _hasNewImage = false;
       _pickedImage = null;
@@ -703,7 +716,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
 
       if (picked != null) {
         setState(() {
-          _hasNewImage = true; // Mark that user picked a new image
+          _hasNewImage = true;
         });
 
         if (kIsWeb) {
@@ -719,11 +732,11 @@ class _ParametresScreenState extends State<ParametresScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
-            backgroundColor: Colors.red,
-          ),
+        // Show error dialog instead of snackbar
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur lors de la sélection de l\'image: $e',
+          showRetry: false,
         );
       }
     }
@@ -734,22 +747,15 @@ class _ParametresScreenState extends State<ParametresScreen> {
       return;
     }
     if (_passCtrl.text.isNotEmpty && _passCtrl.text != _confirmCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Les mots de passe ne correspondent pas'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      showValidationError(context, 'Les mots de passe ne correspondent pas');
       return;
     }
     if (_nomCtrl.text.isEmpty ||
         _emailCtrl.text.isEmpty ||
         _cinCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez remplir tous les champs obligatoires'),
-          backgroundColor: Colors.red,
-        ),
+      showValidationError(
+        context,
+        'Veuillez remplir tous les champs obligatoires',
       );
       return;
     }

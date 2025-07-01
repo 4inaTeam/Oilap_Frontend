@@ -2,8 +2,10 @@ import 'package:equatable/equatable.dart';
 import '../../../../core/models/product_model.dart';
 
 abstract class ProductState extends Equatable {
+  const ProductState();
+
   @override
-  List get props => [];
+  List<Object?> get props => [];
 }
 
 class ProductInitial extends ProductState {}
@@ -18,7 +20,7 @@ class ProductLoadSuccess extends ProductState {
   final int pageSize;
   final String? currentSearchQuery;
 
-  ProductLoadSuccess({
+  const ProductLoadSuccess({
     required this.products,
     required this.currentPage,
     required this.totalPages,
@@ -28,7 +30,7 @@ class ProductLoadSuccess extends ProductState {
   });
 
   @override
-  List get props => [
+  List<Object?> get props => [
     products,
     currentPage,
     totalPages,
@@ -58,11 +60,38 @@ class ProductLoadSuccess extends ProductState {
 
 class ProductOperationFailure extends ProductState {
   final String message;
-  ProductOperationFailure(this.message);
+
+  const ProductOperationFailure(this.message);
+
   @override
-  List get props => [message];
+  List<Object> get props => [message];
 }
 
 class ProductAddSuccess extends ProductState {}
 
+class ProductCreateSuccess extends ProductState {}
+
 class ProductUpdateSuccess extends ProductState {}
+
+class ProductDeleteSuccess extends ProductState {}
+
+// PDF Download States
+class ProductPDFDownloadLoading extends ProductState {}
+
+class ProductPDFDownloadSuccess extends ProductState {
+  final String filePath;
+
+  const ProductPDFDownloadSuccess({required this.filePath});
+
+  @override
+  List<Object> get props => [filePath];
+}
+
+class ProductPDFDownloadFailure extends ProductState {
+  final String message;
+
+  const ProductPDFDownloadFailure(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
