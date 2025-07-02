@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -53,17 +54,13 @@ Future<void> main() async {
       sharedPreferences: sharedPreferences,
     );
 
-    // IMPORTANT: Initialize authentication state
     await authRepository.initializeAuth();
-
     await _initializeStripe(authRepository);
 
-    // Initialize Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Set background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     runApp(
@@ -74,11 +71,7 @@ Future<void> main() async {
             create:
                 (ctx) => ProfileRepository(
                   baseUrl: backendUrl,
-                  authRepository:
-                      ctx
-                          .read<
-                            AuthRepository
-                          >(), // Fixed: Pass the AuthRepository
+                  authRepository: ctx.read<AuthRepository>(),
                 ),
           ),
           RepositoryProvider<EmployeeRepository>(
@@ -137,7 +130,7 @@ Future<void> main() async {
               create:
                   (ctx) =>
                       AuthBloc(ctx.read<AuthRepository>())
-                        ..add(AuthInitialized()), // Trigger initialization
+                        ..add(AuthInitialized()),
             ),
             BlocProvider<PasswordResetBloc>(
               create: (ctx) => PasswordResetBloc(ctx.read<AuthRepository>()),
@@ -185,7 +178,30 @@ Future<void> main() async {
   } catch (e) {
     runApp(
       MaterialApp(
-        home: Scaffold(body: Center(child: Text('Error initializing app: $e'))),
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 64, color: Colors.red),
+                SizedBox(height: 16),
+                Text(
+                  'Error initializing app',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    '$e',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -218,17 +234,15 @@ class _MyAppWithFCMState extends State<MyAppWithFCM> {
     try {
       final notificationBloc = context.read<NotificationBloc>();
 
-      // Initialize FCM Service with the correct parameters
       await FCMService().initialize(
         authRepository: widget.authRepository,
         notificationBloc: notificationBloc,
         baseUrl: widget.backendUrl,
       );
 
-      // Subscribe to user-specific topics after initialization
       await FCMService().subscribeToUserTopics();
     } catch (e) {
-      print('Error initializing FCM: $e');
+      // FCM initialization failed
     }
   }
 
@@ -239,7 +253,11 @@ class _MyAppWithFCMState extends State<MyAppWithFCM> {
 }
 
 Future<void> _loadEnvironment() async {
-  await dotenv.load(fileName: '.env');
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    // Environment file not found
+  }
 }
 
 Future<void> _initializeStripe(AuthRepository authRepository) async {

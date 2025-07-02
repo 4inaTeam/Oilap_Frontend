@@ -7,7 +7,6 @@ import '../../../../core/constants/app_colors.dart';
 
 import '../../../../shared/dialogs/success_dialog.dart';
 import '../../../../shared/dialogs/error_dialog.dart';
-import 'package:oilab_frontend/features/clients/presentation/screens/client_add_dialog.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 
 class ProductAddDialog extends StatefulWidget {
@@ -46,14 +45,13 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
   Future<bool> _checkClientExistsReliably(String cin) async {
     try {
-      // Method 1: Try the dedicated search endpoint
       final client = await context.read<ClientBloc>().repo.getClientByCin(cin);
       if (client != null) {
         return true;
       }
-      
-      // Method 2: Fallback - search through all clients
-      final allClients = await context.read<ClientBloc>().repo.fetchAllClients();
+
+      final allClients =
+          await context.read<ClientBloc>().repo.fetchAllClients();
       final clientExists = allClients.any((client) => client.cin == cin);
       return clientExists;
     } catch (e) {
@@ -73,39 +71,6 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
       if (!mounted) return;
       setState(() => _clientExists = exists);
-
-      if (!exists && mounted) {
-        final shouldCreateClient = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('Client non trouvé'),
-            content: Text(
-              'Aucun client trouvé avec le CIN: $cin. Voulez-vous créer un nouveau client?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Non'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Oui'),
-              ),
-            ],
-          ),
-        );
-
-        if (shouldCreateClient == true && mounted) {
-          await showDialog(
-            context: context,
-            builder: (context) => ClientAddDialog(initialCin: cin),
-          );
-          if (mounted) {
-            _checkClientExists(cin);
-          }
-        }
-      }
     } finally {
       if (mounted) {
         setState(() => _isCheckingClient = false);
@@ -140,11 +105,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
   Future<void> _showErrorDialog(String message) async {
     if (!mounted) return;
-    await showCustomErrorDialog(
-      context,
-      message: message,
-      showRetry: false,
-    );
+    await showCustomErrorDialog(context, message: message, showRetry: false);
   }
 
   @override
@@ -201,7 +162,10 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                      onPressed:
+                          _isSubmitting
+                              ? null
+                              : () => Navigator.of(context).pop(),
                       style: TextButton.styleFrom(
                         backgroundColor: AppColors.accentGreen,
                         padding: const EdgeInsets.symmetric(
@@ -224,19 +188,20 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                           vertical: 8,
                         ),
                       ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
+                      child:
+                          _isSubmitting
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Text(
+                                'Ajouter',
+                                style: TextStyle(color: Colors.white),
                               ),
-                            )
-                          : const Text(
-                              'Ajouter',
-                              style: TextStyle(color: Colors.white),
-                            ),
                     ),
                   ],
                 ),
@@ -278,15 +243,16 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
           ),
-          items: _qualityOptions.map((quality) {
-            return DropdownMenuItem<String>(
-              value: quality['value'],
-              child: Text(
-                quality['label']!,
-                style: const TextStyle(fontSize: 14),
-              ),
-            );
-          }).toList(),
+          items:
+              _qualityOptions.map((quality) {
+                return DropdownMenuItem<String>(
+                  value: quality['value'],
+                  child: Text(
+                    quality['label']!,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                );
+              }).toList(),
           onChanged: (value) {
             if (mounted) {
               setState(() {
@@ -359,16 +325,17 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
                 ),
               ),
               errorText: error,
-              suffixIcon: label == 'CIN Client' && _isCheckingClient
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : null,
+              suffixIcon:
+                  label == 'CIN Client' && _isCheckingClient
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                      : null,
             ),
             style: const TextStyle(fontSize: 14),
           ),
@@ -378,7 +345,6 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   }
 
   Future<void> _handleAddProduct() async {
-    // Prevent double submission
     if (_isSubmitting) return;
 
     final fields = {
@@ -387,7 +353,6 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       'cin': _clientCinController.text.trim(),
     };
 
-    // Validate all fields
     if (mounted) {
       setState(() {
         _errors.clear();
@@ -400,22 +365,22 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       });
     }
 
-    // If there are validation errors, show them and return
     if (_errors.isNotEmpty) {
       return;
     }
 
-    // Check if client exists
     if (!_clientExists) {
-      await _showErrorDialog('Veuillez vérifier le CIN du client');
+      if (mounted) {
+        setState(() {
+          _errors['cin'] = 'Client avec ce CIN non trouvé';
+        });
+      }
       return;
     }
 
-    // Set submitting state to prevent double clicks
     setState(() => _isSubmitting = true);
 
     try {
-      // Dispatch the event to create product
       context.read<ProductBloc>().add(
         CreateProduct(
           quality: _selectedQuality,
@@ -427,10 +392,11 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
         ),
       );
     } catch (e) {
-      // Reset submitting state on error
       if (mounted) {
         setState(() => _isSubmitting = false);
-        await _showErrorDialog('Erreur lors de la création du produit: ${e.toString()}');
+        await _showErrorDialog(
+          'Erreur lors de la création du produit: ${e.toString()}',
+        );
       }
     }
   }

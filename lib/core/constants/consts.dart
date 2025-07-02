@@ -37,20 +37,46 @@ class BackendUrls {
   }
 
   static String _getPlatformSpecificUrl() {
+    // Check if we're on web first to avoid Platform errors
+    if (kIsWeb) {
+      return localhost;
+    }
+
     try {
       if (Platform.isAndroid) {
-        return androidEmulator;
+        return _isRunningOnEmulator() ? androidEmulator : physicalDevice;
       } else if (Platform.isIOS) {
-        return iosSimulator;
+        return _isRunningOnSimulator() ? iosSimulator : physicalDevice;
       } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        // For desktop platforms including Windows
         return localhost;
       } else {
         return physicalDevice;
       }
     } catch (e) {
-      // Fallback in case Platform is not available
+      // Fallback if Platform is not available (like on web)
       return localhost;
+    }
+  }
+
+  static bool _isRunningOnEmulator() {
+    // Don't check Platform on web
+    if (kIsWeb) return false;
+
+    try {
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static bool _isRunningOnSimulator() {
+    // Don't check Platform on web
+    if (kIsWeb) return false;
+
+    try {
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -61,21 +87,22 @@ class BackendUrls {
     bool isWindows = false,
   }) {
     if (isWeb) return localhost;
-    if (isAndroid) return androidEmulator;
-    if (isIOS) return iosSimulator;
+    if (isAndroid) return physicalDevice;
+    if (isIOS) return physicalDevice;
     if (isWindows) return localhost;
     return physicalDevice;
+  }
+
+  static String get manualOverride {
+    return current;
   }
 }
 
 class ApiEndpoints {
-  // Updated to match your Django backend URLs
   static const String processWebPayment = '/api/payments/process_web_payment/';
   static const String processCardPayment =
       '/api/payments/process_card_payment/';
   static const String confirmPayment = '/api/payments/confirm_payment/';
-
-  // Legacy endpoints (kept for backward compatibility)
   static const String createStripePayment =
       '/api/payments/create_stripe_payment/';
   static const String createStripePaymentCardOnly =
@@ -89,6 +116,7 @@ class AppConfig {
   static bool get isWebPlatform => kIsWeb;
   static bool get isMobilePlatform => !kIsWeb;
   static bool get isWindowsPlatform {
+    if (kIsWeb) return false;
     try {
       return !kIsWeb && Platform.isWindows;
     } catch (e) {
@@ -97,6 +125,7 @@ class AppConfig {
   }
 
   static bool get isStripePaymentSheetSupported {
+    if (kIsWeb) return false;
     try {
       return !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     } catch (e) {
@@ -122,6 +151,7 @@ class EnvironmentHelper {
   static bool get isProduction => kReleaseMode;
   static bool get isWeb => kIsWeb;
   static bool get isDesktop {
+    if (kIsWeb) return false;
     try {
       return !kIsWeb &&
           (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
@@ -134,6 +164,7 @@ class EnvironmentHelper {
 class PlatformHelper {
   static bool get isWeb => kIsWeb;
   static bool get isMobile {
+    if (kIsWeb) return false;
     try {
       return !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     } catch (e) {
@@ -142,6 +173,7 @@ class PlatformHelper {
   }
 
   static bool get isDesktop {
+    if (kIsWeb) return false;
     try {
       return !kIsWeb &&
           (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
@@ -151,7 +183,7 @@ class PlatformHelper {
   }
 
   static String get platformName {
-    if (isWeb) return 'Web';
+    if (kIsWeb) return 'Web';
     try {
       if (Platform.isWindows) return 'Windows';
       if (Platform.isMacOS) return 'macOS';
