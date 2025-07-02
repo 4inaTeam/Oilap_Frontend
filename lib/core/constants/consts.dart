@@ -27,7 +27,7 @@ class BackendUrls {
   static const String localhost = 'http://localhost:8000';
   static const String androidEmulator = 'http://10.0.2.2:8000';
   static const String iosSimulator = 'http://localhost:8000';
-  static const String physicalDevice = 'http://192.168.100.8:8000';
+  static const String physicalDevice = 'http://192.168.31.146:8000';
 
   static String get current {
     if (kIsWeb) {
@@ -71,12 +71,15 @@ class BackendUrls {
 class ApiEndpoints {
   // Updated to match your Django backend URLs
   static const String processWebPayment = '/api/payments/process_web_payment/';
-  static const String processCardPayment = '/api/payments/process_card_payment/';
+  static const String processCardPayment =
+      '/api/payments/process_card_payment/';
   static const String confirmPayment = '/api/payments/confirm_payment/';
-  
+
   // Legacy endpoints (kept for backward compatibility)
-  static const String createStripePayment = '/api/payments/create_stripe_payment/';
-  static const String createStripePaymentCardOnly = '/api/payments/create_stripe_payment_card_only/';
+  static const String createStripePayment =
+      '/api/payments/create_stripe_payment/';
+  static const String createStripePaymentCardOnly =
+      '/api/payments/create_stripe_payment_card_only/';
 }
 
 class AppConfig {
@@ -100,7 +103,7 @@ class AppConfig {
       return false;
     }
   }
-  
+
   static bool get isStripeElementsSupported => kIsWeb || isWindowsPlatform;
 }
 
@@ -120,7 +123,8 @@ class EnvironmentHelper {
   static bool get isWeb => kIsWeb;
   static bool get isDesktop {
     try {
-      return !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+      return !kIsWeb &&
+          (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
     } catch (e) {
       return false;
     }
@@ -136,9 +140,11 @@ class PlatformHelper {
       return false;
     }
   }
+
   static bool get isDesktop {
     try {
-      return !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+      return !kIsWeb &&
+          (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
     } catch (e) {
       return false;
     }

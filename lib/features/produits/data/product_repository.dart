@@ -1,11 +1,16 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/models/product_model.dart';
 import '../../auth/data/auth_repository.dart';
 
-import 'dart:html' as html if (dart.library.html) 'dart:html';
+// Fixed conditional imports with proper aliases
+import '../../../core/utils/web_utils_stub.dart'
+    if (dart.library.html) '../../../core/utils/web_utils_web.dart'
+    as web_utils;
+import '../../../core/utils/mobile_utils.dart'
+    if (dart.library.html) '../../../core/utils/web_utils_stub.dart'
+    as mobile_utils;
 
 class ProductPaginationResult {
   final List<Product> products;
@@ -266,7 +271,7 @@ class ProductRepository {
     }
   }
 
-  // Clean PDF download without debug prints
+  // Fixed cross-platform PDF download
   Future<String> downloadProductPDF(int productId) async {
     try {
       final token = await authRepo.getAccessToken();
@@ -282,11 +287,12 @@ class ProductRepository {
 
         if (kIsWeb) {
           // Web platform - browser download
-          _downloadFileWeb(response.bodyBytes, fileName);
+          web_utils.downloadPdfWeb(response.bodyBytes, fileName);
           return 'PDF downloaded successfully';
         } else {
-          // For mobile/desktop - return success message
-          return 'PDF download successful (native platform)';
+          // Mobile/Desktop platform - save to device
+          await mobile_utils.downloadPdfMobile(response.bodyBytes, fileName);
+          return 'PDF saved to Downloads folder';
         }
       } else if (response.statusCode == 406) {
         throw Exception(
@@ -297,31 +303,6 @@ class ProductRepository {
       }
     } catch (e) {
       rethrow;
-    }
-  }
-
-  // Clean web download without debug prints
-  void _downloadFileWeb(Uint8List bytes, String fileName) {
-    if (!kIsWeb) return;
-
-    try {
-      // Create blob
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-
-      // Create and trigger download
-      final anchor =
-          html.AnchorElement()
-            ..href = url
-            ..download = fileName
-            ..style.display = 'none';
-
-      html.document.body!.append(anchor);
-      anchor.click();
-      anchor.remove();
-      html.Url.revokeObjectUrl(url);
-    } catch (e) {
-      throw Exception('Web download failed: $e');
     }
   }
 }
