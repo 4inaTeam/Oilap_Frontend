@@ -7,6 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 
 import '../../../../shared/dialogs/success_dialog.dart';
 import '../../../../shared/dialogs/error_dialog.dart';
+import 'package:oilab_frontend/features/clients/presentation/screens/client_add_dialog.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 
 class ProductAddDialog extends StatefulWidget {
@@ -45,11 +46,13 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
   Future<bool> _checkClientExistsReliably(String cin) async {
     try {
+      // Method 1: Try the dedicated search endpoint
       final client = await context.read<ClientBloc>().repo.getClientByCin(cin);
       if (client != null) {
         return true;
       }
 
+      // Method 2: Fallback - search through all clients
       final allClients =
           await context.read<ClientBloc>().repo.fetchAllClients();
       final clientExists = allClients.any((client) => client.cin == cin);
@@ -71,6 +74,40 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
 
       if (!mounted) return;
       setState(() => _clientExists = exists);
+
+      if (!exists && mounted) {
+        final shouldCreateClient = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Client non trouvé'),
+                content: Text(
+                  'Aucun client trouvé avec le CIN: $cin. Voulez-vous créer un nouveau client?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Non'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Oui'),
+                  ),
+                ],
+              ),
+        );
+
+        if (shouldCreateClient == true && mounted) {
+          await showDialog(
+            context: context,
+            builder: (context) => ClientAddDialog(initialCin: cin),
+          );
+          if (mounted) {
+            _checkClientExists(cin);
+          }
+        }
+      }
     } finally {
       if (mounted) {
         setState(() => _isCheckingClient = false);
@@ -345,6 +382,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
   }
 
   Future<void> _handleAddProduct() async {
+    // Prevent double submission
     if (_isSubmitting) return;
 
     final fields = {
@@ -353,6 +391,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       'cin': _clientCinController.text.trim(),
     };
 
+    // Validate all fields
     if (mounted) {
       setState(() {
         _errors.clear();
@@ -365,22 +404,22 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
       });
     }
 
+    // If there are validation errors, show them and return
     if (_errors.isNotEmpty) {
       return;
     }
 
+    // Check if client exists
     if (!_clientExists) {
-      if (mounted) {
-        setState(() {
-          _errors['cin'] = 'Client avec ce CIN non trouvé';
-        });
-      }
+      await _showErrorDialog('Veuillez vérifier le CIN du client');
       return;
     }
 
+    // Set submitting state to prevent double clicks
     setState(() => _isSubmitting = true);
 
     try {
+      // Dispatch the event to create product
       context.read<ProductBloc>().add(
         CreateProduct(
           quality: _selectedQuality,
@@ -392,6 +431,7 @@ class _ProductAddDialogState extends State<ProductAddDialog> {
         ),
       );
     } catch (e) {
+      // Reset submitting state on error
       if (mounted) {
         setState(() => _isSubmitting = false);
         await _showErrorDialog(
