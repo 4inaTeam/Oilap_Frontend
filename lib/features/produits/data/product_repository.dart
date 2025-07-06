@@ -4,13 +4,180 @@ import 'package:http/http.dart' as http;
 import '../../../core/models/product_model.dart';
 import '../../auth/data/auth_repository.dart';
 
-// Fixed conditional imports with proper aliases
 import '../../../core/utils/web_utils_stub.dart'
     if (dart.library.html) '../../../core/utils/web_utils_web.dart'
     as web_utils;
 import '../../../core/utils/mobile_utils.dart'
     if (dart.library.html) '../../../core/utils/web_utils_stub.dart'
     as mobile_utils;
+
+// Updated TotalQuantityData Model
+class TotalQuantityData {
+  final double totalQuantity; // Changed to double since API returns 3630.0
+  final double totalOilVolume;
+  final double overallYieldPercentage;
+  final Map<String, QuantityByStatus> quantityByStatus; // Changed structure
+  final int totalProducts;
+
+  TotalQuantityData({
+    required this.totalQuantity,
+    required this.totalOilVolume,
+    required this.overallYieldPercentage,
+    required this.quantityByStatus,
+    required this.totalProducts,
+  });
+
+  factory TotalQuantityData.fromJson(Map<String, dynamic> json) {
+    try {
+      print('🔍 Parsing TotalQuantityData from JSON: $json');
+
+      // Parse quantity_by_status with nested objects
+      final quantityByStatusMap = <String, QuantityByStatus>{};
+      final quantityByStatusData = json['quantity_by_status'];
+
+      if (quantityByStatusData != null &&
+          quantityByStatusData is Map<String, dynamic>) {
+        quantityByStatusData.forEach((key, value) {
+          if (value != null && value is Map<String, dynamic>) {
+            quantityByStatusMap[key] = QuantityByStatus.fromJson(value);
+          }
+        });
+      }
+
+      final result = TotalQuantityData(
+        totalQuantity: _parseDouble(json['total_quantity']),
+        totalOilVolume: _parseDouble(json['total_oil_volume']),
+        overallYieldPercentage: _parseDouble(json['overall_yield_percentage']),
+        quantityByStatus: quantityByStatusMap,
+        totalProducts: _parseInt(json['total_products']),
+      );
+
+      print(
+        '✅ Successfully parsed TotalQuantityData: ${result.totalQuantity} Kg',
+      );
+      return result;
+    } catch (e) {
+      print('💥 Error parsing TotalQuantityData: $e');
+      // Return default object on error
+      return TotalQuantityData(
+        totalQuantity: 0.0,
+        totalOilVolume: 0.0,
+        overallYieldPercentage: 0.0,
+        quantityByStatus: {},
+        totalProducts: 0,
+      );
+    }
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  // Helper method to get total quantity as int for display
+  int get totalQuantityInt => totalQuantity.round();
+
+  // Backward compatibility - convert to old format for existing widgets
+  Map<String, int> get quantityByStatusLegacy {
+    final result = <String, int>{};
+    quantityByStatus.forEach((key, value) {
+      result[key] = value.totalQuantity.round();
+    });
+    return result;
+  }
+
+  // Legacy quantityByPayment for backward compatibility
+  Map<String, int> get quantityByPayment => {};
+}
+
+class QuantityByStatus {
+  final double totalQuantity;
+  final double totalOil;
+
+  QuantityByStatus({required this.totalQuantity, required this.totalOil});
+
+  factory QuantityByStatus.fromJson(Map<String, dynamic> json) {
+    try {
+      return QuantityByStatus(
+        totalQuantity: TotalQuantityData._parseDouble(json['total_quantity']),
+        totalOil: TotalQuantityData._parseDouble(json['total_oil']),
+      );
+    } catch (e) {
+      print('Error parsing QuantityByStatus: $e');
+      return QuantityByStatus(totalQuantity: 0.0, totalOil: 0.0);
+    }
+  }
+}
+
+// Model for Origin Percentage Response
+class OriginData {
+  final String origin;
+  final int count;
+  final double percentage;
+  final int totalQuantity;
+  final double quantityPercentage;
+
+  OriginData({
+    required this.origin,
+    required this.count,
+    required this.percentage,
+    required this.totalQuantity,
+    required this.quantityPercentage,
+  });
+
+  factory OriginData.fromJson(Map<String, dynamic> json) {
+    return OriginData(
+      origin: json['origin'] as String? ?? 'Unknown',
+      count: json['count'] as int? ?? 0,
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+      totalQuantity: json['total_quantity'] as int? ?? 0,
+      quantityPercentage:
+          (json['quantity_percentage'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+class OriginPercentageData {
+  final int totalProducts;
+  final int totalQuantity;
+  final int productsWithoutOrigin;
+  final List<OriginData> originPercentages;
+  final Map<String, dynamic> summary;
+
+  OriginPercentageData({
+    required this.totalProducts,
+    required this.totalQuantity,
+    required this.productsWithoutOrigin,
+    required this.originPercentages,
+    required this.summary,
+  });
+
+  factory OriginPercentageData.fromJson(Map<String, dynamic> json) {
+    final originList = json['origin_percentages'] as List<dynamic>? ?? [];
+    return OriginPercentageData(
+      totalProducts: json['total_products'] as int? ?? 0,
+      totalQuantity: json['total_quantity'] as int? ?? 0,
+      productsWithoutOrigin: json['products_without_origin'] as int? ?? 0,
+      originPercentages: originList.map((e) => OriginData.fromJson(e)).toList(),
+      summary: Map<String, dynamic>.from(json['summary'] ?? {}),
+    );
+  }
+}
 
 class ProductPaginationResult {
   final List<Product> products;
@@ -301,6 +468,82 @@ class ProductRepository {
       } else {
         throw Exception('Download failed with status ${response.statusCode}');
       }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<TotalQuantityData> fetchTotalQuantity() async {
+    try {
+      print(
+        '🔍 Fetching total quantity from: $baseUrl/api/products/total-quantity/',
+      );
+
+      final token = await authRepo.getAccessToken();
+      if (token == null) {
+        print('❌ No authentication token available');
+        throw Exception('Not authenticated');
+      }
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/products/total-quantity/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📡 Quantity response status: ${resp.statusCode}');
+      print('📄 Quantity response body: ${resp.body}');
+
+      if (resp.statusCode == 200) {
+        final responseData = json.decode(resp.body);
+        print('✅ Successfully parsed quantity JSON');
+
+        final quantityData = TotalQuantityData.fromJson(responseData);
+        print('📊 Total quantity: ${quantityData.totalQuantity}');
+        return quantityData;
+      } else if (resp.statusCode == 404) {
+        print('⚠️ Quantity endpoint not found - returning default data');
+        // Return default data for 404
+        return TotalQuantityData(
+          totalQuantity: 0.0,
+          totalOilVolume: 0.0,
+          overallYieldPercentage: 0.0,
+          quantityByStatus: {},
+          totalProducts: 0,
+        );
+      } else {
+        print('❌ HTTP Error: ${resp.statusCode}');
+        throw Exception(
+          'Failed to fetch total quantity: ${resp.statusCode} - ${resp.body}',
+        );
+      }
+    } catch (e) {
+      print('💥 Error in fetchTotalQuantity: $e');
+      rethrow;
+    }
+  }
+
+  Future<OriginPercentageData> fetchOriginPercentages() async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/products/origin-percentages/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (resp.statusCode == 200) {
+        final responseData = json.decode(resp.body);
+        return OriginPercentageData.fromJson(responseData);
+      }
+
+      throw Exception('Failed to fetch origin percentages: ${resp.statusCode}');
     } catch (e) {
       rethrow;
     }

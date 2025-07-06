@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:oilab_frontend/features/produits/data/product_repository.dart';
 import '../../../../core/models/product_model.dart';
 
 abstract class ProductState extends Equatable {
@@ -94,4 +95,22 @@ class ProductPDFDownloadFailure extends ProductState {
 
   @override
   List<Object> get props => [message];
+}
+
+class TotalQuantityLoaded extends ProductState {
+  final TotalQuantityData data;
+
+  const TotalQuantityLoaded(this.data);
+
+  @override
+  List<Object> get props => [data];
+}
+
+class OriginPercentagesLoaded extends ProductState {
+  final OriginPercentageData data;
+
+  const OriginPercentagesLoaded(this.data);
+
+  @override
+  List<Object> get props => [data];
 }

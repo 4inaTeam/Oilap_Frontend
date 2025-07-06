@@ -171,3 +171,7 @@ class DownloadProductPDF extends ProductEvent {
   @override
   List<Object> get props => [productId];
 }
+
+class LoadTotalQuantity extends ProductEvent {}
+
+class LoadOriginPercentages extends ProductEvent {}

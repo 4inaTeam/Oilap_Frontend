@@ -11,7 +11,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
 
   String? _currentSearchQuery;
   String? _currentStatusFilter;
-  int? _currentClientId; 
+  int? _currentClientId;
 
   FactureBloc({required this.factureRepository}) : super(FactureInitial()) {
     on<LoadFactures>(_onLoadFactures);
@@ -21,6 +21,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     on<ChangePage>(_onChangePage);
     on<LoadFactureDetail>(_onLoadFactureDetail);
     on<GetFacturePdf>(_onGetFacturePdf);
+    on<LoadTotalRevenue>(_onLoadTotalRevenue); // Add new event handler
   }
 
   Future<void> _onLoadFactures(
@@ -31,7 +32,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     _currentPage = event.page;
     _currentSearchQuery = event.searchQuery;
     _currentStatusFilter = event.statusFilter;
-    _currentClientId = event.clientId; 
+    _currentClientId = event.clientId;
     await _loadFacturesData(emit);
   }
 
@@ -62,9 +63,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
             totalCount: correctedResult.totalCount,
             currentPage: correctedResult.currentPage,
             totalPages: correctedResult.totalPages,
-            currentSearch: _currentSearchQuery, 
-            currentFilter: _currentStatusFilter, 
-            currentClientId: _currentClientId, 
+            currentSearch: _currentSearchQuery,
+            currentFilter: _currentStatusFilter,
+            currentClientId: _currentClientId,
           ),
         );
         return;
@@ -77,7 +78,7 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
           totalCount: result.totalCount,
           currentPage: result.currentPage,
           totalPages: result.totalPages,
-          currentSearch: _currentSearchQuery, 
+          currentSearch: _currentSearchQuery,
           currentFilter: _currentStatusFilter,
           currentClientId: _currentClientId,
         ),
@@ -203,27 +204,38 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     }
   }
 
-  Map<String, dynamic> getCurrentStateInfo() {
-    return {
-      'currentPage': _currentPage,
-      'pageSize': _pageSize,
-      'searchQuery': _currentSearchQuery,
-      'statusFilter': _currentStatusFilter,
-      'clientId': _currentClientId,
-    };
-  }
+  // New handler for LoadTotalRevenue event
+  // Add this debug version to your _onLoadTotalRevenue method in FactureBloc
 
-  void resetPagination() {
-    _currentPage = 1;
-    _currentSearchQuery = null;
-    _currentStatusFilter = null;
-    _currentClientId = null;
-  }
+  Future<void> _onLoadTotalRevenue(
+    LoadTotalRevenue event,
+    Emitter<FactureState> emit,
+  ) async {
 
-  void clearClientFilter() {
-    _currentClientId = null;
-    _currentPage = 1;
-    _currentSearchQuery = null;
-    _currentStatusFilter = null;
+    emit(FactureLoading());
+
+    try {
+      final result = await factureRepository.fetchTotalRevenue(
+        clientId: event.clientId,
+        dateFrom: event.dateFrom,
+        dateTo: event.dateTo,
+      );
+
+
+
+      final state = TotalRevenueLoaded(
+        totalRevenue: result.totalRevenue,
+        totalAmountBeforeTax: result.totalAmountBeforeTax, 
+
+      );
+
+      emit(state);
+    } catch (e) {
+      emit(
+        FactureError(
+          'Erreur lors du chargement du chiffre d\'affaires: ${e.toString()}',
+        ),
+      );
+    }
   }
 }

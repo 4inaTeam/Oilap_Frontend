@@ -15,7 +15,7 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
           page: event.page,
           pageSize: event.pageSize,
           searchQuery: event.searchQuery,
-          ordering: '-id', // Order by ID, newest first
+          ordering: '-id',
         );
 
         emit(
@@ -256,6 +256,19 @@ class ClientBloc extends Bloc<ClientEvent, ClientState> {
         } catch (err) {
           emit(ClientOperationFailure(err.toString()));
         }
+      }
+    });
+
+    on<LoadTotalClients>((event, emit) async {
+      try {
+        final totalClients = await repo.fetchTotalClients();
+        emit(TotalClientsLoaded(totalClients));
+      } catch (err) {
+        emit(
+          ClientOperationFailure(
+            'Failed to load total clients: ${err.toString()}',
+          ),
+        );
       }
     });
   }

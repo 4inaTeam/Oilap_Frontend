@@ -1,11 +1,144 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/core/constants/consts.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/widgets/total_quantity_summarycard.dart';
+import 'package:oilab_frontend/features/produits/data/product_repository.dart';
+import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
+import 'package:oilab_frontend/features/produits/presentation/bloc/product_event.dart';
 import 'package:oilab_frontend/shared/widgets/header_widget.dart';
+import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
+import 'package:oilab_frontend/features/clients/data/client_repository.dart';
+import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.dart';
+import 'package:oilab_frontend/features/factures/data/facture_repository.dart';
+
+import 'package:oilab_frontend/features/dashboard/presentation/bloc/revenuBloc.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/bloc/revenuEvent.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/bloc/revenuState.dart';
+
+import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_bloc.dart';
+import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_event.dart';
+import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_state.dart';
+
+import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_layout.dart';
 import '../widgets/index.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardPage extends StatelessWidget {
+  const DashboardPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<ClientBloc>(
+          create: (context) {
+            return ClientBloc(
+              ClientRepository(
+                baseUrl: BackendUrls.current,
+                authRepo: context.read<AuthRepository>(),
+              ),
+            );
+          },
+        ),
+        BlocProvider<ProductBloc>(
+          create: (context) {
+            return ProductBloc(
+              ProductRepository(
+                baseUrl: BackendUrls.current,
+                authRepo: context.read<AuthRepository>(),
+              ),
+            );
+          },
+        ),
+        BlocProvider<FactureBloc>(
+          create: (context) {
+            return FactureBloc(
+              factureRepository: FactureRepository(
+                baseUrl: BackendUrls.current,
+                authRepo: context.read<AuthRepository>(),
+              ),
+            );
+          },
+        ),
+        // CREATE REVENUE BLOC WITH UNIQUE EVENT
+        BlocProvider<RevenueBloc>(
+          create: (context) {
+            final factureRepo = FactureRepository(
+              baseUrl: BackendUrls.current,
+              authRepo: context.read<AuthRepository>(),
+            );
+
+            final revenueBloc = RevenueBloc(factureRepository: factureRepo);
+
+            // Use the NEW LoadRevenue event instead of LoadTotalRevenue
+            revenueBloc.add(
+              LoadRevenue(),
+            ); // CHANGED: Use LoadRevenue instead of LoadTotalRevenue
+
+            return revenueBloc;
+          },
+        ),
+        // ADD BILL STATISTICS BLOC
+        BlocProvider<BillStatisticsBloc>(
+          create: (context) {
+            final statisticsRepo = BillStatisticsRepository(
+              baseUrl: BackendUrls.current,
+              authRepo: context.read<AuthRepository>(),
+            );
+
+            return BillStatisticsBloc(repository: statisticsRepo);
+          },
+        ),
+      ],
+      child: const DashboardScreen(),
+    );
+  }
+}
+
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    print('📱 Dashboard initState called');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDashboard();
+    });
+  }
+
+  void _initializeDashboard() {
+    try {
+      print('🚀 Initializing dashboard data...');
+
+      // Load revenue data
+      final revenueBloc = context.read<RevenueBloc>();
+      print('💰 Revenue bloc state: ${revenueBloc.state.runtimeType}');
+      revenueBloc.add(LoadRevenue());
+
+      // Load bill statistics
+      final billStatsBloc = context.read<BillStatisticsBloc>();
+      print('📊 Bill stats bloc state: ${billStatsBloc.state.runtimeType}');
+      billStatsBloc.add(LoadBillStatistics());
+
+      // Load total quantity data
+      final productBloc = context.read<ProductBloc>();
+      print('📦 Product bloc state: ${productBloc.state.runtimeType}');
+      productBloc.add(LoadTotalQuantity());
+
+      print('✅ All dashboard data loading triggered');
+    } catch (e) {
+      print('💥 Error initializing dashboard: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +160,6 @@ class DashboardScreen extends StatelessWidget {
                       showBackArrow: false,
                       showSearch: true,
                     ),
-
                   SizedBox(
                     height:
                         isMobile
@@ -50,9 +182,6 @@ class DashboardScreen extends StatelessWidget {
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   final isWide = constraints.maxWidth >= 1000;
-                                  final isTablet =
-                                      constraints.maxWidth >= 700 &&
-                                      constraints.maxWidth < 1000;
 
                                   if (isWide) {
                                     return Row(
@@ -74,15 +203,7 @@ class DashboardScreen extends StatelessWidget {
                                                         Row(
                                                           children: [
                                                             Expanded(
-                                                              child: SummaryCard(
-                                                                title:
-                                                                    'Clients',
-                                                                value: '781',
-                                                                change:
-                                                                    '+11.01%',
-                                                                color:
-                                                                    AppColors
-                                                                        .greenLight,
+                                                              child: TotalClientsSummaryCard(
                                                                 width:
                                                                     constraints
                                                                         .maxWidth *
@@ -93,15 +214,7 @@ class DashboardScreen extends StatelessWidget {
                                                               width: 16,
                                                             ),
                                                             Expanded(
-                                                              child: SummaryCard(
-                                                                title:
-                                                                    'Quantité',
-                                                                value: '1219 T',
-                                                                change:
-                                                                    '-0.03%',
-                                                                color:
-                                                                    AppColors
-                                                                        .yellowDark,
+                                                              child: TotalQuantitySummaryCard(
                                                                 width:
                                                                     constraints
                                                                         .maxWidth *
@@ -115,17 +228,11 @@ class DashboardScreen extends StatelessWidget {
                                                         ),
                                                         Row(
                                                           children: [
+                                                            // REVENUE CARD WITH DEBUG
                                                             Expanded(
-                                                              child: SummaryCard(
-                                                                title: 'Revenu',
-                                                                value: '695 DT',
-                                                                change:
-                                                                    '+15.03%',
-                                                                color:
-                                                                    AppColors
-                                                                        .yellowLight,
-                                                                width:
-                                                                    constraints
+                                                              child: _buildRevenueSummaryCard(
+                                                                context,
+                                                                constraints
                                                                         .maxWidth *
                                                                     0.2,
                                                               ),
@@ -133,18 +240,11 @@ class DashboardScreen extends StatelessWidget {
                                                             const SizedBox(
                                                               width: 16,
                                                             ),
+                                                            // EXPENSES CARD - UPDATED
                                                             Expanded(
-                                                              child: SummaryCard(
-                                                                title:
-                                                                    'Dépenses',
-                                                                value: '305 DT',
-                                                                change:
-                                                                    '+6.08%',
-                                                                color:
-                                                                    AppColors
-                                                                        .greenDark,
-                                                                width:
-                                                                    constraints
+                                                              child: _buildExpensesSummaryCard(
+                                                                context,
+                                                                constraints
                                                                         .maxWidth *
                                                                     0.2,
                                                               ),
@@ -178,291 +278,55 @@ class DashboardScreen extends StatelessWidget {
                                           flex: 4,
                                           child: SizedBox(
                                             height: 600,
-                                            child: PieChartCard(),
+                                            child: DynamicPieChartCard(),
                                           ),
                                         ),
                                       ],
                                     );
-                                  } else if (isTablet) {
+                                  } else {
+                                    // Simplified layout for smaller screens
                                     return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
                                       children: [
                                         Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
-                                              flex: 3,
-                                              child: Column(
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: SummaryCard(
-                                                          title: 'Clients',
-                                                          value: '781',
-                                                          change: '+11.01%',
-                                                          color:
-                                                              AppColors
-                                                                  .greenLight,
-                                                          width:
-                                                              constraints
-                                                                  .maxWidth *
-                                                              0.3,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: SummaryCard(
-                                                          title: 'Quantité',
-                                                          value: '1219 T',
-                                                          change: '-0.03%',
-                                                          color:
-                                                              AppColors
-                                                                  .yellowDark,
-                                                          width:
-                                                              constraints
-                                                                  .maxWidth *
-                                                              0.3,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: SummaryCard(
-                                                          title: 'Revenu',
-                                                          value: '695 DT',
-                                                          change: '+15.03%',
-                                                          color:
-                                                              AppColors
-                                                                  .yellowLight,
-                                                          width:
-                                                              constraints
-                                                                  .maxWidth *
-                                                              0.3,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: SummaryCard(
-                                                          title: 'Dépenses',
-                                                          value: '305 DT',
-                                                          change: '+6.08%',
-                                                          color:
-                                                              AppColors
-                                                                  .greenDark,
-                                                          width:
-                                                              constraints
-                                                                  .maxWidth *
-                                                              0.3,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
+                                              child: TotalClientsSummaryCard(
+                                                width:
+                                                    constraints.maxWidth * 0.45,
                                               ),
                                             ),
                                             const SizedBox(width: 16),
                                             Expanded(
-                                              flex: 2,
-                                              child: QuantityDetailsCard(
+                                              child: TotalQuantitySummaryCard(
                                                 width:
-                                                    constraints.maxWidth * 0.3,
+                                                    constraints.maxWidth * 0.45,
                                               ),
                                             ),
                                           ],
                                         ),
                                         const SizedBox(height: 16),
-                                        SizedBox(
-                                          height: 350,
-                                          child: PieChartCard(),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        const SizedBox(
-                                          height: 250,
-                                          child: LineChartCard(),
-                                        ),
-                                      ],
-                                    );
-                                  } else {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
                                         Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
-                                              flex: 3,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  4,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: SummaryCard(
-                                                            title: 'Clients',
-                                                            value: '781',
-                                                            change: '+11.01%',
-                                                            color:
-                                                                AppColors
-                                                                    .greenLight,
-                                                            width:
-                                                                constraints
-                                                                    .maxWidth *
-                                                                0.3,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 6,
-                                                        ),
-                                                        Expanded(
-                                                          child: SummaryCard(
-                                                            title: 'Quantité',
-                                                            value: '1219 T',
-                                                            change: '-0.03%',
-                                                            color:
-                                                                AppColors
-                                                                    .yellowDark,
-                                                            width:
-                                                                constraints
-                                                                    .maxWidth *
-                                                                0.3,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 6),
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: SummaryCard(
-                                                            title: 'Revenu',
-                                                            value: '695 DT',
-                                                            change: '+15.03%',
-                                                            color:
-                                                                AppColors
-                                                                    .yellowLight,
-                                                            width:
-                                                                constraints
-                                                                    .maxWidth *
-                                                                0.3,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 6,
-                                                        ),
-                                                        Expanded(
-                                                          child: SummaryCard(
-                                                            title: 'Dépenses',
-                                                            value: '305 DT',
-                                                            change: '+6.08%',
-                                                            color:
-                                                                AppColors
-                                                                    .greenDark,
-                                                            width:
-                                                                constraints
-                                                                    .maxWidth *
-                                                                0.3,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
+                                              child: _buildRevenueSummaryCard(
+                                                context,
+                                                constraints.maxWidth * 0.45,
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
+                                            const SizedBox(width: 16),
                                             Expanded(
-                                              flex: 2,
-                                              child: Container(
-                                                height:
-                                                    150,
-                                                padding: const EdgeInsets.all(
-                                                  8,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  border: Border.all(
-                                                    color:
-                                                        AppColors.accentGreen,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    Text(
-                                                      'Détails des quantités',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize:
-                                                            12,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Expanded(
-                                                      child: Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .spaceEvenly,
-                                                        children: [
-                                                          _buildCompactDetailRow(
-                                                            context,
-                                                            "Quantité d'olives",
-                                                            '72 Kg',
-                                                          ),
-                                                          _buildCompactDetailRow(
-                                                            context,
-                                                            'Huile produite',
-                                                            '39 L',
-                                                          ),
-                                                          _buildCompactDetailRow(
-                                                            context,
-                                                            'Déchets vendus',
-                                                            '25 Kg',
-                                                          ),
-                                                          _buildCompactDetailRow(
-                                                            context,
-                                                            'Déchets finaux',
-                                                            '61 Kg',
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                              child: _buildExpensesSummaryCard(
+                                                context,
+                                                constraints.maxWidth * 0.45,
                                               ),
                                             ),
                                           ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        SizedBox(
-                                          height: 350,
-                                          child: PieChartCard(),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        SizedBox(
-                                          height: 250,
-                                          child: LineChartCard(),
                                         ),
                                       ],
                                     );
                                   }
                                 },
                               ),
-
                               const SizedBox(height: 24),
                               GridView.count(
                                 shrinkWrap: true,
@@ -488,29 +352,257 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactDetailRow(
-    BuildContext context,
-    String label,
-    String value,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 10),
-              overflow: TextOverflow.ellipsis,
+  Widget _buildRevenueSummaryCard(BuildContext context, double width) {
+    return BlocBuilder<RevenueBloc, RevenueState>(
+      builder: (context, state) {
+        if (state is RevenueLoaded) {
+          final revenueValue = state.totalRevenue.toStringAsFixed(2);
+          const changePercentage = '+12.5%';
+
+          return SummaryCard(
+            title: 'Revenu',
+            value: '$revenueValue DT',
+            change: changePercentage,
+            color: AppColors.yellowLight,
+            width: width,
+          );
+        } else if (state is RevenueLoading) {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.yellowLight.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.yellowLight),
             ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
-          ),
-        ],
-      ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.yellowLight,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Loading revenue...',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (state is RevenueError) {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 24),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Error: ${state.message}',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<RevenueBloc>().add(
+                        LoadRevenue(),
+                      ); // CHANGED: Use LoadRevenue
+                    },
+                    child: const Text('Retry', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.yellowLight.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.yellowLight),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Revenu',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '0.00 DT',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<RevenueBloc>().add(
+                        LoadRevenue(),
+                      ); // CHANGED: Use LoadRevenue
+                    },
+                    child: const Text('Load', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildExpensesSummaryCard(BuildContext context, double width) {
+    return BlocBuilder<BillStatisticsBloc, BillStatisticsState>(
+      builder: (context, state) {
+        if (state is BillStatisticsLoaded) {
+          final expensesValue = state.statistics.totalExpenses.toStringAsFixed(
+            2,
+          );
+          const changePercentage = '+6.08%';
+
+          return SummaryCard(
+            title: 'Dépenses',
+            value: '$expensesValue DT',
+            change: changePercentage,
+            color: AppColors.greenDark,
+            width: width,
+          );
+        } else if (state is BillStatisticsLoading) {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.greenDark.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.greenDark),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.greenDark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Loading expenses...',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else if (state is BillStatisticsError) {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 24),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Error: ${state.message}',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<BillStatisticsBloc>().add(
+                        LoadBillStatistics(),
+                      );
+                    },
+                    child: const Text('Retry', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        } else {
+          return Container(
+            width: width,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.greenDark.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.greenDark),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Dépenses',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '0.00 DT',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<BillStatisticsBloc>().add(
+                        LoadBillStatistics(),
+                      );
+                    },
+                    child: const Text('Load', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 }

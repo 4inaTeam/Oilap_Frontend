@@ -6,4 +6,5 @@ export 'pie_chart_card.dart';
 export 'line_chart_card.dart';
 export 'data_table_card.dart';
 export 'employee_table_card.dart';
+export 'total_clients_summary_card.dart';
 

@@ -59,9 +59,9 @@ class ClientLoadSuccess extends ClientState {
 
 class ClientOperationFailure extends ClientState {
   final String message;
-  
+
   ClientOperationFailure(this.message);
-  
+
   @override
   List<Object?> get props => [message];
 }
@@ -83,7 +83,7 @@ class ClientDetailsLoaded extends ClientState {
 
 class ClientProfileLoaded extends ClientState {
   final User client;
-  final List<Product>? products; 
+  final List<Product>? products;
 
   ClientProfileLoaded(this.client, {this.products});
 
@@ -98,4 +98,13 @@ class ClientProductsLoaded extends ClientState {
 
   @override
   List<Object?> get props => [products];
+}
+
+class TotalClientsLoaded extends ClientState {
+  final int totalClients;
+
+  TotalClientsLoaded(this.totalClients);
+
+  @override
+  List<Object?> get props => [totalClients];
 }

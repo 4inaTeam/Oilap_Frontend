@@ -109,3 +109,5 @@ class LoadClientProducts extends ClientEvent {
   @override
   List<Object?> get props => [clientCin];
 }
+
+class LoadTotalClients extends ClientEvent {}

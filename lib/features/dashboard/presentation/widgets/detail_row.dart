@@ -3,7 +3,7 @@ import '../../../../core/constants/app_colors.dart';
 
 class DetailRow extends StatelessWidget {
   final String label, value;
-  const DetailRow({required this.label, required this.value, Key? key})
+  const DetailRow({required this.label, required this.value, Key? key, required child})
     : super(key: key);
 
   @override

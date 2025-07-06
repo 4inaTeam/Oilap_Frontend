@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/dashboard/presentation/bloc/revenuBloc.dart';
 import 'package:oilab_frontend/firebase_options.dart';
 import 'package:oilab_frontend/shared/services/fcm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +23,7 @@ import 'package:oilab_frontend/features/employees/data/employee_repository.dart'
 import 'package:oilab_frontend/features/employees/presentation/bloc/employee_bloc.dart';
 import 'package:oilab_frontend/features/bills/data/bill_repository.dart';
 import 'package:oilab_frontend/features/bills/presentation/bloc/bill_bloc.dart';
+import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_bloc.dart';
 import 'package:oilab_frontend/features/factures/data/facture_repository.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.dart';
 import 'package:oilab_frontend/features/parametres/data/profile_repository.dart';
@@ -88,6 +91,14 @@ Future<void> main() async {
                   authRepo: ctx.read<AuthRepository>(),
                 ),
           ),
+          // ADD BILL STATISTICS REPOSITORY
+          RepositoryProvider<BillStatisticsRepository>(
+            create:
+                (ctx) => BillStatisticsRepository(
+                  baseUrl: backendUrl,
+                  authRepo: ctx.read<AuthRepository>(),
+                ),
+          ),
           RepositoryProvider<ComptableRepository>(
             create:
                 (ctx) => ComptableRepository(
@@ -148,6 +159,13 @@ Future<void> main() async {
             BlocProvider<BillBloc>(
               create: (ctx) => BillBloc(ctx.read<BillRepository>()),
             ),
+            // ADD BILL STATISTICS BLOC
+            BlocProvider<BillStatisticsBloc>(
+              create:
+                  (ctx) => BillStatisticsBloc(
+                    repository: ctx.read<BillStatisticsRepository>(),
+                  ),
+            ),
             BlocProvider<ComptableBloc>(
               create: (ctx) => ComptableBloc(ctx.read<ComptableRepository>()),
             ),
@@ -166,6 +184,18 @@ Future<void> main() async {
             BlocProvider<NotificationBloc>(
               create:
                   (ctx) => NotificationBloc(ctx.read<NotificationRepository>()),
+            ),
+            BlocProvider(
+              create:
+                  (context) => FactureBloc(
+                    factureRepository: context.read<FactureRepository>(),
+                  ),
+            ),
+            BlocProvider(
+              create:
+                  (context) => RevenueBloc(
+                    factureRepository: context.read<FactureRepository>(),
+                  ),
             ),
           ],
           child: MyAppWithFCM(

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
+import 'package:oilab_frontend/features/produits/presentation/bloc/product_state.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'detail_row.dart';
 
@@ -17,16 +20,37 @@ class QuantityDetailsCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          Text(
+        children: [
+          const Text(
             'Détails des quantités',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
-          DetailRow(label: "Quantité d'olives", value: '72 Kg'),
-          DetailRow(label: 'Huile produite', value: '39 L'),
-          DetailRow(label: 'Déchets vendus', value: '25 Kg'),
-          DetailRow(label: 'Déchets finaux', value: '61 Kg'),
+          const SizedBox(height: 8),
+
+          BlocBuilder<ProductBloc, ProductState>(
+            builder: (context, state) {
+              String quantityValue = '3630 Kg';
+
+              if (state is TotalQuantityLoaded) {
+                quantityValue =
+                    '${state.data.totalQuantity.toStringAsFixed(0)} Kg';
+              } else if (state is ProductLoading) {
+                quantityValue = '... Kg';
+              } else if (state is ProductOperationFailure) {
+                quantityValue = 'Error';
+              }
+
+              return DetailRow(
+                label: "Quantité d'olives",
+                value: quantityValue,
+                child: null,
+              );
+            },
+          ),
+          // Static rows remain unchanged
+          const DetailRow(label: 'Huile produite', value: '39 L', child: null),
+          const DetailRow(label: 'Déchets vendus', value: '25 Kg', child: null),
+          const DetailRow(label: 'Déchets finaux', value: '61 Kg', child: null),
         ],
       ),
     );

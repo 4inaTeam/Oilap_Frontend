@@ -49,26 +49,27 @@ class FactureLoaded extends FactureState {
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
-      currentClientId: currentClientId ?? this.currentClientId, // Include in copyWith
+      currentClientId:
+          currentClientId ?? this.currentClientId, // Include in copyWith
     );
   }
 
   @override
   List<Object?> get props => [
-        factures,
-        filteredFactures,
-        currentFilter,
-        currentSearch,
-        totalCount,
-        currentPage,
-        totalPages,
-        currentClientId,
-      ];
+    factures,
+    filteredFactures,
+    currentFilter,
+    currentSearch,
+    totalCount,
+    currentPage,
+    totalPages,
+    currentClientId,
+  ];
 }
 
 class FactureDetailLoaded extends FactureState {
   final Facture facture;
-  
+
   FactureDetailLoaded(this.facture);
 
   @override
@@ -77,7 +78,7 @@ class FactureDetailLoaded extends FactureState {
 
 class FactureError extends FactureState {
   final String message;
-  
+
   FactureError(this.message);
 
   @override
@@ -90,9 +91,22 @@ class FactureDeleted extends FactureState {}
 
 class FacturePdfLoaded extends FactureState {
   final String pdfUrl;
-  
+
   FacturePdfLoaded(this.pdfUrl);
 
   @override
   List<Object?> get props => [pdfUrl];
+}
+
+class TotalRevenueLoaded extends FactureState {
+  final double totalRevenue;
+  final double totalAmountBeforeTax;
+
+  TotalRevenueLoaded({
+    required this.totalRevenue,
+    required this.totalAmountBeforeTax,
+  });
+
+  @override
+  List get props => [totalRevenue, totalAmountBeforeTax];
 }

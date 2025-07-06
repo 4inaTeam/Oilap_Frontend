@@ -415,4 +415,28 @@ class ClientRepository {
       'Failed to check client: ${response.statusCode} - ${response.body}',
     );
   }
+
+  Future<int> fetchTotalClients() async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final resp = await http.get(
+        Uri.parse('$baseUrl/api/users/total-clients/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (resp.statusCode == 200) {
+        final responseData = json.decode(resp.body);
+        return responseData['total_clients'] as int;
+      }
+
+      throw Exception('Failed to fetch total clients: ${resp.statusCode}');
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

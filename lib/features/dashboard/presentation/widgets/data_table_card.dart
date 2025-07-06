@@ -15,6 +15,7 @@ class _DataTableCardState extends State<DataTableCard> {
   @override
   void initState() {
     super.initState();
+    // Load clients when widget initializes
     context.read<ClientBloc>().add(LoadClients());
   }
 
@@ -39,7 +40,14 @@ class _DataTableCardState extends State<DataTableCard> {
                   }
 
                   if (state is ClientLoadSuccess) {
-                    final random5 = (state.clients..shuffle()).take(5).toList();
+                    if (state.clients.isEmpty) {
+                      return const Center(child: Text('No clients found'));
+                    }
+
+                    // Get random 5 clients or all if less than 5
+                    final clientsToShow = List.from(state.clients);
+                    clientsToShow.shuffle();
+                    final displayClients = clientsToShow.take(5).toList();
 
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -53,7 +61,7 @@ class _DataTableCardState extends State<DataTableCard> {
                           DataColumn(label: Text('Actif')),
                         ],
                         rows:
-                            random5.map((client) {
+                            displayClients.map((client) {
                               return DataRow(
                                 cells: [
                                   DataCell(Text(client.name)),
@@ -61,6 +69,13 @@ class _DataTableCardState extends State<DataTableCard> {
                                   DataCell(
                                     Text(
                                       client.isActive ? 'Active' : 'Inactive',
+                                      style: TextStyle(
+                                        color:
+                                            client.isActive
+                                                ? Colors.green
+                                                : Colors.red,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -70,7 +85,38 @@ class _DataTableCardState extends State<DataTableCard> {
                     );
                   }
 
-                  return const Center(child: Text('Error loading clients'));
+                  if (state is ClientOperationFailure) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.red[400],
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Error loading clients',
+                            style: TextStyle(
+                              color: Colors.red[400],
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<ClientBloc>().add(LoadClients());
+                            },
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Default case
+                  return const Center(child: Text('No data available'));
                 },
               ),
             ),
