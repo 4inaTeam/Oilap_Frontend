@@ -39,27 +39,26 @@ class AppLayout extends StatelessWidget {
         onUserProfileTap: onUserProfileTap,
         onSearchResult: onSearchResult,
         searchData: searchData,
-        currentRoute: currentRoute, // Pass the route
+        currentRoute: currentRoute,
       );
     } else {
       return _MobileScaffold(
         child: child,
         onSearchResult: onSearchResult,
         searchData: searchData,
-        currentRoute: currentRoute, // Pass the route
+        currentRoute: currentRoute,
       );
     }
   }
 }
 
-// Updated _DesktopScaffold to accept and pass currentRoute
 class _DesktopScaffold extends StatelessWidget {
   final Widget child;
   final String? userName;
   final VoidCallback? onUserProfileTap;
   final Function(String)? onSearchResult;
   final List<String>? searchData;
-  final String? currentRoute; // Add this parameter
+  final String? currentRoute;
 
   const _DesktopScaffold({
     required this.child,
@@ -67,7 +66,7 @@ class _DesktopScaffold extends StatelessWidget {
     this.onUserProfileTap,
     this.onSearchResult,
     this.searchData,
-    this.currentRoute, // Add this parameter
+    this.currentRoute,
   });
 
   @override
@@ -79,11 +78,7 @@ class _DesktopScaffold extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                // Pass the currentRoute to AppHeader
-                AppHeader(
-                  showSearch: true,
-                  currentRoute: currentRoute, // Pass the route explicitly
-                ),
+                AppHeader(showSearch: true, currentRoute: currentRoute),
                 Expanded(child: child),
                 const FooterWidget(),
               ],
@@ -95,12 +90,11 @@ class _DesktopScaffold extends StatelessWidget {
   }
 }
 
-// Updated _MobileScaffold to accept currentRoute and use it
 class _MobileScaffold extends StatelessWidget {
   final Widget child;
   final Function(String)? onSearchResult;
   final List<String>? searchData;
-  final String? currentRoute; // Add this parameter
+  final String? currentRoute;
 
   const _MobileScaffold({
     required this.child,
@@ -124,12 +118,10 @@ class _MobileScaffold extends StatelessWidget {
   };
 
   String _getDynamicTitle(BuildContext context) {
-    // Use the passed currentRoute first
     if (currentRoute != null) {
       return _routeTitles[currentRoute] ?? _getDefaultDashboardTitle();
     }
 
-    // Fallback: Get current route from context
     final routeFromContext = ModalRoute.of(context)?.settings.name;
     return _routeTitles[routeFromContext] ?? _getDefaultDashboardTitle();
   }
@@ -187,7 +179,6 @@ class _MobileScaffold extends StatelessWidget {
   }
 }
 
-// Mobile notification icon for AppBar
 class _MobileNotificationIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -204,7 +195,6 @@ class _MobileNotificationIcon extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.notifications_none, color: Colors.white),
               onPressed: () {
-                // Navigate to notifications screen or show modal
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const NotificationScreen(),
@@ -244,7 +234,6 @@ class _MobileNotificationIcon extends StatelessWidget {
   }
 }
 
-// Live Search Delegate for Mobile
 class LiveSearchDelegate extends SearchDelegate<String> {
   final Function(String)? onSearchResult;
   final List<String>? customSearchData;
@@ -290,7 +279,6 @@ class LiveSearchDelegate extends SearchDelegate<String> {
   }
 
   Widget _buildSearchResults() {
-    // Use custom search data if provided, otherwise use mock data
     final searchData =
         customSearchData ??
         [

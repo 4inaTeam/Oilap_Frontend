@@ -15,7 +15,7 @@ class Sidebar extends StatefulWidget {
   State<Sidebar> createState() => _SidebarState();
 }
 
-class _SidebarState extends State<Sidebar> {
+class _SidebarState extends State<Sidebar> with RouteAware {
   String? _selectedRoute;
   bool _isFacturesExpanded = false;
 
@@ -53,25 +53,43 @@ class _SidebarState extends State<Sidebar> {
   @override
   void initState() {
     super.initState();
+    // Get the initial route
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final currentRoute = ModalRoute.of(context)?.settings.name;
-      if (currentRoute != null) {
-        setState(() {
-          _selectedRoute = currentRoute;
-          if (currentRoute.startsWith('/factures/')) {
-            _isFacturesExpanded = true;
-          }
-        });
-      }
-
-      final authBloc = context.read<AuthBloc>();
-      final currentState = authBloc.state;
-
-      if (currentState is AuthLoadSuccess &&
-          currentState is! AuthUserLoadSuccess) {
-        authBloc.add(AuthUserRequested());
+      if (mounted) {
+        final currentRoute = ModalRoute.of(context)?.settings.name;
+        if (currentRoute != null) {
+          setState(() {
+            _selectedRoute = currentRoute;
+            if (currentRoute.startsWith('/factures/')) {
+              _isFacturesExpanded = true;
+            }
+          });
+        }
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Update route immediately when dependencies change
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    if (currentRoute != null && currentRoute != _selectedRoute) {
+      setState(() {
+        _selectedRoute = currentRoute;
+        if (currentRoute.startsWith('/factures/')) {
+          _isFacturesExpanded = true;
+        }
+      });
+    }
+
+    // Handle auth state
+    final authBloc = context.read<AuthBloc>();
+    final currentState = authBloc.state;
+    if (currentState is AuthLoadSuccess &&
+        currentState is! AuthUserLoadSuccess) {
+      authBloc.add(AuthUserRequested());
+    }
   }
 
   // In sidebar.dart - Update the _getOrganizedItems method
@@ -166,10 +184,7 @@ class _SidebarState extends State<Sidebar> {
 
   void _onItemTap(String route) {
     if (_selectedRoute == route) return;
-    setState(() => _selectedRoute = route);
-    Navigator.of(context).pushNamed(route).then((_) {
-      setState(() => _selectedRoute = route);
-    });
+    Navigator.of(context).pushNamed(route);
   }
 
   void _toggleFacturesDropdown() {
@@ -332,12 +347,6 @@ class _SidebarState extends State<Sidebar> {
               ),
             ),
           );
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              context.read<AuthBloc>().add(AuthUserRequested());
-            }
-          });
         } else {
           avatar = const CircleAvatar(
             radius: 36,
@@ -518,19 +527,9 @@ class _SidebarItem extends StatelessWidget {
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
-          trailing: TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 300),
-            tween: Tween(begin: 0, end: isSelected ? 1.0 : 0.0),
-            builder: (context, value, child) {
-              return Transform.rotate(
-                angle: value * 2 * 3.14159,
-                child: Icon(
-                  isSelected ? energySavingsLeaf : Icons.chevron_right,
-                  key: ValueKey(isSelected ? 'leaf' : 'chevron'),
-                  color: isSelected ? AppColors.accentGreen : Colors.white70,
-                ),
-              );
-            },
+          trailing: Icon(
+            isSelected ? energySavingsLeaf : Icons.chevron_right,
+            color: isSelected ? AppColors.accentGreen : Colors.white70,
           ),
         ),
       ),
