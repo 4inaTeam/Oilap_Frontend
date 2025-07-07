@@ -39,7 +39,7 @@ class FactureLoaded extends FactureState {
     int? totalCount,
     int? currentPage,
     int? totalPages,
-    int? currentClientId, // Add this parameter
+    int? currentClientId,
   }) {
     return FactureLoaded(
       factures: factures ?? this.factures,
@@ -49,8 +49,7 @@ class FactureLoaded extends FactureState {
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
-      currentClientId:
-          currentClientId ?? this.currentClientId, // Include in copyWith
+      currentClientId: currentClientId ?? this.currentClientId,
     );
   }
 
@@ -108,5 +107,28 @@ class TotalRevenueLoaded extends FactureState {
   });
 
   @override
-  List get props => [totalRevenue, totalAmountBeforeTax];
+  List<Object?> get props => [totalRevenue, totalAmountBeforeTax];
+}
+
+// New state for dashboard data
+class DashboardDataLoaded extends FactureState {
+  final List<Facture> recentFactures;
+  final double totalRevenue;
+  final double totalAmountBeforeTax;
+  final int totalFacturesCount;
+
+  DashboardDataLoaded({
+    required this.recentFactures,
+    required this.totalRevenue,
+    required this.totalAmountBeforeTax,
+    required this.totalFacturesCount,
+  });
+
+  @override
+  List<Object?> get props => [
+    recentFactures,
+    totalRevenue,
+    totalAmountBeforeTax,
+    totalFacturesCount,
+  ];
 }

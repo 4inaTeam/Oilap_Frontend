@@ -1,4 +1,3 @@
-// bill_statistics_repository.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../auth/data/auth_repository.dart';
@@ -6,6 +5,9 @@ import '../../auth/data/auth_repository.dart';
 class BillStatistics {
   final double totalExpenses;
   final double totalRevenue;
+  final double totalFinancialActivity;
+  final double expensesPercentage;
+  final double revenuePercentage;
   final double netResult;
   final String netResultType;
   final int totalBillsCount;
@@ -17,6 +19,9 @@ class BillStatistics {
   BillStatistics({
     required this.totalExpenses,
     required this.totalRevenue,
+    required this.totalFinancialActivity,
+    required this.expensesPercentage,
+    required this.revenuePercentage,
     required this.netResult,
     required this.netResultType,
     required this.totalBillsCount,
@@ -28,7 +33,6 @@ class BillStatistics {
 
   factory BillStatistics.fromJson(Map<String, dynamic> json) {
     try {
-
       final categoryBreakdownMap = <String, CategoryStats>{};
 
       // Parse category_breakdown
@@ -92,6 +96,9 @@ class BillStatistics {
       final result = BillStatistics(
         totalExpenses: _parseDouble(json['total_expenses']),
         totalRevenue: _parseDouble(json['total_revenue']),
+        totalFinancialActivity: _parseDouble(json['total_financial_activity']),
+        expensesPercentage: _parseDouble(json['expenses_percentage']),
+        revenuePercentage: _parseDouble(json['revenue_percentage']),
         netResult: _parseDouble(json['net_result']),
         netResultType: json['net_result_type']?.toString() ?? 'unknown',
         totalBillsCount: _parseInt(json['total_bills_count']),
@@ -107,6 +114,9 @@ class BillStatistics {
       return BillStatistics(
         totalExpenses: 0.0,
         totalRevenue: 0.0,
+        totalFinancialActivity: 0.0,
+        expensesPercentage: 0.0,
+        revenuePercentage: 0.0,
         netResult: 0.0,
         netResultType: 'unknown',
         totalBillsCount: 0,
@@ -157,7 +167,7 @@ class CategoryStats {
   final double totalAmount;
   final int count;
   final double percentage;
-  final String? type; // Added to match API response
+  final String? type;
 
   CategoryStats({
     required this.name,
@@ -245,7 +255,6 @@ class BillStatisticsRepository {
 
   Future<BillStatistics> fetchBillStatistics() async {
     try {
-
       final token = await authRepo.getAccessToken();
       if (token == null) {
         throw Exception('Not authenticated');
@@ -262,13 +271,16 @@ class BillStatisticsRepository {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         final statistics = BillStatistics.fromJson(data);
         return statistics;
       } else if (response.statusCode == 404) {
+        // CORRECTION: Ajout des champs manquants
         return BillStatistics(
           totalExpenses: 0.0,
           totalRevenue: 0.0,
+          totalFinancialActivity: 0.0, // AJOUTÉ
+          expensesPercentage: 0.0, // AJOUTÉ
+          revenuePercentage: 0.0, // AJOUTÉ
           netResult: 0.0,
           netResultType: 'unknown',
           totalBillsCount: 0,

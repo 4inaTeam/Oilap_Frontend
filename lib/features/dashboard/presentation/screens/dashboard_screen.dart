@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/core/constants/consts.dart';
-import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics_repository.dart';
+import 'package:oilab_frontend/features/clients/presentation/bloc/client_event.dart';
+import 'package:oilab_frontend/features/clients/presentation/bloc/client_state.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/widgets/total_quantity_summarycard.dart';
 import 'package:oilab_frontend/features/produits/data/product_repository.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_event.dart';
+import 'package:oilab_frontend/features/produits/presentation/bloc/product_state.dart';
 import 'package:oilab_frontend/shared/widgets/header_widget.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/data/client_repository.dart';
@@ -62,32 +65,23 @@ class DashboardPage extends StatelessWidget {
             );
           },
         ),
-        // CREATE REVENUE BLOC WITH UNIQUE EVENT
         BlocProvider<RevenueBloc>(
           create: (context) {
             final factureRepo = FactureRepository(
               baseUrl: BackendUrls.current,
               authRepo: context.read<AuthRepository>(),
             );
-
             final revenueBloc = RevenueBloc(factureRepository: factureRepo);
-
-            // Use the NEW LoadRevenue event instead of LoadTotalRevenue
-            revenueBloc.add(
-              LoadRevenue(),
-            ); // CHANGED: Use LoadRevenue instead of LoadTotalRevenue
-
+            revenueBloc.add(LoadRevenue());
             return revenueBloc;
           },
         ),
-        // ADD BILL STATISTICS BLOC
         BlocProvider<BillStatisticsBloc>(
           create: (context) {
             final statisticsRepo = BillStatisticsRepository(
               baseUrl: BackendUrls.current,
               authRepo: context.read<AuthRepository>(),
             );
-
             return BillStatisticsBloc(repository: statisticsRepo);
           },
         ),
@@ -105,256 +99,817 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    print('📱 Dashboard initState called');
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeDashboard();
+      if (mounted) {
+        _initializeDashboard();
+      }
     });
   }
 
   void _initializeDashboard() {
-    try {
-      print('🚀 Initializing dashboard data...');
+    if (!mounted) return;
 
-      // Load revenue data
+    try {
+      // Load client data
+      final clientBloc = context.read<ClientBloc>();
+      clientBloc.add(LoadTotalClients()); // Make sure this event exists
+
       final revenueBloc = context.read<RevenueBloc>();
-      print('💰 Revenue bloc state: ${revenueBloc.state.runtimeType}');
       revenueBloc.add(LoadRevenue());
 
-      // Load bill statistics
       final billStatsBloc = context.read<BillStatisticsBloc>();
-      print('📊 Bill stats bloc state: ${billStatsBloc.state.runtimeType}');
       billStatsBloc.add(LoadBillStatistics());
 
-      // Load total quantity data
       final productBloc = context.read<ProductBloc>();
-      print('📦 Product bloc state: ${productBloc.state.runtimeType}');
       productBloc.add(LoadTotalQuantity());
 
-      print('✅ All dashboard data loading triggered');
-    } catch (e) {
-      print('💥 Error initializing dashboard: $e');
-    }
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return AppLayout(
       currentRoute: '/dashboard',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile =
+              MediaQuery.of(context).size.width < AppLayout.desktopBreakpoint;
+
+          return Column(
+            children: [
+              if (isMobile)
+                AppHeader(
+                  title: 'Dashboard',
+                  showBackArrow: false,
+                  showSearch: true,
+                ),
+              Expanded(
+                child:
+                    _isInitialized
+                        ? _buildContent(isMobile)
+                        : _buildLoadingScreen(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return const Center(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text('Loading Dashboard...'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(bool isMobile) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isDesktop = width >= 600;
+        final isMobileLayout = width < 600;
+
+        if (isMobileLayout) {
+          return _buildMobileLayout(constraints);
+        } else {
+          return _buildDesktopLayout(constraints, isDesktop);
+        }
+      },
+    );
+  }
+
+  Widget _buildMobileLayout(BoxConstraints constraints) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Summary Cards and Details in same row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Summary Cards in 2x2 Grid (Left side)
+              Expanded(
+                flex: 1,
+                child: Container(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.spaceEvenly,
+                    children: [
+                      // Row 1
+                      _buildCompactSummaryCardWithBLoC(
+                        'Clients',
+                        AppColors.greenLight,
+                        _buildClientValue(),
+                      ),
+                      _buildCompactSummaryCardWithBLoC(
+                        'Quantité',
+                        AppColors.accentYellow,
+                        _buildQuantityValue(),
+                      ),
+                      // Row 2
+                      _buildCompactSummaryCardWithBLoC(
+                        'Revenu',
+                        AppColors.yellowLight,
+                        _buildRevenueValue(),
+                      ),
+                      _buildCompactSummaryCardWithBLoC(
+                        'Dépenses',
+                        AppColors.greenDark,
+                        _buildExpensesValue(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Details des quantités section (Right side)
+              Expanded(
+                flex: 1,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Détails des quantités',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDetailRow(
+                        'Quantité d\'olives',
+                        _getOlivesQuantity(),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildDetailRow('Huile produite', _getOilProduced()),
+                      const SizedBox(height: 6),
+                      _buildDetailRow('Déchets vendus', _getWasteSold()),
+                      const SizedBox(height: 6),
+                      _buildDetailRow('Déchets finaux', _getFinalWaste()),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Pie Chart
+          _buildSafeWidget(
+            () => SizedBox(height: 400, child: DynamicPieChartCard()),
+          ),
+          const SizedBox(height: 20),
+
+          // Line Chart
+          _buildSafeWidget(() => SizedBox(height: 300, child: LineChartCard())),
+          const SizedBox(height: 20),
+
+          // Data Tables
+          _buildSafeWidget(() => SizedBox(height: 300, child: DataTableCard())),
+          const SizedBox(height: 20),
+
+          _buildSafeWidget(
+            () => SizedBox(height: 300, child: EmployeeTableCard()),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(BoxConstraints constraints, bool isDesktop) {
+    final tableCards = [
+      _buildSafeWidget(() => const DataTableCard()),
+      _buildSafeWidget(() => const EmployeeTableCard()),
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-              final isMobile =
-                  MediaQuery.of(context).size.width <
-                  AppLayout.desktopBreakpoint;
+              final isWide = constraints.maxWidth >= 1000;
 
-              return Column(
-                children: [
-                  if (isMobile)
-                    AppHeader(
-                      title: 'Dashboard',
-                      showBackArrow: false,
-                      showSearch: true,
-                    ),
-                  SizedBox(
-                    height:
-                        isMobile
-                            ? MediaQuery.of(context).size.height - 140
-                            : MediaQuery.of(context).size.height - 120,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final isDesktop = width >= 600;
-                        final tableCards = [
-                          const DataTableCard(),
-                          const EmployeeTableCard(),
-                        ];
-
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 7,
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final isWide = constraints.maxWidth >= 1000;
-
-                                  if (isWide) {
-                                    return Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                              Expanded(
+                                flex: 3,
+                                child: Column(
+                                  children: [
+                                    Row(
                                       children: [
                                         Expanded(
-                                          flex: 7,
-                                          child: Column(
-                                            children: [
-                                              Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Expanded(
-                                                    flex: 3,
-                                                    child: Column(
-                                                      children: [
-                                                        Row(
-                                                          children: [
-                                                            Expanded(
-                                                              child: TotalClientsSummaryCard(
-                                                                width:
-                                                                    constraints
-                                                                        .maxWidth *
-                                                                    0.2,
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 16,
-                                                            ),
-                                                            Expanded(
-                                                              child: TotalQuantitySummaryCard(
-                                                                width:
-                                                                    constraints
-                                                                        .maxWidth *
-                                                                    0.2,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 16,
-                                                        ),
-                                                        Row(
-                                                          children: [
-                                                            // REVENUE CARD WITH DEBUG
-                                                            Expanded(
-                                                              child: _buildRevenueSummaryCard(
-                                                                context,
-                                                                constraints
-                                                                        .maxWidth *
-                                                                    0.2,
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 16,
-                                                            ),
-                                                            // EXPENSES CARD - UPDATED
-                                                            Expanded(
-                                                              child: _buildExpensesSummaryCard(
-                                                                context,
-                                                                constraints
-                                                                        .maxWidth *
-                                                                    0.2,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 24),
-                                                  Expanded(
-                                                    flex: 2,
-                                                    child: QuantityDetailsCard(
-                                                      width:
-                                                          constraints.maxWidth *
-                                                          0.25,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 16),
-                                              const SizedBox(
-                                                height: 300,
-                                                child: LineChartCard(),
-                                              ),
-                                            ],
+                                          child: _buildSafeWidget(
+                                            () => TotalClientsSummaryCard(
+                                              width: constraints.maxWidth * 0.2,
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 24),
+                                        const SizedBox(width: 16),
                                         Expanded(
-                                          flex: 4,
-                                          child: SizedBox(
-                                            height: 600,
-                                            child: DynamicPieChartCard(),
+                                          child: _buildSafeWidget(
+                                            () => TotalQuantitySummaryCard(
+                                              width: constraints.maxWidth * 0.2,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    );
-                                  } else {
-                                    // Simplified layout for smaller screens
-                                    return Column(
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
                                       children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: TotalClientsSummaryCard(
-                                                width:
-                                                    constraints.maxWidth * 0.45,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: TotalQuantitySummaryCard(
-                                                width:
-                                                    constraints.maxWidth * 0.45,
-                                              ),
-                                            ),
-                                          ],
+                                        Expanded(
+                                          child: _buildRevenueSummaryCard(
+                                            context,
+                                            constraints.maxWidth * 0.2,
+                                          ),
                                         ),
-                                        const SizedBox(height: 16),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _buildRevenueSummaryCard(
-                                                context,
-                                                constraints.maxWidth * 0.45,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: _buildExpensesSummaryCard(
-                                                context,
-                                                constraints.maxWidth * 0.45,
-                                              ),
-                                            ),
-                                          ],
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: _buildExpensesSummaryCard(
+                                            context,
+                                            constraints.maxWidth * 0.2,
+                                          ),
                                         ),
                                       ],
-                                    );
-                                  }
-                                },
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 24),
-                              GridView.count(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                crossAxisCount: isDesktop ? 2 : 1,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: isDesktop ? 1.2 : 1,
-                                children: tableCards,
+                              const SizedBox(width: 24),
+                              Expanded(
+                                flex: 2,
+                                child: _buildSafeWidget(
+                                  () => QuantityDetailsCard(
+                                    width: constraints.maxWidth * 0.25,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                        );
-                      },
+                          const SizedBox(height: 16),
+                          _buildSafeWidget(
+                            () => const SizedBox(
+                              height: 300,
+                              child: LineChartCard(),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              );
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 4,
+                      child: _buildSafeWidget(
+                        () =>
+                            SizedBox(height: 600, child: DynamicPieChartCard()),
+                      ),
+                    ),
+                  ],
+                );
+              } else {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSafeWidget(
+                            () => TotalClientsSummaryCard(
+                              width: constraints.maxWidth * 0.45,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildSafeWidget(
+                            () => TotalQuantitySummaryCard(
+                              width: constraints.maxWidth * 0.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildRevenueSummaryCard(
+                            context,
+                            constraints.maxWidth * 0.45,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildExpensesSummaryCard(
+                            context,
+                            constraints.maxWidth * 0.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }
             },
+          ),
+          const SizedBox(height: 24),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isDesktop ? 2 : 1,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: isDesktop ? 1.2 : 1,
+            children: tableCards,
           ),
         ],
       ),
     );
   }
 
+  // Compact Summary Card for Mobile Grid Layout with BLoC integration
+  Widget _buildCompactSummaryCardWithBLoC(
+    String title,
+    Color color,
+    Widget valueWidget,
+  ) {
+    return Container(
+      width: 80,
+      height: 80,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 8,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          // Create a custom smaller version for mobile instead of scaling
+          _buildCompactValue(valueWidget, title),
+          const SizedBox(height: 2),
+          const Text(
+            '+11%',
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 7,
+              fontWeight: FontWeight.w400,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build compact value widget specifically for mobile cards
+  Widget _buildCompactValue(Widget originalWidget, String title) {
+    switch (title) {
+      case 'Clients':
+        return _buildCompactClientValue();
+      case 'Quantité':
+        return _buildCompactQuantityValue();
+      case 'Revenu':
+        return _buildCompactRevenueValue();
+      case 'Dépenses':
+        return _buildCompactExpensesValue();
+      default:
+        return const Text(
+          '...',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+    }
+  }
+
+  // Compact BLoC value builders for mobile cards
+  Widget _buildCompactClientValue() {
+    return BlocBuilder<ClientBloc, ClientState>(
+      builder: (context, state) {
+        if (!mounted) return Container();
+
+        if (state is TotalClientsLoaded) {
+          return Text(
+            '${state.totalClients}',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        } else if (state is ClientLoading) {
+          return const SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(strokeWidth: 1),
+          );
+        }
+        return const Text(
+          '...',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactQuantityValue() {
+    return BlocBuilder<ProductBloc, ProductState>(
+      builder: (context, state) {
+        // Debug print
+        if (!mounted) return Container();
+
+        if (state is TotalQuantityLoaded) {
+          return Text(
+            '${state.data.totalQuantityInt}kg',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        } else if (state is ProductLoading) {
+          return const SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(strokeWidth: 1),
+          );
+        }
+        return const Text(
+          '...kg',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactRevenueValue() {
+    return BlocBuilder<RevenueBloc, RevenueState>(
+      builder: (context, state) {
+        // Debug print
+        if (!mounted) return Container();
+
+        if (state is RevenueLoaded) {
+          return Text(
+            '${state.totalRevenue.toStringAsFixed(0)}DT',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        } else if (state is RevenueLoading) {
+          return const SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(strokeWidth: 1),
+          );
+        }
+        return const Text(
+          '...DT',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactExpensesValue() {
+    return BlocBuilder<BillStatisticsBloc, BillStatisticsState>(
+      builder: (context, state) {
+        // Debug print
+        if (!mounted) return Container();
+
+        if (state is BillStatisticsLoaded) {
+          return Text(
+            '${state.statistics.totalExpenses.toStringAsFixed(0)}DT',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+        } else if (state is BillStatisticsLoading) {
+          return const SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(strokeWidth: 1),
+          );
+        }
+        return const Text(
+          '...DT',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  // Compact Summary Card for Mobile Grid Layout (keep for fallback)
+
+  // Helper method to build detail rows
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Safe widget wrapper to handle layout issues
+  Widget _buildSafeWidget(Widget Function() builder) {
+    try {
+      return builder();
+    } catch (e) {
+      return Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.grey[600]),
+              const SizedBox(height: 8),
+              Text(
+                'Widget Error',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  // BLoC value builders for consistent data across mobile and desktop
+  Widget _buildClientValue() {
+    return BlocBuilder<ClientBloc, ClientState>(
+      builder: (context, state) {
+        if (!mounted) return Container();
+
+        if (state is TotalClientsLoaded) {
+          return Text(
+            '${state.totalClients}',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          );
+        } else if (state is ClientLoading) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        return const Text(
+          '...',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuantityValue() {
+    return BlocBuilder<ProductBloc, ProductState>(
+      builder: (context, state) {
+        if (!mounted) return Container();
+
+        if (state is TotalQuantityLoaded) {
+          return Text(
+            '${state.data.totalQuantityInt} kg',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          );
+        } else if (state is ProductLoading) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        return const Text(
+          '... kg',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRevenueValue() {
+    return BlocBuilder<RevenueBloc, RevenueState>(
+      builder: (context, state) {
+        if (!mounted) return Container();
+
+        if (state is RevenueLoaded) {
+          return Text(
+            '${state.totalRevenue.toStringAsFixed(0)} DT',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          );
+        } else if (state is RevenueLoading) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        return const Text(
+          '... DT',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildExpensesValue() {
+    return BlocBuilder<BillStatisticsBloc, BillStatisticsState>(
+      builder: (context, state) {
+        if (!mounted) return Container();
+
+        if (state is BillStatisticsLoaded) {
+          return Text(
+            '${state.statistics.totalExpenses.toStringAsFixed(0)} DT',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          );
+        } else if (state is BillStatisticsLoading) {
+          return const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        return const Text(
+          '... DT',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper methods to get string values from BLoC states (kept for fallback)
+
+  // Detail quantities - you can replace these with actual BLoC data
+  String _getOlivesQuantity() {
+    // Replace with actual data from your BLoC
+    return '724kg';
+  }
+
+  String _getOilProduced() {
+    // Replace with actual data from your BLoC
+    return '39L';
+  }
+
+  String _getWasteSold() {
+    // Replace with actual data from your BLoC
+    return '296kg';
+  }
+
+  String _getFinalWaste() {
+    // Replace with actual data from your BLoC
+    return '614kg';
+  }
+
   Widget _buildRevenueSummaryCard(BuildContext context, double width) {
     return BlocBuilder<RevenueBloc, RevenueState>(
       builder: (context, state) {
+        if (!mounted) return Container();
+
         if (state is RevenueLoaded) {
           final revenueValue = state.totalRevenue.toStringAsFixed(2);
           const changePercentage = '+12.5%';
@@ -420,9 +975,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<RevenueBloc>().add(
-                        LoadRevenue(),
-                      ); // CHANGED: Use LoadRevenue
+                      if (mounted) {
+                        context.read<RevenueBloc>().add(LoadRevenue());
+                      }
                     },
                     child: const Text('Retry', style: TextStyle(fontSize: 10)),
                   ),
@@ -463,9 +1018,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<RevenueBloc>().add(
-                        LoadRevenue(),
-                      ); // CHANGED: Use LoadRevenue
+                      if (mounted) {
+                        context.read<RevenueBloc>().add(LoadRevenue());
+                      }
                     },
                     child: const Text('Load', style: TextStyle(fontSize: 10)),
                   ),
@@ -481,6 +1036,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildExpensesSummaryCard(BuildContext context, double width) {
     return BlocBuilder<BillStatisticsBloc, BillStatisticsState>(
       builder: (context, state) {
+        if (!mounted) return Container();
+
         if (state is BillStatisticsLoaded) {
           final expensesValue = state.statistics.totalExpenses.toStringAsFixed(
             2,
@@ -548,9 +1105,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<BillStatisticsBloc>().add(
-                        LoadBillStatistics(),
-                      );
+                      if (mounted) {
+                        context.read<BillStatisticsBloc>().add(
+                          LoadBillStatistics(),
+                        );
+                      }
                     },
                     child: const Text('Retry', style: TextStyle(fontSize: 10)),
                   ),
@@ -591,9 +1150,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<BillStatisticsBloc>().add(
-                        LoadBillStatistics(),
-                      );
+                      if (mounted) {
+                        context.read<BillStatisticsBloc>().add(
+                          LoadBillStatistics(),
+                        );
+                      }
                     },
                     child: const Text('Load', style: TextStyle(fontSize: 10)),
                   ),

@@ -29,7 +29,6 @@ class TotalQuantityData {
 
   factory TotalQuantityData.fromJson(Map<String, dynamic> json) {
     try {
-      print('🔍 Parsing TotalQuantityData from JSON: $json');
 
       // Parse quantity_by_status with nested objects
       final quantityByStatusMap = <String, QuantityByStatus>{};
@@ -52,12 +51,8 @@ class TotalQuantityData {
         totalProducts: _parseInt(json['total_products']),
       );
 
-      print(
-        '✅ Successfully parsed TotalQuantityData: ${result.totalQuantity} Kg',
-      );
       return result;
     } catch (e) {
-      print('💥 Error parsing TotalQuantityData: $e');
       // Return default object on error
       return TotalQuantityData(
         totalQuantity: 0.0,
@@ -118,7 +113,6 @@ class QuantityByStatus {
         totalOil: TotalQuantityData._parseDouble(json['total_oil']),
       );
     } catch (e) {
-      print('Error parsing QuantityByStatus: $e');
       return QuantityByStatus(totalQuantity: 0.0, totalOil: 0.0);
     }
   }
@@ -475,13 +469,9 @@ class ProductRepository {
 
   Future<TotalQuantityData> fetchTotalQuantity() async {
     try {
-      print(
-        '🔍 Fetching total quantity from: $baseUrl/api/products/total-quantity/',
-      );
 
       final token = await authRepo.getAccessToken();
       if (token == null) {
-        print('❌ No authentication token available');
         throw Exception('Not authenticated');
       }
 
@@ -493,18 +483,13 @@ class ProductRepository {
         },
       );
 
-      print('📡 Quantity response status: ${resp.statusCode}');
-      print('📄 Quantity response body: ${resp.body}');
 
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
-        print('✅ Successfully parsed quantity JSON');
 
         final quantityData = TotalQuantityData.fromJson(responseData);
-        print('📊 Total quantity: ${quantityData.totalQuantity}');
         return quantityData;
       } else if (resp.statusCode == 404) {
-        print('⚠️ Quantity endpoint not found - returning default data');
         // Return default data for 404
         return TotalQuantityData(
           totalQuantity: 0.0,
@@ -514,13 +499,11 @@ class ProductRepository {
           totalProducts: 0,
         );
       } else {
-        print('❌ HTTP Error: ${resp.statusCode}');
         throw Exception(
           'Failed to fetch total quantity: ${resp.statusCode} - ${resp.body}',
         );
       }
     } catch (e) {
-      print('💥 Error in fetchTotalQuantity: $e');
       rethrow;
     }
   }

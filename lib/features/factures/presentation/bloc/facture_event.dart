@@ -65,3 +65,12 @@ class LoadTotalRevenue extends FactureEvent {
 
   LoadTotalRevenue({this.clientId, this.dateFrom, this.dateTo});
 }
+
+// New event for dashboard - loads both recent factures and total revenue
+class LoadDashboardData extends FactureEvent {
+  final int? clientId;
+  final String? dateFrom;
+  final String? dateTo;
+
+  LoadDashboardData({this.clientId, this.dateFrom, this.dateTo});
+}

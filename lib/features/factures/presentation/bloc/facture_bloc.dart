@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:oilab_frontend/core/models/facture_model.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_event.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_state.dart';
 import '../../data/facture_repository.dart';
@@ -21,7 +22,8 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     on<ChangePage>(_onChangePage);
     on<LoadFactureDetail>(_onLoadFactureDetail);
     on<GetFacturePdf>(_onGetFacturePdf);
-    on<LoadTotalRevenue>(_onLoadTotalRevenue); // Add new event handler
+    on<LoadTotalRevenue>(_onLoadTotalRevenue);
+    on<LoadDashboardData>(_onLoadDashboardData); // Add new event handler
   }
 
   Future<void> _onLoadFactures(
@@ -204,14 +206,10 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
     }
   }
 
-  // New handler for LoadTotalRevenue event
-  // Add this debug version to your _onLoadTotalRevenue method in FactureBloc
-
   Future<void> _onLoadTotalRevenue(
     LoadTotalRevenue event,
     Emitter<FactureState> emit,
   ) async {
-
     emit(FactureLoading());
 
     try {
@@ -221,12 +219,9 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
         dateTo: event.dateTo,
       );
 
-
-
       final state = TotalRevenueLoaded(
         totalRevenue: result.totalRevenue,
-        totalAmountBeforeTax: result.totalAmountBeforeTax, 
-
+        totalAmountBeforeTax: result.totalAmountBeforeTax,
       );
 
       emit(state);
@@ -234,6 +229,48 @@ class FactureBloc extends Bloc<FactureEvent, FactureState> {
       emit(
         FactureError(
           'Erreur lors du chargement du chiffre d\'affaires: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  // Optimized handler using the new fetchRecentFactures method
+  Future<void> _onLoadDashboardData(
+    LoadDashboardData event,
+    Emitter<FactureState> emit,
+  ) async {
+    emit(FactureLoading());
+
+    try {
+      // Load both recent factures (last 3) and total revenue in parallel
+      final futures = await Future.wait([
+        factureRepository.fetchRecentFactures(
+          limit: 3,
+          clientId: event.clientId,
+        ),
+        factureRepository.fetchTotalRevenue(
+          clientId: event.clientId,
+          dateFrom: event.dateFrom,
+          dateTo: event.dateTo,
+        ),
+      ]);
+
+      final recentFactures = futures[0] as List<Facture>;
+      final revenueResult = futures[1] as TotalRevenueResult;
+
+      // Emit a combined state that contains both factures and revenue data
+      emit(
+        DashboardDataLoaded(
+          recentFactures: recentFactures,
+          totalRevenue: revenueResult.totalRevenue,
+          totalAmountBeforeTax: revenueResult.totalAmountBeforeTax,
+          totalFacturesCount: recentFactures.length,
+        ),
+      );
+    } catch (e) {
+      emit(
+        FactureError(
+          'Erreur lors du chargement des données du tableau de bord: ${e.toString()}',
         ),
       );
     }

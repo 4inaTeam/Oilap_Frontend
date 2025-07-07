@@ -24,6 +24,16 @@ class LoadBills extends BillEvent {
   List<Object?> get props => [page, pageSize, searchQuery, categoryFilter];
 }
 
+// New event for dashboard - loads recent bills for dashboard display
+class LoadDashboardBills extends BillEvent {
+  final int limit;
+
+  LoadDashboardBills({this.limit = 3});
+
+  @override
+  List<Object?> get props => [limit];
+}
+
 class SearchBills extends BillEvent {
   final String query;
   final int page;
@@ -153,3 +163,5 @@ class LoadBillById extends BillEvent {
 class ClearBillState extends BillEvent {}
 
 class RefreshBills extends BillEvent {}
+
+

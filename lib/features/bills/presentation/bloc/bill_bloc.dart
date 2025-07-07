@@ -262,5 +262,24 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<ClearBillState>((event, emit) {
       emit(BillInitial());
     });
+
+    on<LoadDashboardBills>((event, emit) async {
+      emit(BillLoading());
+      try {
+        final result = await repo.fetchBills(page: 1, pageSize: event.limit);
+
+        emit(
+          BillLoadSuccess(
+            bills: result.bills,
+            currentPage: result.currentPage,
+            totalPages: result.totalPages,
+            totalBills: result.totalCount,
+            pageSize: event.limit,
+          ),
+        );
+      } catch (error) {
+        emit(BillOperationFailure(error.toString()));
+      }
+    });
   }
 }

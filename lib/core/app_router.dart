@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oilab_frontend/features/auth/data/auth_repository.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_detail_screen.dart';
 import 'package:oilab_frontend/features/bills/presentation/screens/bill_list_screen.dart';
-import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboardAccounatant_screen.dart';
+import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboard_Accounatant_screen.dart';
 import 'package:oilab_frontend/features/energie/presentation/screens/energie_list_screen.dart';
 import 'package:oilab_frontend/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:oilab_frontend/features/splash/presentation/screens/splash_screen.dart';
@@ -106,20 +106,19 @@ class AppRouter {
         }
         break;
 
+      case '/factures/client':
+        if (isAdmin || isAccountant || isClient) {
+          final args = settings.arguments as Map<String, dynamic>?;
 
-
-case '/factures/client':
-  if (isAdmin || isAccountant || isClient) {
-    final args = settings.arguments as Map<String, dynamic>?;
-    
-    return MaterialPageRoute(
-      builder: (_) => FactureListScreen(
-        clientId: args?['clientId'] as int?,
-        clientName: args?['clientName'] as String?,
-      ),
-    );
-  }
-  break;
+          return MaterialPageRoute(
+            builder:
+                (_) => FactureListScreen(
+                  clientId: args?['clientId'] as int?,
+                  clientName: args?['clientName'] as String?,
+                ),
+          );
+        }
+        break;
 
       case '/factures/client/detail':
         if (isAdmin || isAccountant || isClient) {

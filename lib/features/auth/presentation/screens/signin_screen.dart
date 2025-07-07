@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/features/clients/presentation/screens/client_list_screen.dart';
-import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboardAccounatant_screen.dart';
+import 'package:oilab_frontend/features/comptableDashboard/presentation/screens/dashboard_Accounatant_screen.dart';
 import 'package:oilab_frontend/features/produits/presentation/screens/product_list_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -74,8 +74,9 @@ class _SignInViewState extends State<_SignInView> {
         (route) => false,
       );
     } else {
+
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(builder: (_) => const DashboardPage()),
         (route) => false,
       );
     }

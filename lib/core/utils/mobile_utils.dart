@@ -40,8 +40,6 @@ Future<void> downloadPdfMobile(Uint8List bytes, String fileName) async {
     // Write the file
     final file = File('$downloadsPath/$fileName');
     await file.writeAsBytes(bytes);
-
-    print('PDF saved to: ${file.path}');
   } catch (e) {
     throw Exception('Mobile download failed: $e');
   }

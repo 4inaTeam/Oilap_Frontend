@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics_repository.dart';
 import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_bloc.dart';
 import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_event.dart';
 import 'package:oilab_frontend/features/bills/presentation/bloc/bill_statistics_state.dart';

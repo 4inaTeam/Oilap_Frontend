@@ -21,22 +21,29 @@ class SummaryCard extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 600;
 
-    // Force smaller square dimensions
-    final cardSize = isMobile ? 70.0 : 120.0; // Much smaller on mobile
-    final cardPadding = isMobile ? 6.0 : 12.0;
-    final titleFontSize = isMobile ? 8.0 : 12.0;
-    final valueFontSize = isMobile ? 12.0 : 16.0;
-    final changeFontSize = isMobile ? 7.0 : 10.0;
-    final spacing = isMobile ? 2.0 : 4.0;
-    final borderRadius = isMobile ? 4.0 : 6.0;
+    // Much smaller square dimensions to match the image
+    final cardSize = isMobile ? 80.0 : 120.0; // Compact mobile size
+    final cardPadding = isMobile ? 8.0 : 12.0;
+    final titleFontSize = isMobile ? 9.0 : 12.0;
+    final valueFontSize = isMobile ? 14.0 : 16.0;
+    final changeFontSize = isMobile ? 8.0 : 10.0;
+    final spacing = isMobile ? 3.0 : 4.0;
+    final borderRadius = isMobile ? 8.0 : 6.0;
 
     return Container(
-      width: cardSize, // Fixed small size
+      width: cardSize, // Fixed compact size
       height: cardSize, // Square shape
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,

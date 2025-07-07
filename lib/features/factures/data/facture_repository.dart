@@ -48,6 +48,59 @@ class FactureRepository {
 
   FactureRepository({required this.baseUrl, required this.authRepo});
 
+  /// Fetch the most recent factures (for dashboard)
+  Future<List<Facture>> fetchRecentFactures({
+    int limit = 3,
+    int? clientId,
+  }) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final queryParams = <String, String>{
+        'page': '1',
+        'page_size':
+            (limit * 2).toString(), // Get more to ensure we have recent ones
+        'ordering':
+            '-created_at', // Order by creation date descending (if your API supports it)
+      };
+
+      if (clientId != null) {
+        queryParams['client_id'] = clientId.toString();
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/api/factures/',
+      ).replace(queryParameters: queryParams);
+
+      final resp = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (resp.statusCode == 200) {
+        final responseData = json.decode(resp.body);
+
+        List<dynamic> data;
+        if (responseData is Map && responseData.containsKey('results')) {
+          data = responseData['results'] as List<dynamic>;
+        } else {
+          data = responseData as List<dynamic>;
+        }
+
+        final factures = data.map((e) => Facture.fromJson(e)).toList();
+
+        // Sort by creation date (most recent first) and take only the limit
+        factures.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return factures.take(limit).toList();
+      }
+
+      throw Exception('Failed to fetch recent factures: ${resp.statusCode}');
+    } catch (e) {
+      throw Exception('Failed to fetch recent factures: ${e.toString()}');
+    }
+  }
+
   Future<TotalRevenueResult> fetchTotalRevenue({
     int? clientId,
     String? dateFrom,

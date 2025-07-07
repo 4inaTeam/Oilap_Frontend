@@ -321,12 +321,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
     on<LoadTotalQuantity>((event, emit) async {
       try {
-        print('🚀 Loading total quantity...');
         final data = await repo.fetchTotalQuantity();
-        print('✅ Total quantity loaded successfully: ${data.totalQuantity}');
         emit(TotalQuantityLoaded(data));
       } catch (err) {
-        print('❌ Error loading total quantity: $err');
         emit(
           ProductOperationFailure(
             'Failed to load total quantity: ${err.toString()}',

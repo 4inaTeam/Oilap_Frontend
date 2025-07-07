@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics_repository.dart';
 import 'package:oilab_frontend/features/dashboard/presentation/bloc/revenuBloc.dart';
 import 'package:oilab_frontend/firebase_options.dart';
 import 'package:oilab_frontend/shared/services/fcm_service.dart';
@@ -91,7 +91,6 @@ Future<void> main() async {
                   authRepo: ctx.read<AuthRepository>(),
                 ),
           ),
-          // ADD BILL STATISTICS REPOSITORY
           RepositoryProvider<BillStatisticsRepository>(
             create:
                 (ctx) => BillStatisticsRepository(
@@ -159,7 +158,6 @@ Future<void> main() async {
             BlocProvider<BillBloc>(
               create: (ctx) => BillBloc(ctx.read<BillRepository>()),
             ),
-            // ADD BILL STATISTICS BLOC
             BlocProvider<BillStatisticsBloc>(
               create:
                   (ctx) => BillStatisticsBloc(
@@ -185,16 +183,10 @@ Future<void> main() async {
               create:
                   (ctx) => NotificationBloc(ctx.read<NotificationRepository>()),
             ),
-            BlocProvider(
+            BlocProvider<RevenueBloc>(
               create:
-                  (context) => FactureBloc(
-                    factureRepository: context.read<FactureRepository>(),
-                  ),
-            ),
-            BlocProvider(
-              create:
-                  (context) => RevenueBloc(
-                    factureRepository: context.read<FactureRepository>(),
+                  (ctx) => RevenueBloc(
+                    factureRepository: ctx.read<FactureRepository>(),
                   ),
             ),
           ],
@@ -213,15 +205,15 @@ Future<void> main() async {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error, size: 64, color: Colors.red),
-                SizedBox(height: 16),
-                Text(
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text(
                   'Error initializing app',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     '$e',
                     textAlign: TextAlign.center,
@@ -273,6 +265,7 @@ class _MyAppWithFCMState extends State<MyAppWithFCM> {
       await FCMService().subscribeToUserTopics();
     } catch (e) {
       // FCM initialization failed
+      debugPrint('FCM initialization failed: $e');
     }
   }
 
@@ -287,6 +280,7 @@ Future<void> _loadEnvironment() async {
     await dotenv.load(fileName: '.env');
   } catch (e) {
     // Environment file not found
+    debugPrint('Environment file not found: $e');
   }
 }
 

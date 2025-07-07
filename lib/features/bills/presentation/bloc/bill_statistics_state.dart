@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:oilab_frontend/features/bills/data/bill_statistics-repository.dart';
+import 'package:oilab_frontend/features/bills/data/bill_statistics_repository.dart';
 
 abstract class BillStatisticsState extends Equatable {
   @override
