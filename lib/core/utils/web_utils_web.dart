@@ -1,6 +1,3 @@
-// File: lib/core/utils/web_utils_web.dart
-// Web-only implementations using dart:html
-
 import 'dart:html' as html;
 import 'dart:typed_data';
 

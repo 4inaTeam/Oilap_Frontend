@@ -498,7 +498,7 @@ class _BillAddDialogState extends State<BillAddDialog> {
                     ],
                   )
                   : InkWell(
-                    onTap: _pickImage,
+                    onTap: _showImageSourceDialog,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -589,10 +589,64 @@ class _BillAddDialogState extends State<BillAddDialog> {
     }
   }
 
-  Future<void> _pickImage() async {
+  // Show dialog to choose between camera and gallery
+  void _showImageSourceDialog() {
+    // Check if we're on a platform that supports camera
+    final bool supportsCamera = !kIsWeb && !Platform.isWindows;
+
+    if (!supportsCamera) {
+      // Directly open gallery for web and Windows
+      _pickImage(ImageSource.gallery);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choisir une source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.camera_alt,
+                  color: AppColors.mainColor,
+                ),
+                title: const Text('Prendre une photo'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: AppColors.mainColor,
+                ),
+                title: const Text('Choisir dans la galerie'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuler'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1920,
         maxHeight: 1080,
         imageQuality: 85,

@@ -136,11 +136,8 @@ class _QuantityDetailsCardState extends State<QuantityDetailsCard> {
           label: 'Huile produite',
           value: '${data.totalOilVolume.toStringAsFixed(1)} L',
         ),
-        DetailRow(
-          label: 'Rendement global',
-          value: '${data.overallYieldPercentage.toStringAsFixed(1)}%',
-        ),
-        DetailRow(label: 'Total produits', value: '${data.totalProducts}'),
+        const DetailRow(label: 'Déchets vendus', value: '25 Kg'),
+        const DetailRow(label: 'Déchets finaux', value: '61 Kg'),
       ],
     );
   }

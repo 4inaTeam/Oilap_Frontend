@@ -37,7 +37,6 @@ class BackendUrls {
   }
 
   static String _getPlatformSpecificUrl() {
-    // Check if we're on web first to avoid Platform errors
     if (kIsWeb) {
       return localhost;
     }
@@ -53,27 +52,44 @@ class BackendUrls {
         return physicalDevice;
       }
     } catch (e) {
-      // Fallback if Platform is not available (like on web)
       return localhost;
     }
   }
 
   static bool _isRunningOnEmulator() {
-    // Don't check Platform on web
     if (kIsWeb) return false;
 
     try {
+      if (Platform.isAndroid) {
+        // Better emulator detection for Android
+        final isEmulator =
+            Platform.environment['ANDROID_EMULATOR'] != null ||
+            Platform.environment['FLUTTER_TEST'] != null ||
+            !Platform.environment.containsKey('ANDROID_ROOT') ||
+            Platform.environment['ANDROID_DATA']?.contains('emulator') == true;
+
+        // Additional check: Android emulators typically have this host IP
+        return isEmulator;
+      }
       return false;
     } catch (e) {
-      return false;
+      // If we can't detect, assume emulator for Android (safer default)
+      return Platform.isAndroid;
     }
   }
 
   static bool _isRunningOnSimulator() {
-    // Don't check Platform on web
     if (kIsWeb) return false;
 
     try {
+      if (Platform.isIOS) {
+        // Check for iOS simulator indicators
+        final isSimulator =
+            Platform.environment['SIMULATOR_DEVICE_NAME'] != null ||
+            Platform.environment['FLUTTER_TEST'] != null ||
+            Platform.environment['SIMULATOR_ROOT'] != null;
+        return isSimulator;
+      }
       return false;
     } catch (e) {
       return false;
@@ -87,14 +103,34 @@ class BackendUrls {
     bool isWindows = false,
   }) {
     if (isWeb) return localhost;
-    if (isAndroid) return physicalDevice;
-    if (isIOS) return physicalDevice;
+    if (isAndroid)
+      return androidEmulator; // Changed to use emulator URL for Android
+    if (isIOS) return iosSimulator;
     if (isWindows) return localhost;
     return physicalDevice;
   }
 
   static String get manualOverride {
     return current;
+  }
+
+  // Add debug method to check what URL is being used
+  static String getDebugInfo() {
+    if (kIsWeb) return 'Web: $localhost';
+
+    try {
+      if (Platform.isAndroid) {
+        final isEmulator = _isRunningOnEmulator();
+        return 'Android - Emulator: $isEmulator, URL: ${isEmulator ? androidEmulator : physicalDevice}';
+      } else if (Platform.isIOS) {
+        final isSimulator = _isRunningOnSimulator();
+        return 'iOS - Simulator: $isSimulator, URL: ${isSimulator ? iosSimulator : physicalDevice}';
+      } else {
+        return 'Desktop: $localhost';
+      }
+    } catch (e) {
+      return 'Error: $e, Using: $localhost';
+    }
   }
 }
 

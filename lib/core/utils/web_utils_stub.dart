@@ -1,6 +1,3 @@
-// File: lib/core/utils/web_utils_stub.dart
-// Stub implementations for non-web platforms
-
 import 'dart:typed_data';
 
 /// Downloads a PDF file (Stub for non-web platforms).

@@ -1,6 +1,3 @@
-// File: lib/core/utils/mobile_utils.dart
-// Mobile-specific file operations
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';

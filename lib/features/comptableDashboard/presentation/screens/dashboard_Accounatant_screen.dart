@@ -12,6 +12,7 @@ import 'package:oilab_frontend/features/bills/presentation/bloc/bill_event.dart'
 import 'package:oilab_frontend/features/bills/presentation/bloc/bill_state.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
 import 'package:oilab_frontend/core/models/bill_model.dart';
+import 'dart:math' as math;
 
 class AccountantScreen extends StatefulWidget {
   const AccountantScreen({super.key});
@@ -29,7 +30,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
     context.read<BillStatisticsBloc>().add(LoadBillStatistics());
     context.read<BillBloc>().add(
       LoadDashboardBills(limit: 3),
-    ); // Already set to 3
+    );
   }
 
   @override
@@ -50,15 +51,15 @@ class _AccountantScreenState extends State<AccountantScreen> {
                       builder: (context, billState) {
                         return isMobile
                             ? _buildMobileLayout(
-                              factureState,
-                              statisticsState,
-                              billState,
-                            )
+                                factureState,
+                                statisticsState,
+                                billState,
+                              )
                             : _buildDesktopLayout(
-                              factureState,
-                              statisticsState,
-                              billState,
-                            );
+                                factureState,
+                                statisticsState,
+                                billState,
+                              );
                       },
                     );
                   },
@@ -94,9 +95,9 @@ class _AccountantScreenState extends State<AccountantScreen> {
         // Charts - Stacked Vertically for Mobile
         _buildExpenseDistributionChart(statisticsState),
         const SizedBox(height: 16),
-        _buildFinancialAnalysisChart(statisticsState),
+        _buildPaymentStatusChart(statisticsState), // Updated to show payment status
         const SizedBox(height: 16),
-        _buildPaymentStatusChart(statisticsState),
+        _buildFinancialAnalysisChart(statisticsState),
       ],
     );
   }
@@ -150,7 +151,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
           children: [
             Expanded(child: _buildExpenseDistributionChart(statisticsState)),
             const SizedBox(width: 24),
-            Expanded(child: _buildPaymentStatusChart(statisticsState)),
+            Expanded(child: _buildPaymentStatusChart(statisticsState)), // Updated to show payment status
             const SizedBox(width: 24),
             Expanded(child: _buildFinancialAnalysisChart(statisticsState)),
           ],
@@ -338,8 +339,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed:
-                        () => context.read<FactureBloc>().add(
+                    onPressed: () => context.read<FactureBloc>().add(
                           LoadDashboardData(),
                         ),
                     child: const Text('Réessayer'),
@@ -513,7 +513,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
             )
           else if (state is BillLoadSuccess && state.bills.isNotEmpty)
             ...state.bills
-                .take(3) // Ensure only 3 bills are displayed
+                .take(3)
                 .map((bill) => ExpensesTableRow(bill: bill))
                 .toList()
           else if (state is BillOperationFailure)
@@ -528,8 +528,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed:
-                        () => context.read<BillBloc>().add(
+                    onPressed: () => context.read<BillBloc>().add(
                           LoadDashboardBills(limit: 3),
                         ),
                     child: const Text('Réessayer'),
@@ -552,7 +551,6 @@ class _AccountantScreenState extends State<AccountantScreen> {
       builder: (context, constraints) {
         bool isMobile = constraints.maxWidth < 300;
         double chartSize = isMobile ? 100 : 120;
-        double borderWidth = isMobile ? 6 : 8;
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -584,56 +582,49 @@ class _AccountantScreenState extends State<AccountantScreen> {
                 child: SizedBox(
                   width: chartSize,
                   height: chartSize,
-                  child:
-                      state is BillStatisticsLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : Stack(
-                            children: [
-                              Container(
-                                width: chartSize,
-                                height: chartSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color:
-                                        Colors
-                                            .lightGreen, // Light green for expenses chart
-                                    width: borderWidth,
+                  child: state is BillStatisticsLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : state is BillStatisticsLoaded
+                          ? CustomPaint(
+                              painter: PieChartPainter(
+                                segments: [
+                                  PieChartSegment(
+                                    value: state.statistics.summary.purchases.totalAmount,
+                                    color: Colors.lightGreen,
+                                    label: 'Achats',
                                   ),
+                                  PieChartSegment(
+                                    value: state.statistics.summary.utilities.totalAmount,
+                                    color: Colors.green[300]!,
+                                    label: 'Services publics',
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                  width: 2,
                                 ),
                               ),
-                              Container(
-                                width: chartSize,
-                                height: chartSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color:
-                                        Colors
-                                            .green[300]!, // Light green for utilities
-                                    width: borderWidth,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
                 ),
               ),
               const SizedBox(height: 20),
               if (state is BillStatisticsLoaded) ...[
                 if (state.statistics.summary.purchases.totalAmount > 0)
                   ChartLegendItem(
-                    color: Colors.lightGreen, // Light green for purchases
+                    color: Colors.lightGreen,
                     label: 'Achats',
-                    percentage:
-                        '${state.statistics.summary.purchases.percentage.toStringAsFixed(1)}%',
+                    percentage: '${state.statistics.summary.purchases.percentage.toStringAsFixed(1)}%',
                   ),
                 if (state.statistics.summary.utilities.totalAmount > 0)
                   ChartLegendItem(
-                    color: Colors.green[300]!, // Light green for utilities
+                    color: Colors.green[300]!,
                     label: 'Services publics',
-                    percentage:
-                        '${state.statistics.summary.utilities.percentage.toStringAsFixed(1)}%',
+                    percentage: '${state.statistics.summary.utilities.percentage.toStringAsFixed(1)}%',
                   ),
               ] else ...[
                 const ChartLegendItem(
@@ -659,7 +650,6 @@ class _AccountantScreenState extends State<AccountantScreen> {
       builder: (context, constraints) {
         bool isMobile = constraints.maxWidth < 300;
         double chartSize = isMobile ? 100 : 120;
-        double borderWidth = isMobile ? 6 : 8;
 
         return Container(
           padding: const EdgeInsets.all(20),
@@ -679,7 +669,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Activité financière',
+                'Statut des paiements',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -691,62 +681,71 @@ class _AccountantScreenState extends State<AccountantScreen> {
                 child: SizedBox(
                   width: chartSize,
                   height: chartSize,
-                  child:
-                      state is BillStatisticsLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : Stack(
-                            children: [
-                              Container(
-                                width: chartSize,
-                                height: chartSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.green, // Green for revenue
-                                    width: borderWidth,
+                  child: state is BillStatisticsLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : state is BillStatisticsLoaded
+                          ? CustomPaint(
+                              painter: PieChartPainter(
+                                segments: [
+                                  PieChartSegment(
+                                    value: state.statistics.paymentStatusStats.paid.percentage,
+                                    color: Colors.green,
+                                    label: 'Payé',
                                   ),
+                                  PieChartSegment(
+                                    value: state.statistics.paymentStatusStats.unpaid.percentage,
+                                    color: Colors.red,
+                                    label: 'Non payé',
+                                  ),
+                                  if (state.statistics.paymentStatusStats.partial.percentage > 0)
+                                    PieChartSegment(
+                                      value: state.statistics.paymentStatusStats.partial.percentage,
+                                      color: Colors.orange,
+                                      label: 'Partiel',
+                                    ),
+                                ],
+                              ),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                  width: 2,
                                 ),
                               ),
-                              Container(
-                                width: chartSize,
-                                height: chartSize,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color:
-                                        Colors
-                                            .lightGreen, // Light green for expenses
-                                    width: borderWidth,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
                 ),
               ),
               const SizedBox(height: 20),
               if (state is BillStatisticsLoaded) ...[
-                ChartLegendItem(
-                  color: Colors.green, // Green for revenue
-                  label: 'Revenus',
-                  percentage:
-                      '${state.statistics.revenuePercentage.toStringAsFixed(1)}%',
-                ),
-                ChartLegendItem(
-                  color: Colors.lightGreen, // Light green for expenses
-                  label: 'Dépenses',
-                  percentage:
-                      '${state.statistics.expensesPercentage.toStringAsFixed(1)}%',
-                ),
+                if (state.statistics.paymentStatusStats.paid.count > 0)
+                  ChartLegendItem(
+                    color: Colors.green,
+                    label: 'Payé',
+                    percentage: '${state.statistics.paymentStatusStats.paid.percentage.toStringAsFixed(1)}%',
+                  ),
+                if (state.statistics.paymentStatusStats.unpaid.count > 0)
+                  ChartLegendItem(
+                    color: Colors.red,
+                    label: 'Non payé',
+                    percentage: '${state.statistics.paymentStatusStats.unpaid.percentage.toStringAsFixed(1)}%',
+                  ),
+                if (state.statistics.paymentStatusStats.partial.count > 0)
+                  ChartLegendItem(
+                    color: Colors.orange,
+                    label: 'Partiel',
+                    percentage: '${state.statistics.paymentStatusStats.partial.percentage.toStringAsFixed(1)}%',
+                  ),
               ] else ...[
                 const ChartLegendItem(
                   color: Colors.green,
-                  label: 'Revenus',
+                  label: 'Payé',
                   percentage: '---%',
                 ),
                 const ChartLegendItem(
-                  color: Colors.lightGreen,
-                  label: 'Dépenses',
+                  color: Colors.red,
+                  label: 'Non payé',
                   percentage: '---%',
                 ),
               ],
@@ -776,7 +775,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Résultat net',
+            'Analyse financière',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -788,84 +787,58 @@ class _AccountantScreenState extends State<AccountantScreen> {
             child: SizedBox(
               width: 120,
               height: 120,
-              child:
-                  state is BillStatisticsLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : Stack(
-                        children: [
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color:
-                                    state is BillStatisticsLoaded &&
-                                            state.statistics.netResultType ==
-                                                'profit'
-                                        ? Colors.green
-                                        : Colors.red,
-                                width: 8,
+              child: state is BillStatisticsLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : state is BillStatisticsLoaded
+                      ? CustomPaint(
+                          painter: PieChartPainter(
+                            segments: [
+                              PieChartSegment(
+                                value: state.statistics.totalRevenue,
+                                color: Colors.green,
+                                label: 'Revenus',
                               ),
+                              PieChartSegment(
+                                value: state.statistics.totalExpenses,
+                                color: Colors.lightGreen,
+                                label: 'Dépenses',
+                              ),
+                            ],
+                          ),
+                        )
+                      : Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 2,
                             ),
                           ),
-                          if (state is BillStatisticsLoaded)
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    '${state.statistics.netResult.toStringAsFixed(0)} DT',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          state.statistics.netResultType ==
-                                                  'profit'
-                                              ? Colors.green
-                                              : Colors.red,
-                                    ),
-                                  ),
-                                  Text(
-                                    state.statistics.netResultType == 'profit'
-                                        ? 'Bénéfice'
-                                        : 'Perte',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
+                        ),
             ),
           ),
           const SizedBox(height: 20),
           if (state is BillStatisticsLoaded) ...[
             ChartLegendItem(
-              color: Colors.green, // Green for total revenue
-              label: 'Revenu total',
-              percentage:
-                  '${state.statistics.totalRevenue.toStringAsFixed(0)} DT',
+              color: Colors.green,
+              label: 'Revenus',
+              percentage: '${state.statistics.revenuePercentage.toStringAsFixed(1)}%',
             ),
             ChartLegendItem(
-              color: Colors.lightGreen, // Light green for total expenses
-              label: 'Dépenses totales',
-              percentage:
-                  '${state.statistics.totalExpenses.toStringAsFixed(0)} DT',
+              color: Colors.lightGreen,
+              label: 'Dépenses',
+              percentage: '${state.statistics.expensesPercentage.toStringAsFixed(1)}%',
             ),
           ] else ...[
             const ChartLegendItem(
               color: Colors.green,
-              label: 'Revenu total',
-              percentage: '--- DT',
+              label: 'Revenus',
+              percentage: '---%',
             ),
             const ChartLegendItem(
               color: Colors.lightGreen,
-              label: 'Dépenses totales',
-              percentage: '--- DT',
+              label: 'Dépenses',
+              percentage: '---%',
             ),
           ],
         ],
@@ -1044,4 +1017,70 @@ class ChartLegendItem extends StatelessWidget {
       ),
     );
   }
+}
+
+// Pie Chart Data Models
+class PieChartSegment {
+  final double value;
+  final Color color;
+  final String label;
+
+  PieChartSegment({
+    required this.value,
+    required this.color,
+    required this.label,
+  });
+}
+
+class PieChartPainter extends CustomPainter {
+  final List<PieChartSegment> segments;
+
+  PieChartPainter({required this.segments});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 8; // Account for stroke width
+
+    // Calculate total value
+    double totalValue = segments.fold(0, (sum, segment) => sum + segment.value);
+
+    if (totalValue == 0) {
+      // Draw empty circle if no data
+      final paint = Paint()
+        ..color = Colors.grey[300]!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8;
+      canvas.drawCircle(center, radius, paint);
+      return;
+    }
+
+    double startAngle = -math.pi / 2; // Start from top
+
+    for (final segment in segments) {
+      if (segment.value > 0) {
+        final sweepAngle = (segment.value / totalValue) * 2 * math.pi;
+
+        final paint = Paint()
+          ..color = segment.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 8
+          ..strokeCap = StrokeCap.round;
+
+        // Draw the arc segment
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          sweepAngle,
+          false,
+          paint,
+        );
+
+        startAngle += sweepAngle;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

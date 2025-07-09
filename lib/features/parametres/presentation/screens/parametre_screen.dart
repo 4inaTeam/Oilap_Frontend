@@ -15,6 +15,7 @@ import '../../presentation/bloc/profile_event.dart';
 import '../../presentation/bloc/profile_state.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
+import '../../../../core/constants/consts.dart';
 
 class ParametresScreen extends StatefulWidget {
   const ParametresScreen({super.key});
@@ -41,10 +42,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
 
   User? _currentUser;
   bool _hasNewImage = false; // Track if user picked a new image
-
-  // Base URL for constructing full image URLs
-  static const String baseUrl =
-      kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
 
   @override
   void initState() {
@@ -327,7 +324,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                 bottom: 4,
                 right: 4,
                 child: GestureDetector(
-                  onTap: _pickImage,
+                  onTap: _showImageSourceDialog,
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -450,6 +447,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
       return imageUrl;
     }
 
+    // Use the backend URL from your config instead of hardcoded URL
+    final baseUrl = BackendUrls.current;
+
     // If it's a relative URL, construct full URL
     if (imageUrl.startsWith('/')) {
       return '$baseUrl$imageUrl';
@@ -478,6 +478,64 @@ class _ParametresScreenState extends State<ParametresScreen> {
             lowercaseUrl.contains('image') ||
             lowercaseUrl.contains('photo') ||
             lowercaseUrl.contains('avatar'));
+  }
+
+  // Show dialog to choose between camera and gallery
+  void _showImageSourceDialog() {
+    // Check if we're on a platform that supports camera
+    final bool supportsCamera =
+        !kIsWeb &&
+        !Platform.isWindows &&
+        !Platform.isLinux &&
+        !Platform.isMacOS;
+
+    if (!supportsCamera) {
+      // Directly open gallery for web and desktop platforms
+      _pickImage(ImageSource.gallery);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choisir une source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.camera_alt,
+                  color: AppColors.accentGreen,
+                ),
+                title: const Text('Prendre une photo'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: AppColors.accentGreen,
+                ),
+                title: const Text('Choisir dans la galerie'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuler'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildSectionCard({
@@ -705,10 +763,10 @@ class _ParametresScreenState extends State<ParametresScreen> {
     });
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 75,
         maxWidth: 800,
         maxHeight: 800,
@@ -771,5 +829,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
         profilePhotoBytes: _hasNewImage ? _pickedImageBytes : null,
       ),
     );
+  }
+
+  void showValidationError(BuildContext context, String message) {
+    showCustomErrorDialog(context, message: message, showRetry: false);
   }
 }

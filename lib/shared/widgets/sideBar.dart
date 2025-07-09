@@ -7,6 +7,7 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/data/auth_repository.dart';
+import '../../core/constants/consts.dart';
 
 class Sidebar extends StatefulWidget {
   const Sidebar({Key? key}) : super(key: key);
@@ -47,8 +48,7 @@ class _SidebarState extends State<Sidebar> with RouteAware {
     {'label': 'Paramètres', 'icon': Icons.settings, 'route': '/parametres'},
   ];
 
-  static const String baseUrl =
-      kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.8:8000';
+  static String get baseUrl => BackendUrls.current;
 
   @override
   void initState() {
