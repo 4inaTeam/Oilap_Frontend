@@ -9,6 +9,10 @@ import '../../../bills/data/bill_repository.dart';
 import '../../../auth/data/auth_repository.dart';
 import 'package:oilab_frontend/core/utils/pdf_utils.dart';
 
+// Import the dialog widgets
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
+
 import 'dart:io' as io;
 import 'package:path_provider/path_provider.dart';
 
@@ -123,7 +127,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
       // Show specific error message for auth issues
       if (e.toString().contains('Authentication')) {
-        _showErrorMessage('Session expirée. Veuillez vous reconnecter.');
+        showCustomErrorDialog(
+          context,
+          message: 'Session expirée. Veuillez vous reconnecter.',
+          showRetry: false,
+        );
         // Optionally navigate to login
         // Navigator.pushReplacementNamed(context, '/login');
       }
@@ -134,7 +142,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   Future<void> _downloadPdf() async {
     final billId = widget.billId ?? widget.bill.id;
     if (billId == null) {
-      _showErrorMessage('ID de facture non disponible');
+      showCustomErrorDialog(
+        context,
+        message: 'ID de facture non disponible',
+        showRetry: false,
+      );
       return;
     }
 
@@ -159,12 +171,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           );
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
-              ),
+            showSuccessDialog(
+              context,
+              title: 'Téléchargement réussi',
+              message: result,
             );
           }
           return;
@@ -187,30 +197,52 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
+        showSuccessDialog(
+          context,
+          title: 'Téléchargement réussi',
+          message: result,
         );
       }
     } catch (e) {
       print('Download error: $e'); // Debug log
 
-      // Handle specific error types
+      // Handle specific error types with custom dialogs
       if (e.toString().contains('Authentication') ||
           e.toString().contains('401') ||
           e.toString().contains('403')) {
-        _showErrorMessage('Session expirée. Veuillez vous reconnecter.');
+        showCustomErrorDialog(
+          context,
+          message: 'Session expirée. Veuillez vous reconnecter.',
+          showRetry: false,
+        );
         // Optionally redirect to login
         // Navigator.pushReplacementNamed(context, '/login');
       } else if (e.toString().contains('404')) {
-        _showErrorMessage('PDF non trouvé pour cette facture.');
+        showCustomErrorDialog(
+          context,
+          message: 'PDF non trouvé pour cette facture.',
+          showRetry: false,
+        );
       } else if (e.toString().contains('500')) {
-        _showErrorMessage('Erreur serveur. Veuillez réessayer plus tard.');
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur serveur. Veuillez réessayer plus tard.',
+          showRetry: true,
+          onRetry: () {
+            Navigator.of(context).pop();
+            _downloadPdf();
+          },
+        );
       } else {
-        _showErrorMessage('Erreur: ${e.toString()}');
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur: ${e.toString()}',
+          showRetry: true,
+          onRetry: () {
+            Navigator.of(context).pop();
+            _downloadPdf();
+          },
+        );
       }
     } finally {
       if (mounted) {
@@ -218,18 +250,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           isDownloading = false;
         });
       }
-    }
-  }
-
-  void _showErrorMessage(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
     }
   }
 

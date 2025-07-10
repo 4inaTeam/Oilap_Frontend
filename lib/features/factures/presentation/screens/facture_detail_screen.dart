@@ -1,4 +1,3 @@
-// Updated FactureDetailScreen - Key changes for PDF download
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -162,12 +161,10 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
+        showSuccessDialog(
+          context,
+          title: 'Téléchargement réussi',
+          message: result,
         );
       }
     } catch (e) {

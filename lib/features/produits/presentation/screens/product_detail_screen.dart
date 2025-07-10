@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
+import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
+import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
@@ -20,20 +22,24 @@ class ProductDetailScreen extends StatelessWidget {
         listener: (context, state) {
           // Handle PDF download states
           if (state is ProductPDFDownloadSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.filePath),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
-              ),
+            showSuccessDialog(
+              context,
+              title: 'Téléchargement réussi',
+              message:
+                  'Le PDF a été téléchargé avec succès : ${state.filePath}',
             );
           } else if (state is ProductPDFDownloadFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Erreur de téléchargement: ${state.message}'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 4),
-              ),
+            showCustomErrorDialog(
+              context,
+              message: 'Erreur de téléchargement: ${state.message}',
+              showRetry: true,
+              onRetry: () {
+                Navigator.of(context).pop();
+                // Retry the download
+                context.read<ProductBloc>().add(
+                  DownloadProductPDF(productId: product.id),
+                );
+              },
             );
           }
         },
@@ -69,11 +75,6 @@ class ProductDetailScreen extends StatelessWidget {
                                 isLoading
                                     ? null
                                     : () {
-                                      print(
-                                        'Download button pressed for product: ${product.id}',
-                                      ); // Debug log
-
-                                      // Trigger PDF download
                                       context.read<ProductBloc>().add(
                                         DownloadProductPDF(
                                           productId: product.id,

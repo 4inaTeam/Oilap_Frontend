@@ -1,4 +1,3 @@
-// lib/core/utils/pdf_utils_stub.dart
 import 'dart:typed_data';
 
 /// Stub implementation for unsupported platforms
