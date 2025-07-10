@@ -264,7 +264,6 @@ class _MyAppWithFCMState extends State<MyAppWithFCM> {
 
       await FCMService().subscribeToUserTopics();
     } catch (e) {
-      // FCM initialization failed
       debugPrint('FCM initialization failed: $e');
     }
   }
@@ -279,7 +278,6 @@ Future<void> _loadEnvironment() async {
   try {
     await dotenv.load(fileName: '.env');
   } catch (e) {
-    // Environment file not found
     debugPrint('Environment file not found: $e');
   }
 }

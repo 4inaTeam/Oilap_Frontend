@@ -7,7 +7,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
   final BillRepository repo;
 
   BillBloc(this.repo) : super(BillInitial()) {
-    // Load bills with pagination, search, and filtering - default pageSize changed to 10
     on<LoadBills>((event, emit) async {
       emit(BillLoading());
       try {
@@ -34,7 +33,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Search bills - default pageSize changed to 10
     on<SearchBills>((event, emit) async {
       emit(BillLoading());
       try {
@@ -61,7 +59,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Filter bills by category - default pageSize changed to 10
     on<FilterBillsByCategory>((event, emit) async {
       emit(BillLoading());
       try {
@@ -88,7 +85,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       }
     });
 
-    // Change page
     on<ChangePage>((event, emit) async {
       if (state is BillLoadSuccess) {
         final currentState = state as BillLoadSuccess;
@@ -122,12 +118,10 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<CreateBill>((event, emit) async {
       emit(BillLoading());
       try {
-        // Validate that we have either an image file or web image bytes
         if (event.imageFile == null && event.webImage == null) {
           throw Exception('No image provided');
         }
 
-        // Create bill with proper parameters for web/mobile
         await repo.createBill(
           owner: event.owner,
           category: event.category,
@@ -141,7 +135,6 @@ class BillBloc extends Bloc<BillEvent, BillState> {
 
         emit(BillCreateSuccess());
 
-        // Reload bills to show the new bill - changed pageSize to 10
         final result = await repo.fetchBills(page: 1, pageSize: 10);
         emit(
           BillLoadSuccess(

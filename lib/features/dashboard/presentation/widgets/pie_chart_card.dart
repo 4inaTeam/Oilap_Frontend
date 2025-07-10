@@ -84,9 +84,13 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Principales régions fournissant des olives',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Principales régions fournissant des olives',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
                   ),
                   IconButton(
                     onPressed: () {
@@ -94,6 +98,8 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
                     },
                     icon: const Icon(Icons.refresh),
                     iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
@@ -152,11 +158,19 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
       return const Center(child: Text('No origin data available'));
     }
 
+    // Check if mobile
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     final displayOrigins = data.originPercentages.take(4).toList();
     final otherOrigins = data.originPercentages.skip(4).toList();
 
     List<PieChartSectionData> sections = [];
     List<Widget> legendItems = [];
+
+    // Adjust radius based on screen size
+    final pieRadius = isMobile ? 60.0 : 80.0;
+    final titleFontSize = isMobile ? 10.0 : 12.0;
 
     for (int i = 0; i < displayOrigins.length; i++) {
       final origin = displayOrigins[i];
@@ -167,10 +181,10 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
           value: origin.percentage,
           color: color,
           title: '${origin.percentage.toStringAsFixed(1)}%',
-          radius: 80,
+          radius: pieRadius,
           titleStyle: TextStyle(
             color: origin.percentage > 10 ? Colors.white : Colors.black,
-            fontSize: 12,
+            fontSize: titleFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -205,10 +219,10 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
             value: othersPercentage,
             color: color,
             title: '${othersPercentage.toStringAsFixed(1)}%',
-            radius: 80,
+            radius: pieRadius,
             titleStyle: TextStyle(
               color: othersPercentage > 10 ? Colors.white : Colors.black,
-              fontSize: 12,
+              fontSize: titleFontSize,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -225,36 +239,64 @@ class _DynamicPieChartCardState extends State<DynamicPieChartCard> {
       }
     }
 
-    return Column(
-      children: [
-        Expanded(
-          flex: 3,
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              sectionsSpace: 2,
-              centerSpaceRadius: 0,
+    // Different layout for mobile vs desktop
+    if (isMobile) {
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sections: sections,
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...legendItems.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: item,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Desktop layout
+      return Column(
+        children: [
+          Expanded(
+            flex: 3,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                sectionsSpace: 2,
+                centerSpaceRadius: 0,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          flex: 2,
-          child: SingleChildScrollView(
-            child: Column(
-              children:
-                  legendItems
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: item,
-                        ),
-                      )
-                      .toList(),
+          const SizedBox(height: 16),
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                children:
+                    legendItems
+                        .map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: item,
+                          ),
+                        )
+                        .toList(),
+              ),
             ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
   }
 }

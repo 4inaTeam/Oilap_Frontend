@@ -9,7 +9,6 @@ import '../../../bills/data/bill_repository.dart';
 import '../../../auth/data/auth_repository.dart';
 import 'package:oilab_frontend/core/utils/pdf_utils.dart';
 
-// Import the dialog widgets
 import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
 
@@ -44,7 +43,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   double _scale = 1.0;
   double _previousScale = 1.0;
 
-  // Repositories
   late BillRepository _billRepository;
   late AuthRepository _authRepository;
 
@@ -204,9 +202,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         );
       }
     } catch (e) {
-      print('Download error: $e'); // Debug log
-
-      // Handle specific error types with custom dialogs
       if (e.toString().contains('Authentication') ||
           e.toString().contains('401') ||
           e.toString().contains('403')) {

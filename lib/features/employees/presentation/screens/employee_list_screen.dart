@@ -67,7 +67,7 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      currentRoute: '/employees', 
+      currentRoute: '/employees',
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
@@ -98,7 +98,6 @@ class __EmployeeListViewState extends State<_EmployeeListView> {
   }
 }
 
-// Rest of your existing code remains the same...
 class _SearchSection extends StatelessWidget {
   final TextEditingController controller;
   final Function(String) onSearch;
@@ -264,6 +263,145 @@ class _EmployeeTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isMobile) {
+      // Mobile-optimized table with selective columns
+      return _buildMobileTable(context);
+    } else {
+      // Desktop table with all columns
+      return _buildDesktopTable(context);
+    }
+  }
+
+  Widget _buildMobileTable(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: constraints.maxWidth,
+                maxWidth:
+                    constraints.maxWidth * 1.2, // Allow some horizontal scroll
+              ),
+              child: DataTable(
+                columnSpacing: 12,
+                horizontalMargin: 8,
+                headingRowHeight: 36,
+                dataRowHeight: 48,
+                showCheckboxColumn: false,
+                columns: const [
+                  DataColumn(
+                    label: Expanded(
+                      child: Text(
+                        'Nom',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Expanded(
+                      child: Text(
+                        'CIN',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Expanded(
+                      child: Text(
+                        'Tél',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Expanded(
+                      child: Text(
+                        'Actions',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                rows:
+                    employees.map((employee) {
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            Tooltip(
+                              message: employee.name,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxWidth: constraints.maxWidth * 0.3,
+                                ),
+                                child: Text(
+                                  employee.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Container(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth * 0.25,
+                              ),
+                              child: Text(
+                                employee.cin,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Container(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth * 0.25,
+                              ),
+                              child: Text(
+                                employee.tel ?? '-',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            _CompactMobileActionButtons(employee: employee),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopTable(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SizedBox.expand(
@@ -274,45 +412,63 @@ class _EmployeeTable extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
-                  columnSpacing: isMobile ? 10 : 56.0,
-                  horizontalMargin: isMobile ? 8 : 24,
-                  headingRowHeight: isMobile ? 48 : 60,
-                  dataRowHeight: isMobile ? 48 : 60,
+                  columnSpacing: 56.0,
+                  horizontalMargin: 24,
+                  headingRowHeight: 60,
+                  dataRowHeight: 60,
                   columns: const [
                     DataColumn(
                       label: Text(
                         'Nom',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     DataColumn(
                       label: Text(
                         'Tél',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     DataColumn(
                       label: Text(
                         'Email',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     DataColumn(
                       label: Text(
                         'CIN',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     DataColumn(
                       label: Text(
                         'Statut',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                     DataColumn(
                       label: Text(
                         'Action',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -324,51 +480,37 @@ class _EmployeeTable extends StatelessWidget {
                               Text(
                                 employee.name,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14),
                               ),
                             ),
                             DataCell(
                               Text(
                                 employee.tel ?? '',
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14),
                               ),
                             ),
                             DataCell(
                               Text(
                                 employee.email,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14),
                               ),
                             ),
                             DataCell(
                               Text(
                                 employee.cin,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14),
                               ),
                             ),
                             DataCell(
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color:
-                                          employee.isActive
-                                              ? Colors.green
-                                              : Colors.red,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    employee.isActive ? 'Active' : 'Inactive',
-                                  ),
-                                ],
-                              ),
+                              _buildStatusChip(employee.isActive, false),
                             ),
                             DataCell(
                               _ActionButtons(
                                 employee: employee,
-                                isMobile: isMobile,
+                                isMobile: false,
                               ),
                             ),
                           ],
@@ -380,6 +522,107 @@ class _EmployeeTable extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatusChip(bool isActive, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 6 : 8,
+        vertical: isMobile ? 2 : 4,
+      ),
+      decoration: BoxDecoration(
+        color:
+            isActive
+                ? Colors.green.withOpacity(0.1)
+                : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? Colors.green : Colors.red,
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: isMobile ? 4 : 6,
+            height: isMobile ? 4 : 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive ? Colors.green : Colors.red,
+            ),
+          ),
+          SizedBox(width: isMobile ? 3 : 4),
+          Text(
+            isActive ? 'Active' : 'Inactive',
+            style: TextStyle(
+              fontSize: isMobile ? 9 : 12,
+              color: isActive ? Colors.green[700] : Colors.red[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactMobileActionButtons extends StatelessWidget {
+  final dynamic employee;
+
+  const _CompactMobileActionButtons({required this.employee});
+
+  void _confirmDeletion(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => ErrorDialog(
+            title: 'Confirmation de suppression',
+            message: 'Êtes-vous sûr de vouloir supprimer cet employé ?',
+            onConfirm: () {
+              context.read<EmployeeBloc>().add(DeleteEmployee(employee.id));
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder:
+                    (context) => const SuccessDialog(
+                      title: 'Succès',
+                      message: 'L\'employé a été supprimé avec succès',
+                    ),
+              );
+            },
+          ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap:
+              () => showDialog(
+                context: context,
+                builder: (context) => EmployeeUpdateDialog(employee: employee),
+              ),
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            child: const Icon(Icons.edit, color: Colors.green, size: 16),
+          ),
+        ),
+        const SizedBox(width: 4),
+        InkWell(
+          onTap: () => _confirmDeletion(context),
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            child: Icon(Icons.delete, color: AppColors.delete, size: 16),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -415,12 +658,17 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = isMobile ? 20.0 : 24.0;
+    final iconSize = isMobile ? 18.0 : 24.0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          constraints:
+              isMobile
+                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                  : const BoxConstraints(minWidth: 48, minHeight: 48),
+          padding: isMobile ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
           icon: Icon(Icons.edit, color: Colors.green, size: iconSize),
           onPressed:
               () => showDialog(
@@ -434,6 +682,11 @@ class _ActionButtons extends StatelessWidget {
           const SizedBox(width: 5),
         ],
         IconButton(
+          constraints:
+              isMobile
+                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                  : const BoxConstraints(minWidth: 48, minHeight: 48),
+          padding: isMobile ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
           icon: Icon(Icons.delete, color: AppColors.delete, size: iconSize),
           onPressed: () => _confirmDeletion(context),
         ),
@@ -476,6 +729,7 @@ class _PaginationFooter extends StatelessWidget {
                       _PaginationControls(
                         state: state,
                         onPageChange: onPageChange,
+                        isMobile: true,
                       ),
                     ],
                   )
@@ -493,6 +747,7 @@ class _PaginationFooter extends StatelessWidget {
                       _PaginationControls(
                         state: state,
                         onPageChange: onPageChange,
+                        isMobile: false,
                       ),
                     ],
                   ),
@@ -505,11 +760,18 @@ class _PaginationFooter extends StatelessWidget {
 class _PaginationControls extends StatelessWidget {
   final EmployeeLoadSuccess state;
   final Function(int) onPageChange;
+  final bool isMobile;
 
-  const _PaginationControls({required this.state, required this.onPageChange});
+  const _PaginationControls({
+    required this.state,
+    required this.onPageChange,
+    this.isMobile = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final maxPages = isMobile ? 3 : 5; // Show fewer pages on mobile
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -519,17 +781,18 @@ class _PaginationControls extends StatelessWidget {
                   ? () => onPageChange(state.currentPage - 1)
                   : null,
           icon: const Icon(Icons.chevron_left),
+          iconSize: isMobile ? 20 : 24,
         ),
-        ...List.generate((state.totalPages).clamp(0, 5), (index) {
+        ...List.generate((state.totalPages).clamp(0, maxPages), (index) {
           final pageNum = index + 1;
           final isActive = pageNum == state.currentPage;
 
           return GestureDetector(
             onTap: () => onPageChange(pageNum),
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: 32,
-              height: 32,
+              margin: EdgeInsets.symmetric(horizontal: isMobile ? 2 : 4),
+              width: isMobile ? 28 : 32,
+              height: isMobile ? 28 : 32,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isActive ? AppColors.mainColor : Colors.transparent,
@@ -542,6 +805,7 @@ class _PaginationControls extends StatelessWidget {
                 style: TextStyle(
                   color: isActive ? Colors.white : AppColors.textColor,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  fontSize: isMobile ? 11 : 14,
                 ),
               ),
             ),
@@ -553,6 +817,7 @@ class _PaginationControls extends StatelessWidget {
                   ? () => onPageChange(state.currentPage + 1)
                   : null,
           icon: const Icon(Icons.chevron_right),
+          iconSize: isMobile ? 20 : 24,
         ),
       ],
     );

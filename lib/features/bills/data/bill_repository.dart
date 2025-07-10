@@ -182,12 +182,8 @@ class BillRepository {
         fullUrl = '$baseUrl$pdfUrl';
       }
 
-      print('Fetching PDF from: $fullUrl'); // Debug log
-
       final uri = Uri.parse(fullUrl);
       final response = await http.get(uri, headers: headers);
-
-      print('PDF fetch response: ${response.statusCode}'); // Debug log
 
       if (response.statusCode == 200) {
         // Verify we got a PDF
@@ -201,15 +197,13 @@ class BillRepository {
       _handleHttpError(response, 'PDF fetch');
       return null;
     } catch (e) {
-      print('Error fetching PDF: $e'); // Debug log
       if (e.toString().contains('Authentication')) {
-        rethrow; // Re-throw auth errors
+        rethrow;
       }
       return null;
     }
   }
 
-  /// FIXED: Fetch image bytes with better authentication
   Future<Uint8List?> fetchBillImageBytes(String imageUrl) async {
     try {
       final headers = await _getAuthHeaders(
@@ -221,12 +215,8 @@ class BillRepository {
         fullUrl = '$baseUrl$imageUrl';
       }
 
-      print('Fetching image from: $fullUrl'); // Debug log
-
       final uri = Uri.parse(fullUrl);
       final response = await http.get(uri, headers: headers);
-
-      print('Image fetch response: ${response.statusCode}'); // Debug log
 
       if (response.statusCode == 200) {
         return response.bodyBytes;
@@ -235,9 +225,8 @@ class BillRepository {
       _handleHttpError(response, 'Image fetch');
       return null;
     } catch (e) {
-      print('Error fetching image: $e'); // Debug log
       if (e.toString().contains('Authentication')) {
-        rethrow; // Re-throw auth errors
+        rethrow;
       }
       return null;
     }
@@ -258,7 +247,6 @@ class BillRepository {
 
       return null;
     } catch (e) {
-      print('Error converting PDF to image: $e');
       return null;
     }
   }
@@ -270,7 +258,6 @@ class BillRepository {
 
       return await convertPdfToImageBytes(pdfBytes);
     } catch (e) {
-      print('Error fetching PDF as image: $e');
       return null;
     }
   }
@@ -295,7 +282,6 @@ class BillRepository {
     return '$baseUrl${bill.originalImage}';
   }
 
-  /// FIXED: Fetch bills with improved error handling
   Future<BillPaginationResult> fetchBills({
     int page = 1,
     int pageSize = 6,
@@ -323,11 +309,7 @@ class BillRepository {
         '$baseUrl/api/bills/list/',
       ).replace(queryParameters: queryParams);
 
-      print('Fetching bills from: $uri'); // Debug log
-
       final response = await http.get(uri, headers: headers);
-
-      print('Bills fetch response: ${response.statusCode}'); // Debug log
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -336,11 +318,9 @@ class BillRepository {
         int totalCount;
 
         if (responseData is Map && responseData.containsKey('results')) {
-          // Paginated response
           billsData = responseData['results'] as List<dynamic>;
           totalCount = responseData['count'] as int;
         } else {
-          // Non-paginated response - handle client-side pagination
           final allBillsJson = (responseData as List<dynamic>);
 
           var allBills = <Bill>[];
@@ -405,13 +385,12 @@ class BillRepository {
       throw Exception('Unexpected error');
     } catch (e) {
       if (e.toString().contains('Authentication')) {
-        rethrow; // Re-throw auth errors
+        rethrow;
       }
       throw Exception('Error fetching bills: ${e.toString()}');
     }
   }
 
-  /// FIXED: Fetch all bills with better error handling
   Future<List<Bill>> fetchAllBills() async {
     try {
       final headers = await _getAuthHeaders();
@@ -449,7 +428,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Fetch bill by ID with better error handling
   Future<Bill> fetchBillById(int id) async {
     try {
       final headers = await _getAuthHeaders();
@@ -474,7 +452,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Create bill with improved multipart handling
   Future<Bill> createBill({
     required String owner,
     required String category,
@@ -486,7 +463,6 @@ class BillRepository {
     Uint8List? webImageBytes,
   }) async {
     try {
-      // Validate that we have either an image file or web image bytes
       if (imageFile == null && webImageBytes == null) {
         throw Exception(
           'No image provided - image is required for bill creation',
@@ -522,7 +498,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Web implementation with proper authentication
   Future<Bill> _createBillForWeb({
     required String owner,
     required String category,
@@ -556,7 +531,6 @@ class BillRepository {
       request.fields['consumption'] = consumption.toString();
     }
 
-    // Handle items for purchase bills
     if (category == 'purchase' && items != null && items.isNotEmpty) {
       request.fields['items-TOTAL_FORMS'] = items.length.toString();
       request.fields['items-INITIAL_FORMS'] = '0';
@@ -585,18 +559,14 @@ class BillRepository {
     }
 
     try {
-      print('Sending create bill request to: ${request.url}'); // Debug log
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
-
-      print('Create bill response: ${response.statusCode}'); // Debug log
 
       if (response.statusCode == 201) {
         final data = json.decode(responseBody);
         return _safeBillFromJson(data);
       }
 
-      // Handle error response
       if (response.statusCode == 401) {
         throw Exception('Authentication failed. Please log in again.');
       } else if (response.statusCode == 403) {
@@ -632,7 +602,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Mobile implementation with proper authentication
   Future<Bill> _createBillForMobile({
     required String owner,
     required String category,
@@ -659,7 +628,6 @@ class BillRepository {
 
     request.headers.addAll(headers);
 
-    // Add basic form fields
     request.fields['owner'] = owner;
     request.fields['category'] = category;
     request.fields['amount'] = amount.toString();
@@ -697,11 +665,8 @@ class BillRepository {
     }
 
     try {
-      print('Sending create bill request to: ${request.url}'); // Debug log
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
-
-      print('Create bill response: ${response.statusCode}'); // Debug log
 
       if (response.statusCode == 201) {
         final data = json.decode(responseBody);
@@ -744,7 +709,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Update bill with better error handling
   Future<Bill> updateBill({
     required int id,
     required String owner,
@@ -799,7 +763,6 @@ class BillRepository {
     }
   }
 
-  /// FIXED: Delete bill with better error handling
   Future<void> deleteBill(int billId) async {
     try {
       final headers = await _getAuthHeaders();
@@ -820,7 +783,6 @@ class BillRepository {
     }
   }
 
-  // Other helper methods remain the same
   Future<List<Bill>> fetchBillsByCategory(String category) async {
     final result = await fetchBills(categoryFilter: category);
     return result.bills;
@@ -838,7 +800,6 @@ class BillRepository {
       await file.writeAsBytes(pdfBytes);
       return true;
     } catch (e) {
-      print('Error downloading bill PDF: $e');
       return false;
     }
   }

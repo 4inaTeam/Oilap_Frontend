@@ -101,20 +101,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
         currentRoute: "/parametres",
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
             Expanded(
               child: BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {

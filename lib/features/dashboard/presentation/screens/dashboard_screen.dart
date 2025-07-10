@@ -9,7 +9,6 @@ import 'package:oilab_frontend/features/produits/data/product_repository.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_bloc.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_event.dart';
 import 'package:oilab_frontend/features/produits/presentation/bloc/product_state.dart';
-import 'package:oilab_frontend/shared/widgets/header_widget.dart';
 import 'package:oilab_frontend/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:oilab_frontend/features/clients/data/client_repository.dart';
 import 'package:oilab_frontend/features/factures/presentation/bloc/facture_bloc.dart';
@@ -147,12 +146,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           return Column(
             children: [
-              if (isMobile)
-                AppHeader(
-                  title: 'Dashboard',
-                  showBackArrow: false,
-                  showSearch: true,
-                ),
               Expanded(
                 child:
                     _isInitialized
@@ -201,89 +194,123 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Summary Cards and Details in same row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Summary Cards in 2x2 Grid (Left side)
-              Expanded(
-                flex: 1,
-                child: Container(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.spaceEvenly,
+          // Summary Cards and Details in same row - FIXED LAYOUT
+          SizedBox(
+            height: 180, // Fixed height to prevent overflow
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Summary Cards in 2x2 Grid (Left side)
+                Expanded(
+                  flex: 1,
+                  child: Column(
                     children: [
                       // Row 1
-                      _buildCompactSummaryCardWithBLoC(
-                        'Clients',
-                        AppColors.greenLight,
-                        _buildClientValue(),
-                      ),
-                      _buildCompactSummaryCardWithBLoC(
-                        'Quantité',
-                        AppColors.accentYellow,
-                        _buildQuantityValue(),
-                      ),
-                      // Row 2
-                      _buildCompactSummaryCardWithBLoC(
-                        'Revenu',
-                        AppColors.yellowLight,
-                        _buildRevenueValue(),
-                      ),
-                      _buildCompactSummaryCardWithBLoC(
-                        'Dépenses',
-                        AppColors.greenDark,
-                        _buildExpensesValue(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Details des quantités section (Right side)
-              Expanded(
-                flex: 1,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Détails des quantités',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildCompactSummaryCardWithBLoC(
+                                'Clients',
+                                AppColors.greenLight,
+                                _buildClientValue(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildCompactSummaryCardWithBLoC(
+                                'Quantité',
+                                AppColors.accentYellow,
+                                _buildQuantityValue(),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildDetailRow(
-                        'Quantité d\'olives',
-                        _getOlivesQuantity(),
+                      const SizedBox(height: 8),
+                      // Row 2
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildCompactSummaryCardWithBLoC(
+                                'Revenu',
+                                AppColors.yellowLight,
+                                _buildRevenueValue(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildCompactSummaryCardWithBLoC(
+                                'Dépenses',
+                                AppColors.greenDark,
+                                _buildExpensesValue(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 6),
-                      _buildDetailRow('Huile produite', _getOilProduced()),
-                      const SizedBox(height: 6),
-                      _buildDetailRow('Déchets vendus', _getWasteSold()),
-                      const SizedBox(height: 6),
-                      _buildDetailRow('Déchets finaux', _getFinalWaste()),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                // Details des quantités section (Right side)
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Détails des quantités',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildDetailRow(
+                                'Quantité d\'olives',
+                                _getOlivesQuantity(),
+                              ),
+                              _buildDetailRow(
+                                'Huile produite',
+                                _getOilProduced(),
+                              ),
+                              _buildDetailRow(
+                                'Déchets vendus',
+                                _getWasteSold(),
+                              ),
+                              _buildDetailRow(
+                                'Déchets finaux',
+                                _getFinalWaste(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -471,16 +498,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Compact Summary Card for Mobile Grid Layout with BLoC integration
+  // Compact Summary Card for Mobile Grid Layout with BLoC integration - FIXED
   Widget _buildCompactSummaryCardWithBLoC(
     String title,
     Color color,
     Widget valueWidget,
   ) {
     return Container(
-      width: 80,
-      height: 80,
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(8),
@@ -496,31 +521,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 8,
-              fontWeight: FontWeight.w500,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
-          // Create a custom smaller version for mobile instead of scaling
-          _buildCompactValue(valueWidget, title),
-          const SizedBox(height: 2),
-          const Text(
-            '+11%',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 7,
-              fontWeight: FontWeight.w400,
+          const SizedBox(height: 4),
+          Expanded(
+            child: Center(child: _buildCompactValue(valueWidget, title)),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: const Text(
+              '+11%',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 9,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -539,47 +567,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'Dépenses':
         return _buildCompactExpensesValue();
       default:
-        return const Text(
-          '...',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        return const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '...',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         );
     }
   }
 
-  // Compact BLoC value builders for mobile cards
+  // Compact BLoC value builders for mobile cards - FIXED WITH FittedBox
   Widget _buildCompactClientValue() {
     return BlocBuilder<ClientBloc, ClientState>(
       builder: (context, state) {
         if (!mounted) return Container();
 
         if (state is TotalClientsLoaded) {
-          return Text(
-            '${state.totalClients}',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${state.totalClients}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          );
+        } else if (state is ClientLoadSuccess) {
+          // Handle ClientLoadSuccess state
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${state.totalClients}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
           );
         } else if (state is ClientLoading) {
           return const SizedBox(
-            width: 10,
-            height: 10,
-            child: CircularProgressIndicator(strokeWidth: 1),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          );
+        } else if (state is ClientOperationFailure) {
+          return const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Error',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
           );
         }
-        return const Text(
-          '...',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        return const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '0',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         );
       },
@@ -589,33 +649,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCompactQuantityValue() {
     return BlocBuilder<ProductBloc, ProductState>(
       builder: (context, state) {
-        // Debug print
         if (!mounted) return Container();
 
         if (state is TotalQuantityLoaded) {
-          return Text(
-            '${state.data.totalQuantityInt}kg',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${state.data.totalQuantityInt}kg',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           );
         } else if (state is ProductLoading) {
           return const SizedBox(
-            width: 10,
-            height: 10,
-            child: CircularProgressIndicator(strokeWidth: 1),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          );
+        } else if (state is ProductOperationFailure) {
+          return const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Error',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
           );
         }
-        return const Text(
-          '...kg',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        return const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '0kg',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         );
       },
@@ -625,33 +700,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCompactRevenueValue() {
     return BlocBuilder<RevenueBloc, RevenueState>(
       builder: (context, state) {
-        // Debug print
         if (!mounted) return Container();
 
         if (state is RevenueLoaded) {
-          return Text(
-            '${state.totalRevenue.toStringAsFixed(0)}DT',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${state.totalRevenue.toStringAsFixed(0)}DT',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           );
         } else if (state is RevenueLoading) {
           return const SizedBox(
-            width: 10,
-            height: 10,
-            child: CircularProgressIndicator(strokeWidth: 1),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          );
+        } else if (state is RevenueError) {
+          return const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Error',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
           );
         }
-        return const Text(
-          '...DT',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        return const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '0DT',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         );
       },
@@ -661,59 +751,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCompactExpensesValue() {
     return BlocBuilder<BillStatisticsBloc, BillStatisticsState>(
       builder: (context, state) {
-        // Debug print
         if (!mounted) return Container();
 
         if (state is BillStatisticsLoaded) {
-          return Text(
-            '${state.statistics.totalExpenses.toStringAsFixed(0)}DT',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${state.statistics.totalExpenses.toStringAsFixed(0)}DT',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           );
         } else if (state is BillStatisticsLoading) {
           return const SizedBox(
-            width: 10,
-            height: 10,
-            child: CircularProgressIndicator(strokeWidth: 1),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5),
+          );
+        } else if (state is BillStatisticsError) {
+          return const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Error',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
           );
         }
-        return const Text(
-          '...DT',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+        return const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '0DT',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         );
       },
     );
   }
 
-  // Compact Summary Card for Mobile Grid Layout (keep for fallback)
-
-  // Helper method to build detail rows
+  // Helper method to build detail rows - FIXED WITH Flexible
   Widget _buildDetailRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
+        Flexible(
+          flex: 2,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+        const SizedBox(width: 8),
+        Flexible(
+          flex: 1,
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
           ),
         ),
       ],
@@ -881,8 +991,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
-
-  // Helper methods to get string values from BLoC states (kept for fallback)
 
   // Detail quantities - you can replace these with actual BLoC data
   String _getOlivesQuantity() {

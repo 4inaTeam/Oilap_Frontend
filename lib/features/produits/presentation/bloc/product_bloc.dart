@@ -337,11 +337,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       }
     });
 
+    // FIXED: LoadTotalQuantity - Don't emit ProductLoading for dashboard widgets
     on<LoadTotalQuantity>((event, emit) async {
       try {
+        // Don't emit ProductLoading here - just fetch and emit the result
         final data = await repo.fetchTotalQuantity();
         emit(TotalQuantityLoaded(data));
       } catch (err) {
+        // Keep any existing state and just show error for this specific operation
         emit(
           ProductOperationFailure(
             'Failed to load total quantity: ${err.toString()}',
@@ -350,11 +353,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       }
     });
 
+    // FIXED: LoadOriginPercentages - Don't emit ProductLoading for dashboard widgets
     on<LoadOriginPercentages>((event, emit) async {
       try {
+        // Don't emit ProductLoading here - just fetch and emit the result
         final data = await repo.fetchOriginPercentages();
         emit(OriginPercentagesLoaded(data));
       } catch (err) {
+        // Keep any existing state and just show error for this specific operation
         emit(
           ProductOperationFailure(
             'Failed to load origin percentages: ${err.toString()}',

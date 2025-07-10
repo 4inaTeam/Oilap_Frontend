@@ -1,94 +1,9 @@
-class Product {
-  final int id;
-  final String quality;
-  final String origine;
-  final String price;
-  final int quantity;
-  final String client;
-  final String clientName;
-  final String status;
-  final String createdBy;
-  final DateTime createdAt;
-  final String photo;
-  final int estimationTime;
-  final DateTime? endTime;
+import 'package:equatable/equatable.dart';
 
-  Product({
-    required this.id,
-    required this.quality,
-    required this.origine,
-    required this.price,
-    required this.quantity,
-    required this.client,
-    required this.clientName,
-    required this.status,
-    required this.createdBy,
-    required this.createdAt,
-    required this.photo,
-    required this.estimationTime,
-    this.endTime,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'] ?? 0,
-      quality: json['quality'] ?? '',
-      origine: json['origine'] ?? '',
-      price: json['price'] ?? '0',
-      quantity: json['quantity'] ?? 0,
-      client: json['client'] ?? '',
-      clientName: json['client_name'] ?? '',
-      status: json['status'] ?? '',
-      createdBy: json['created_by'] ?? '',
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
-          : DateTime.now(),
-      photo: json['photo'] ?? '',
-      estimationTime: json['estimation_time'] ?? 0,
-      endTime: json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
-    );
-  }
-}
-
-class Employee {
-  final int id;
-  final String username;
-  final String email;
-  final String role;
-  final String profilePhoto;
-  final bool isActive;
-  final String cin;
-  final String? tel;
-
-  Employee({
-    required this.id,
-    required this.username,
-    required this.email,
-    required this.role,
-    required this.profilePhoto,
-    required this.isActive,
-    required this.cin,
-    this.tel,
-  });
-
-  factory Employee.fromJson(Map<String, dynamic> json) {
-    return Employee(
-      id: json['id'] ?? 0,
-      username: json['username'] ?? '',
-      email: json['email'] ?? '',
-      role: json['role'] ?? '',
-      profilePhoto: json['profile_photo'] ?? '',
-      isActive: json['isActive'] ?? false,
-      cin: json['cin'] ?? '',
-      tel: json['tel'],
-    );
-  }
-}
-
-class Facture {
+class Facture extends Equatable {
   final int id;
   final String factureNumber;
-  final int client;
+  final int clientId;
   final String clientName;
   final String clientEmail;
   final DateTime createdAt;
@@ -104,10 +19,10 @@ class Facture {
   final String pdfPublicId;
   final List<FactureProduct> products;
 
-  Facture({
+  const Facture({
     required this.id,
     required this.factureNumber,
-    required this.client,
+    required this.clientId,
     required this.clientName,
     required this.clientEmail,
     required this.createdAt,
@@ -128,15 +43,20 @@ class Facture {
     return Facture(
       id: json['id'] ?? 0,
       factureNumber: json['facture_number'] ?? '',
-      client: json['client'] ?? 0,
-      clientName: json['client_name'] ?? '',
-      clientEmail: json['client_email'] ?? '',
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at']) 
-          : DateTime.now(),
+
+      // Handle client - API might return int ID or nested object
+      clientId: _extractClientId(json['client']),
+      clientName: _extractClientName(json),
+      clientEmail: _extractClientEmail(json),
+
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'])
+              : DateTime.now(),
+      updatedAt:
+          json['updated_at'] != null
+              ? DateTime.parse(json['updated_at'])
+              : DateTime.now(),
       paymentStatus: json['payment_status'] ?? 'unpaid',
       totalAmount: _parseDouble(json['total_amount']),
       tvaRate: _parseDouble(json['tva_rate']),
@@ -146,12 +66,77 @@ class Facture {
       stripePaymentIntent: json['stripe_payment_intent'],
       pdfUrl: json['pdf_url'] ?? '',
       pdfPublicId: json['pdf_public_id'] ?? '',
-      products: json['products'] != null
-          ? (json['products'] as List)
-              .map((p) => FactureProduct.fromJson(p))
-              .toList()
-          : [],
+
+      // Handle products - API might return different formats
+      products: _extractProducts(json['products']),
     );
+  }
+
+  // Helper method to extract client ID
+  static int _extractClientId(dynamic clientData) {
+    if (clientData == null) return 0;
+    if (clientData is int) return clientData;
+    if (clientData is Map<String, dynamic>) {
+      return clientData['id'] as int? ?? 0;
+    }
+    if (clientData is String) {
+      return int.tryParse(clientData) ?? 0;
+    }
+    return 0;
+  }
+
+  // Helper method to extract client name
+  static String _extractClientName(Map<String, dynamic> json) {
+    // Try different possible field names for client name
+    if (json['client_name'] != null) {
+      return json['client_name'] as String;
+    }
+
+    // If client is an object, extract name from it
+    final clientData = json['client'];
+    if (clientData is Map<String, dynamic>) {
+      return clientData['name'] as String? ??
+          clientData['username'] as String? ??
+          'Unknown Client';
+    }
+
+    return 'Unknown Client';
+  }
+
+  // Helper method to extract client email
+  static String _extractClientEmail(Map<String, dynamic> json) {
+    // Try different possible field names for client email
+    if (json['client_email'] != null) {
+      return json['client_email'] as String;
+    }
+
+    // If client is an object, extract email from it
+    final clientData = json['client'];
+    if (clientData is Map<String, dynamic>) {
+      return clientData['email'] as String? ?? '';
+    }
+
+    return '';
+  }
+
+  // Helper method to extract products
+  static List<FactureProduct> _extractProducts(dynamic productsData) {
+    if (productsData == null) return [];
+
+    if (productsData is List) {
+      return productsData
+          .map((productData) {
+            if (productData is Map<String, dynamic>) {
+              return FactureProduct.fromJson(productData);
+            }
+            return null;
+          })
+          .where((product) => product != null)
+          .cast<FactureProduct>()
+          .toList();
+    }
+
+    return [];
   }
 
   static double _parseDouble(dynamic value) {
@@ -163,9 +148,50 @@ class Facture {
     }
     return 0.0;
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'facture_number': factureNumber,
+    'client_id': clientId,
+    'client_name': clientName,
+    'client_email': clientEmail,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'payment_status': paymentStatus,
+    'total_amount': totalAmount,
+    'tva_rate': tvaRate,
+    'tva_amount': tvaAmount,
+    'credit_card_fee': creditCardFee,
+    'final_total': finalTotal,
+    'stripe_payment_intent': stripePaymentIntent,
+    'pdf_url': pdfUrl,
+    'pdf_public_id': pdfPublicId,
+    'products': products.map((product) => product.toJson()).toList(),
+  };
+
+  @override
+  List<Object?> get props => [
+    id,
+    factureNumber,
+    clientId,
+    clientName,
+    clientEmail,
+    createdAt,
+    updatedAt,
+    paymentStatus,
+    totalAmount,
+    tvaRate,
+    tvaAmount,
+    creditCardFee,
+    finalTotal,
+    stripePaymentIntent,
+    pdfUrl,
+    pdfPublicId,
+    products,
+  ];
 }
 
-class FactureProduct {
+class FactureProduct extends Equatable {
   final int id;
   final String quality;
   final int quantity;
@@ -174,7 +200,7 @@ class FactureProduct {
   final String status;
   final String payement;
 
-  FactureProduct({
+  const FactureProduct({
     required this.id,
     required this.quality,
     required this.quantity,
@@ -200,9 +226,28 @@ class FactureProduct {
     if (value == null) return 0.0;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is String) {
-      return double.tryParse(value) ?? 0.0;
-    }
+    if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'quality': quality,
+    'quantity': quantity,
+    'price': price,
+    'origine': origine,
+    'status': status,
+    'payement': payement,
+  };
+
+  @override
+  List<Object?> get props => [
+    id,
+    quality,
+    quantity,
+    price,
+    origine,
+    status,
+    payement,
+  ];
 }
