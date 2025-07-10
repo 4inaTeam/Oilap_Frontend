@@ -291,30 +291,48 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       }
     });
 
-    // New handler for PDF download
+    // FIXED: PDF download handler with better state management
     on<DownloadProductPDF>((event, emit) async {
+      // Store the current state to restore later
+      final previousState = state;
+
       try {
         // Show loading state for download
         emit(ProductPDFDownloadLoading());
 
-        final filePath = await repo.downloadProductPDF(event.productId);
+        print(
+          'Starting PDF download for product: ${event.productId}',
+        ); // Debug log
 
-        // Emit success with file path
-        emit(ProductPDFDownloadSuccess(filePath: filePath));
+        final result = await repo.downloadProductPDF(event.productId);
+
+        print('PDF download result: $result'); // Debug log
+
+        // Emit success with result message
+        emit(ProductPDFDownloadSuccess(filePath: result));
+
+        // Wait a moment for UI to show success message
+        await Future.delayed(const Duration(milliseconds: 500));
 
         // Return to previous state if it was ProductLoadSuccess
-        if (state is ProductLoadSuccess) {
-          // Keep the previous state
-          final previousState = state as ProductLoadSuccess;
+        if (previousState is ProductLoadSuccess) {
           emit(previousState);
+        } else {
+          emit(ProductInitial());
         }
       } catch (error) {
+        print('PDF download error: $error'); // Debug log
+
         emit(ProductPDFDownloadFailure(error.toString()));
 
+        // Wait a moment for UI to show error message
+        await Future.delayed(const Duration(milliseconds: 1500));
+
         // Return to previous state if it was ProductLoadSuccess
-        if (state is ProductLoadSuccess) {
-          final previousState = state as ProductLoadSuccess;
+        if (previousState is ProductLoadSuccess) {
           emit(previousState);
+        } else {
+          emit(ProductInitial());
         }
       }
     });

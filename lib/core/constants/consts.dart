@@ -104,7 +104,7 @@ class BackendUrls {
   }) {
     if (isWeb) return localhost;
     if (isAndroid)
-      return androidEmulator; // Changed to use emulator URL for Android
+      return androidEmulator; 
     if (isIOS) return iosSimulator;
     if (isWindows) return localhost;
     return physicalDevice;

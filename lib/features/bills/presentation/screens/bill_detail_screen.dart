@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:oilab_frontend/core/models/bill_model.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_layout.dart';
 import '../../../bills/data/bill_repository.dart';
 import '../../../auth/data/auth_repository.dart';
+import 'package:oilab_frontend/core/utils/pdf_utils.dart';
 
 import 'dart:io' as io;
 import 'package:path_provider/path_provider.dart';
-
-import '../helper/web_download_stub.dart'
-    if (dart.library.html) '../helper/web_download_real.dart';
 
 class BillDetailScreen extends StatefulWidget {
   final String? imageUrl;
@@ -40,10 +36,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   bool isLoading = true;
   bool hasError = false;
   String errorMessage = '';
+  bool isDownloading = false;
   double _scale = 1.0;
   double _previousScale = 1.0;
 
-  // Repositories for download functionality
+  // Repositories
   late BillRepository _billRepository;
   late AuthRepository _authRepository;
 
@@ -83,18 +80,17 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         throw Exception('No image URL available');
       }
 
+      // Use the improved repository method
       final imageBytes = await _billRepository.fetchBillImageBytes(imageUrl);
 
       if (imageBytes != null) {
         if (kIsWeb) {
-          // For web, just store in memory
           setState(() {
             this.imageBytes = imageBytes;
             localPath = null;
             isLoading = false;
           });
         } else {
-          // For mobile/desktop, try to save to file
           try {
             final dir = await getTemporaryDirectory();
             final file = io.File(
@@ -124,9 +120,17 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         hasError = true;
         errorMessage = e.toString();
       });
+
+      // Show specific error message for auth issues
+      if (e.toString().contains('Authentication')) {
+        _showErrorMessage('Session expirée. Veuillez vous reconnecter.');
+        // Optionally navigate to login
+        // Navigator.pushReplacementNamed(context, '/login');
+      }
     }
   }
 
+  // UPDATED: Simplified download method using both repository and PdfUtils
   Future<void> _downloadPdf() async {
     final billId = widget.billId ?? widget.bill.id;
     if (billId == null) {
@@ -134,67 +138,85 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       return;
     }
 
+    if (isDownloading) return;
+
+    setState(() {
+      isDownloading = true;
+    });
+
     try {
-      final token = await _authRepository.getAccessToken();
-      if (token == null) {
-        throw Exception('Non authentifié');
-      }
-
-      final response = await http.get(
-        Uri.parse('http://localhost:8000/api/bills/$billId/download/'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final contentType = response.headers['content-type'];
-        if (contentType != null && contentType.contains('application/pdf')) {
-          if (kIsWeb) {
-            WebDownloadHelper.downloadFile(
-              response.bodyBytes,
-              'facture_$billId.pdf',
-            );
-          } else {
-            await _downloadFileMobile(response.bodyBytes, billId);
-          }
+      // Method 1: Try using the repository's PDF fetching (recommended)
+      final pdfUrl = _billRepository.getBillPdfUrl(widget.bill);
+      if (pdfUrl != null) {
+        // Get PDF bytes using repository
+        final pdfBytes = await _billRepository.fetchBillPdfBytes(pdfUrl);
+        if (pdfBytes != null) {
+          // Use PdfUtils to download/save
+          final fileName = 'facture_$billId.pdf';
+          final result = await PdfUtils.downloadPdfFromBytes(
+            bytes: pdfBytes,
+            fileName: fileName,
+          );
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('PDF téléchargé avec succès!'),
+              SnackBar(
+                content: Text(result),
                 backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
+                duration: const Duration(seconds: 3),
               ),
             );
           }
-        } else {
-          throw Exception('Le serveur n\'a pas retourné un fichier PDF valide');
+          return;
         }
-      } else {
-        throw Exception('Erreur serveur: ${response.statusCode}');
+      }
+
+      // Method 2: Fallback to direct URL download if repository method fails
+      final token = await _authRepository.getAccessToken();
+      if (token == null) {
+        throw Exception('Non authentifié. Veuillez vous reconnecter.');
+      }
+
+      final fileName = 'facture_$billId.pdf';
+      final url = 'http://localhost:8000/api/bills/$billId/download/';
+
+      final result = await PdfUtils.downloadPdfFromUrl(
+        url: url,
+        fileName: fileName,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
-      _showErrorMessage('Erreur: $e');
-    }
-  }
+      print('Download error: $e'); // Debug log
 
-  // Mobile/Desktop download using file system and share
-  Future<void> _downloadFileMobile(Uint8List bytes, int billId) async {
-    if (!kIsWeb) {
-      try {
-        final dir = await getTemporaryDirectory();
-        final file = io.File('${dir.path}/facture_$billId.pdf');
-
-        await file.writeAsBytes(bytes);
-
-        print('PDF saved to: ${file.path}');
-
-        // Share the PDF file using the system share dialog
-        await Share.shareXFiles([
-          XFile(file.path),
-        ], text: 'Facture PDF - ${widget.bill.owner}');
-      } catch (e) {
-        print('Error in mobile download: $e');
-        throw Exception('Erreur lors du téléchargement mobile: $e');
+      // Handle specific error types
+      if (e.toString().contains('Authentication') ||
+          e.toString().contains('401') ||
+          e.toString().contains('403')) {
+        _showErrorMessage('Session expirée. Veuillez vous reconnecter.');
+        // Optionally redirect to login
+        // Navigator.pushReplacementNamed(context, '/login');
+      } else if (e.toString().contains('404')) {
+        _showErrorMessage('PDF non trouvé pour cette facture.');
+      } else if (e.toString().contains('500')) {
+        _showErrorMessage('Erreur serveur. Veuillez réessayer plus tard.');
+      } else {
+        _showErrorMessage('Erreur: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isDownloading = false;
+        });
       }
     }
   }
@@ -219,7 +241,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         backgroundColor: Colors.grey[50],
         body: Column(
           children: [
-            // Top action bar with simple download button
+            // Top action bar
             Container(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -236,20 +258,31 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 
   Widget _buildDownloadButton() {
-    return Container(
-      margin: const EdgeInsets.only(top: 16, right: 16),
-      child: ElevatedButton.icon(
-        onPressed: isLoading || hasError ? null : _downloadPdf,
-        icon: const Icon(Icons.download, color: Colors.white),
-        label: Text(
-          kIsWeb ? 'Télécharger ' : 'Partager PDF',
-          style: const TextStyle(color: Colors.white),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.mainColor,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+    return ElevatedButton.icon(
+      onPressed: isLoading || hasError || isDownloading ? null : _downloadPdf,
+      icon:
+          isDownloading
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+              : const Icon(Icons.download, color: Colors.white),
+      label: Text(
+        isDownloading
+            ? 'Téléchargement...'
+            : kIsWeb
+            ? 'Télécharger PDF'
+            : 'Télécharger et Partager PDF',
+        style: const TextStyle(color: Colors.white),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.mainColor,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

@@ -1,15 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/models/product_model.dart';
 import '../../auth/data/auth_repository.dart';
-
-import '../../../core/utils/web_utils_stub.dart'
-    if (dart.library.html) '../../../core/utils/web_utils_web.dart'
-    as web_utils;
-import '../../../core/utils/mobile_utils.dart'
-    if (dart.library.html) '../../../core/utils/web_utils_stub.dart'
-    as mobile_utils;
+import '../../../core/utils/pdf_utils.dart'; // UPDATED: Use the new unified PDF utils
 
 // Updated TotalQuantityData Model
 class TotalQuantityData {
@@ -29,7 +22,6 @@ class TotalQuantityData {
 
   factory TotalQuantityData.fromJson(Map<String, dynamic> json) {
     try {
-
       // Parse quantity_by_status with nested objects
       final quantityByStatusMap = <String, QuantityByStatus>{};
       final quantityByStatusData = json['quantity_by_status'];
@@ -193,14 +185,34 @@ class ProductRepository {
 
   ProductRepository({required this.baseUrl, required this.authRepo});
 
+  /// Get authenticated headers for HTTP requests
+  Future<Map<String, String>> _getAuthHeaders({
+    Map<String, String>? additionalHeaders,
+  }) async {
+    final token = await authRepo.getAccessToken();
+    if (token == null || token.isEmpty) {
+      throw Exception(
+        'Authentication token not available. Please log in again.',
+      );
+    }
+
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...?additionalHeaders,
+    };
+
+    return headers;
+  }
+
   Future<ProductPaginationResult> fetchProducts({
     int page = 1,
     int pageSize = 10,
     String? searchQuery,
   }) async {
     try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
+      final headers = await _getAuthHeaders();
 
       final queryParams = {
         'page': page.toString(),
@@ -223,13 +235,7 @@ class ProductRepository {
         '$baseUrl/api/products/',
       ).replace(queryParameters: queryParams);
 
-      final resp = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
+      final resp = await http.get(uri, headers: headers);
 
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
@@ -279,7 +285,10 @@ class ProductRepository {
       }
       throw Exception('Failed with status ${resp.statusCode}');
     } catch (e) {
-      rethrow;
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error fetching products: ${e.toString()}');
     }
   }
 
@@ -293,31 +302,34 @@ class ProductRepository {
     String? status,
     DateTime? end_time,
   }) async {
-    final token = await authRepo.getAccessToken();
-    if (token == null) throw Exception('Not authenticated');
+    try {
+      final headers = await _getAuthHeaders();
 
-    final requestBody = {
-      'quality': quality,
-      'origine': origine,
-      'price': price,
-      'quantity': quantity,
-      'client': clientCin,
-      'estimation_time': estimationTime,
-      if (status != null) 'status': status,
-      if (end_time != null) 'end_time': end_time.toIso8601String(),
-    };
+      final requestBody = {
+        'quality': quality,
+        'origine': origine,
+        'price': price,
+        'quantity': quantity,
+        'client': clientCin,
+        'estimation_time': estimationTime,
+        if (status != null) 'status': status,
+        if (end_time != null) 'end_time': end_time.toIso8601String(),
+      };
 
-    final resp = await http.post(
-      Uri.parse('$baseUrl/api/products/create/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(requestBody),
-    );
+      final resp = await http.post(
+        Uri.parse('$baseUrl/api/products/create/'),
+        headers: headers,
+        body: jsonEncode(requestBody),
+      );
 
-    if (resp.statusCode != 201 && resp.statusCode != 200) {
-      throw Exception('Create failed: ${resp.body}');
+      if (resp.statusCode != 201 && resp.statusCode != 200) {
+        throw Exception('Create failed: ${resp.body}');
+      }
+    } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error creating product: ${e.toString()}');
     }
   }
 
@@ -332,86 +344,94 @@ class ProductRepository {
     String? status,
     DateTime? end_time,
   }) async {
-    final token = await authRepo.getAccessToken();
-    if (token == null) throw Exception('Not authenticated');
+    try {
+      final headers = await _getAuthHeaders();
 
-    final Map<String, dynamic> body = {};
+      final Map<String, dynamic> body = {};
 
-    if (status == 'doing') {
-      if (status != null) body['status'] = status;
-    } else {
-      if (quality != null) body['quality'] = quality;
-      if (origine != null) body['origine'] = origine;
-      if (price != null) body['price'] = price;
-      if (quantity != null) body['quantity'] = quantity;
-      if (clientCin != null) body['client'] = clientCin;
-      if (estimationTime != null) body['estimation_time'] = estimationTime;
-      if (status != null) body['status'] = status;
-      if (end_time != null) body['end_time'] = end_time.toIso8601String();
-    }
-
-    final resp = await http.patch(
-      Uri.parse('$baseUrl/api/products/$id/update/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
-
-    if (resp.statusCode != 200) {
-      final errorData = json.decode(resp.body);
-      if (errorData is Map && errorData.containsKey('detail')) {
-        throw Exception(errorData['detail'].toString());
+      if (status == 'doing') {
+        if (status != null) body['status'] = status;
       } else {
-        throw Exception(errorData.toString());
+        if (quality != null) body['quality'] = quality;
+        if (origine != null) body['origine'] = origine;
+        if (price != null) body['price'] = price;
+        if (quantity != null) body['quantity'] = quantity;
+        if (clientCin != null) body['client'] = clientCin;
+        if (estimationTime != null) body['estimation_time'] = estimationTime;
+        if (status != null) body['status'] = status;
+        if (end_time != null) body['end_time'] = end_time.toIso8601String();
       }
+
+      final resp = await http.patch(
+        Uri.parse('$baseUrl/api/products/$id/update/'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (resp.statusCode != 200) {
+        final errorData = json.decode(resp.body);
+        if (errorData is Map && errorData.containsKey('detail')) {
+          throw Exception(errorData['detail'].toString());
+        } else {
+          throw Exception(errorData.toString());
+        }
+      }
+    } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error updating product: ${e.toString()}');
     }
   }
 
   Future<void> updateProductStatus(int productId, String newStatus) async {
-    final token = await authRepo.getAccessToken();
-    if (token == null) throw Exception('Not authenticated');
+    try {
+      final headers = await _getAuthHeaders();
 
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/products/$productId/update/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'status': newStatus}),
-    );
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/products/$productId/update/'),
+        headers: headers,
+        body: jsonEncode({'status': newStatus}),
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('Status update failed: ${response.body}');
+      if (response.statusCode != 200) {
+        throw Exception('Status update failed: ${response.body}');
+      }
+    } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error updating product status: ${e.toString()}');
     }
   }
 
   Future<void> deleteProduct(int productId) async {
-    final token = await authRepo.getAccessToken();
-    if (token == null) throw Exception('Not authenticated');
+    try {
+      final headers = await _getAuthHeaders();
 
-    final resp = await http.delete(
-      Uri.parse('$baseUrl/api/products/delete/$productId/'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+      final resp = await http.delete(
+        Uri.parse('$baseUrl/api/products/delete/$productId/'),
+        headers: headers,
+      );
 
-    if (resp.statusCode != 204) {
-      throw Exception('Delete failed: ${resp.body}');
+      if (resp.statusCode != 204) {
+        throw Exception('Delete failed: ${resp.body}');
+      }
+    } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error deleting product: ${e.toString()}');
     }
   }
 
   Future<void> cancelProduct(dynamic product) async {
     try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
+      final headers = await _getAuthHeaders();
 
       final response = await http.patch(
         Uri.parse('$baseUrl/api/products/${product.id}/cancel/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: jsonEncode({
           'status': 'canceled',
           'price': product.price.toString(),
@@ -428,65 +448,93 @@ class ProductRepository {
         throw Exception(errorData['detail'] ?? 'Failed to cancel product');
       }
     } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
       throw Exception('Cancel failed: ${e.toString()}');
     }
   }
 
-  // Fixed cross-platform PDF download
+  // UPDATED: Fixed cross-platform PDF download using new unified PDF utils
   Future<String> downloadProductPDF(int productId) async {
     try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
+      final headers = await _getAuthHeaders(
+        additionalHeaders: {'Accept': 'application/pdf'},
+      );
 
+      // Method 1: Try to fetch PDF bytes first
       final response = await http.get(
         Uri.parse('$baseUrl/api/products/$productId/pdf/'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
         final fileName = 'produit_$productId.pdf';
 
-        if (kIsWeb) {
-          // Web platform - browser download
-          web_utils.downloadPdfWeb(response.bodyBytes, fileName);
-          return 'PDF downloaded successfully';
-        } else {
-          // Mobile/Desktop platform - save to device
-          await mobile_utils.downloadPdfMobile(response.bodyBytes, fileName);
-          return 'PDF saved to Downloads folder';
-        }
+        // Use the unified PDF utils to download
+        final result = await PdfUtils.downloadPdfFromBytes(
+          bytes: response.bodyBytes,
+          fileName: fileName,
+        );
+
+        return result;
       } else if (response.statusCode == 406) {
         throw Exception(
           'Server rejected the request (406). Check Django view accepts the request format.',
         );
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('Authentication failed. Please log in again.');
       } else {
         throw Exception('Download failed with status ${response.statusCode}');
       }
     } catch (e) {
-      rethrow;
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error downloading PDF: ${e.toString()}');
+    }
+  }
+
+  // Alternative method: Download PDF from URL
+  Future<String> downloadProductPDFFromUrl(int productId) async {
+    try {
+      final token = await authRepo.getAccessToken();
+      if (token == null) {
+        throw Exception(
+          'Authentication token not available. Please log in again.',
+        );
+      }
+
+      final fileName = 'produit_$productId.pdf';
+      final url = '$baseUrl/api/products/$productId/pdf/';
+
+      // Use the unified PDF utils to download from URL
+      final result = await PdfUtils.downloadPdfFromUrl(
+        url: url,
+        fileName: fileName,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      return result;
+    } catch (e) {
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error downloading PDF from URL: ${e.toString()}');
     }
   }
 
   Future<TotalQuantityData> fetchTotalQuantity() async {
     try {
-
-      final token = await authRepo.getAccessToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
+      final headers = await _getAuthHeaders();
 
       final resp = await http.get(
         Uri.parse('$baseUrl/api/products/total-quantity/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       );
-
 
       if (resp.statusCode == 200) {
         final responseData = json.decode(resp.body);
-
         final quantityData = TotalQuantityData.fromJson(responseData);
         return quantityData;
       } else if (resp.statusCode == 404) {
@@ -504,21 +552,20 @@ class ProductRepository {
         );
       }
     } catch (e) {
-      rethrow;
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error fetching total quantity: ${e.toString()}');
     }
   }
 
   Future<OriginPercentageData> fetchOriginPercentages() async {
     try {
-      final token = await authRepo.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
+      final headers = await _getAuthHeaders();
 
       final resp = await http.get(
         Uri.parse('$baseUrl/api/products/origin-percentages/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
       );
 
       if (resp.statusCode == 200) {
@@ -528,7 +575,10 @@ class ProductRepository {
 
       throw Exception('Failed to fetch origin percentages: ${resp.statusCode}');
     } catch (e) {
-      rethrow;
+      if (e.toString().contains('Authentication')) {
+        rethrow;
+      }
+      throw Exception('Error fetching origin percentages: ${e.toString()}');
     }
   }
 }

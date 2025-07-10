@@ -1,3 +1,4 @@
+// Updated FactureDetailScreen - Key changes for PDF download
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,22 +7,17 @@ import 'package:oilab_frontend/shared/widgets/app_layout.dart';
 import 'package:oilab_frontend/core/constants/app_colors.dart';
 import 'package:oilab_frontend/core/constants/consts.dart';
 import 'package:oilab_frontend/core/models/facture_model.dart';
+import 'package:oilab_frontend/core/utils/pdf_utils.dart';
 import '../bloc/facture_bloc.dart';
 import '../bloc/facture_event.dart';
 import '../bloc/facture_state.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 // Import the dialog widgets
 import 'package:oilab_frontend/shared/dialogs/success_dialog.dart';
 import 'package:oilab_frontend/shared/dialogs/error_dialog.dart';
-
-// Platform-specific imports
-import '../helpers/pdf_utils_stub.dart'
-    if (dart.library.html) '../helpers/pdf_utils_web.dart'
-    as pdf_utils;
 
 class FactureDetailScreen extends StatefulWidget {
   final int factureId;
@@ -40,6 +36,7 @@ class FactureDetailScreen extends StatefulWidget {
 class _FactureDetailScreenState extends State<FactureDetailScreen> {
   // State variables
   bool _isProcessingPayment = false;
+  bool _isDownloading = false;
   PdfControllerPinch? _pdfController;
   bool _isLoadingPdf = false;
   String? _pdfError;
@@ -51,7 +48,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize the bloc reference early
     _factureBloc = context.read<FactureBloc>();
     _factureBloc?.add(GetFacturePdf(widget.factureId));
   }
@@ -59,58 +55,46 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Store the bloc reference when dependencies change
     _factureBloc ??= context.read<FactureBloc>();
   }
 
   @override
   void dispose() {
-    // Dispose PDF controller first
     _pdfController?.dispose();
     _pdfController = null;
-
-    // Clear the bloc reference
     _factureBloc = null;
-
     super.dispose();
   }
 
   Future<void> _loadPdfController(String pdfUrl) async {
-    // Check if widget is still mounted before proceeding
     if (!mounted) return;
-
     if (_pdfController != null || _isLoadingPdf) return;
 
-    if (!mounted) return;
     setState(() {
       _isLoadingPdf = true;
       _pdfError = null;
     });
 
     try {
-      // Optimized HTTP request with smaller timeout and better headers
       final response = await http
           .get(
             Uri.parse(pdfUrl),
             headers: {
               'Accept': 'application/pdf',
-              'Cache-Control': 'max-age=300', // Allow caching for 5 minutes
+              'Cache-Control': 'max-age=300',
               'Accept-Encoding': 'gzip, deflate',
             },
           )
-          .timeout(const Duration(seconds: 15)); // Reduced timeout
+          .timeout(const Duration(seconds: 15));
 
-      // Check if widget is still mounted after async operation
       if (!mounted) return;
 
       if (response.statusCode == 200) {
-        // Verify content type
         final contentType = response.headers['content-type'];
         if (contentType != null && !contentType.contains('application/pdf')) {
           throw Exception('Response is not a PDF. Content-Type: $contentType');
         }
 
-        // Verify we have actual PDF data
         if (response.bodyBytes.length < 100) {
           throw Exception(
             'PDF data is too small (${response.bodyBytes.length} bytes)',
@@ -119,7 +103,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
 
         _pdfBytes = response.bodyBytes;
 
-        // Create PDF controller with optimized settings
         final document = PdfDocument.openData(_pdfBytes!);
         final controller = PdfControllerPinch(
           document: document,
@@ -127,7 +110,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
         );
 
         if (!mounted) {
-          // If widget is no longer mounted, dispose the controller
           controller.dispose();
           return;
         }
@@ -154,37 +136,62 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
           message: 'Erreur lors du chargement du PDF',
           showRetry: true,
           onRetry: () {
-            Navigator.of(context).pop(); // Close dialog
-            _loadPdfController(pdfUrl); // Retry loading
+            Navigator.of(context).pop();
+            _loadPdfController(pdfUrl);
           },
         );
       }
     }
   }
 
+  // UPDATED: Simplified download method using unified PdfUtils
   Future<void> _downloadPdf(String pdfUrl) async {
-    if (kIsWeb) {
-      // Use web-specific download
-      pdf_utils.downloadPdfWeb(
-        pdfUrl,
-        'facture_${widget.facture.factureNumber}.pdf',
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      final fileName = 'facture_${widget.facture.factureNumber}.pdf';
+
+      // Use the unified PDF utils - it will handle platform-specific logic
+      final result = await PdfUtils.downloadPdfFromUrl(
+        url: pdfUrl,
+        fileName: fileName,
       );
-    } else {
-      final uri = Uri.parse(pdfUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          showCustomErrorDialog(
-            context,
-            message: 'Impossible d\'ouvrir le lien du PDF',
-            showRetry: false,
-          );
-        }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showCustomErrorDialog(
+          context,
+          message: 'Erreur lors du téléchargement: ${e.toString()}',
+          showRetry: true,
+          onRetry: () {
+            Navigator.of(context).pop();
+            _downloadPdf(pdfUrl);
+          },
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
       }
     }
   }
 
+  // Rest of your existing methods remain the same...
   Future<void> _processPayment() async {
     if (!mounted) return;
 
@@ -199,7 +206,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       return;
     }
 
-    // Check if payment amount is valid
     if (widget.facture.finalTotal < AppConfig.minPaymentAmount) {
       if (mounted) {
         showCustomErrorDialog(
@@ -226,14 +232,9 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       if (!mounted) return;
 
       if (success) {
-        // Refresh the facture data
         _factureBloc?.add(GetFacturePdf(widget.factureId));
-
-        // Show our own success dialog with navigation
         _showPaymentSuccessDialog();
       }
-      // Note: If payment fails, StripeService will show its own error dialog
-      // so we don't need to show another one here
     } catch (e) {
       if (mounted) {
         showCustomErrorDialog(
@@ -241,8 +242,8 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
           message: 'Erreur de paiement: ${e.toString()}',
           showRetry: true,
           onRetry: () {
-            Navigator.of(context).pop(); // Close dialog
-            _processPayment(); // Retry payment
+            Navigator.of(context).pop();
+            _processPayment();
           },
         );
       }
@@ -264,7 +265,7 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
       message:
           'Votre paiement a été traité avec succès. La facture a été marquée comme payée.',
       onContinue: () {
-        Navigator.of(context).pop(); // Close dialog
+        Navigator.of(context).pop();
         _goBackToList();
       },
     );
@@ -276,8 +277,8 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
     }
   }
 
+  // Your existing _buildOptimizedPdfViewer method remains the same...
   Widget _buildOptimizedPdfViewer(String pdfUrl) {
-    // Auto-load PDF when URL is available
     if (_pdfController == null && !_isLoadingPdf && _pdfError == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -521,11 +522,23 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                     }
                     return ElevatedButton.icon(
                       onPressed:
-                          pdfUrl != null ? () => _downloadPdf(pdfUrl!) : null,
-                      icon: const Icon(Icons.download, color: Colors.white),
-                      label: const Text(
-                        'Télécharger',
-                        style: TextStyle(color: Colors.white),
+                          _isDownloading || pdfUrl == null
+                              ? null
+                              : () => _downloadPdf(pdfUrl!),
+                      icon:
+                          _isDownloading
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(Icons.download, color: Colors.white),
+                      label: Text(
+                        _isDownloading ? 'Téléchargement...' : 'Télécharger',
+                        style: const TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accentGreen,
@@ -563,7 +576,6 @@ class _FactureDetailScreenState extends State<FactureDetailScreen> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: () {
-                            // Use the stored bloc reference instead of context.read
                             _factureBloc?.add(GetFacturePdf(widget.factureId));
                           },
                           child: const Text('Réessayer'),

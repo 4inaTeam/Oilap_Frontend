@@ -6,7 +6,6 @@ import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
 
-
 class ProductDetailScreen extends StatelessWidget {
   final dynamic product;
 
@@ -19,8 +18,24 @@ class ProductDetailScreen extends StatelessWidget {
       currentRoute: '/produits/detail',
       child: BlocListener<ProductBloc, ProductState>(
         listener: (context, state) {
-          // Remove all SnackBar notifications
-          // PDF download will happen silently
+          // Handle PDF download states
+          if (state is ProductPDFDownloadSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.filePath),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          } else if (state is ProductPDFDownloadFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erreur de téléchargement: ${state.message}'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         },
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -54,6 +69,10 @@ class ProductDetailScreen extends StatelessWidget {
                                 isLoading
                                     ? null
                                     : () {
+                                      print(
+                                        'Download button pressed for product: ${product.id}',
+                                      ); // Debug log
+
                                       // Trigger PDF download
                                       context.read<ProductBloc>().add(
                                         DownloadProductPDF(
